@@ -11,6 +11,8 @@ import {
   ReceiptText,
   Loader2,
   Newspaper,
+  BookOpen,
+  BookMarked,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -148,6 +150,37 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
         )}
+
+        {/* Learn section */}
+        <div className="px-2 pt-2">
+          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Learn
+          </p>
+          <Link
+            href="/app/courses"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              pathname.startsWith("/app/courses")
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Courses
+          </Link>
+          <Link
+            href="/app/glossary"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              pathname === "/app/glossary"
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <BookMarked className="h-4 w-4" />
+            Glossary
+          </Link>
+        </div>
 
         {/* Bottom nav */}
         <div className="border-t border-[var(--line)] p-2 space-y-0.5">

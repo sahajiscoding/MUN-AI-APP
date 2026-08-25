@@ -102,7 +102,7 @@ export default function AdminDashboardPage() {
         },
         body: JSON.stringify({
           committee: "General",
-          agenda: aiPrompt,
+          agenda: aiPrompt.length < 5 ? `${aiPrompt} — respond naturally` : aiPrompt,
           country: "Any",
           experienceLevel: "intermediate",
           provider: "nvidia",

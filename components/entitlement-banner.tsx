@@ -5,17 +5,20 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 
+type EntitlementData = {
+  status: "inactive" | "active" | "expired";
+  planId?: string;
+  expiresAt?: string;
+};
+
 type EntitlementResponse = {
-  entitlement: {
-    status: "inactive" | "active" | "expired";
-    planId?: string;
-    expiresAt?: string;
-  };
+  entitlement?: EntitlementData;
+  error?: string;
 };
 
 export function EntitlementBanner() {
   const { user, getIdToken } = useAuth();
-  const [data, setData] = useState<EntitlementResponse | null>(null);
+  const [data, setData] = useState<EntitlementData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +40,7 @@ export function EntitlementBanner() {
         const json = (await response.json()) as EntitlementResponse;
 
         if (!cancelled) {
-          setData(json);
+          setData(json.entitlement ?? null);
         }
       } catch {
         if (!cancelled) {
@@ -66,7 +69,7 @@ export function EntitlementBanner() {
     );
   }
 
-  const active = data?.entitlement.status === "active";
+  const active = data?.status === "active";
 
   return (
     <div className="surface flex flex-col gap-4 rounded-panel px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -79,8 +82,8 @@ export function EntitlementBanner() {
             {active ? "Paid workspace active" : "Paid tools locked"}
           </p>
           <p className="text-sm text-[var(--muted)]">
-            {active && data?.entitlement.expiresAt
-              ? `Access expires ${new Date(data.entitlement.expiresAt).toLocaleDateString("en-IN")}.`
+            {active && data?.expiresAt
+              ? `Access expires ${new Date(data.expiresAt).toLocaleDateString("en-IN")}.`
               : "Unlock AI research, speeches, POIs, and resolution drafting for this account."}
           </p>
         </div>

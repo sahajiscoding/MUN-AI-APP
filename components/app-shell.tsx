@@ -1,104 +1,203 @@
 "use client";
 
 import {
-  BookOpen,
-  FileText,
   Landmark,
   LogOut,
-  MessageSquareQuote,
-  PenLine,
-  ReceiptText,
+  Plus,
   Settings,
   ShieldCheck,
-  Sparkles,
-  Target
+  MessageSquare,
+  PenLine,
+  ReceiptText,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
+import { getSupabase } from "@/lib/supabase/client";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Landmark },
-  { href: "/profile", label: "Profile", icon: ShieldCheck },
-  { href: "/pricing", label: "Access", icon: ReceiptText },
-  { href: "/app/research", label: "Research", icon: BookOpen },
-  { href: "/app/country-profile", label: "Country", icon: Target },
-  { href: "/app/position-paper", label: "Paper", icon: FileText },
-  { href: "/app/speech-builder", label: "Speech", icon: MessageSquareQuote },
-  { href: "/app/poi-trainer", label: "POIs", icon: Sparkles },
-  { href: "/app/resolution-builder", label: "Resolution", icon: PenLine },
-  { href: "/app/settings", label: "Settings", icon: Settings }
-];
+type ChatHistoryItem = {
+  id: string;
+  tool: string;
+  input_summary: {
+    committee?: string;
+    country?: string;
+    agenda?: string;
+  };
+  created_at: string;
+};
+
+const toolIcons: Record<string, typeof MessageSquare> = {
+  "mun-research": MessageSquare,
+  "country-profile": ShieldCheck,
+  "position-paper": PenLine,
+  "speech": MessageSquare,
+  "poi": MessageSquare,
+  "resolution": PenLine,
+};
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [chats, setChats] = useState<ChatHistoryItem[]>([]);
+  const [loadingChats, setLoadingChats] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const supabase = getSupabase();
+
+    supabase
+      .from("ai_generations")
+      .select("id, tool, input_summary, created_at")
+      .eq("uid", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) setChats(data as ChatHistoryItem[]);
+        setLoadingChats(false);
+      });
+  }, [user]);
+
+  function getChatTitle(chat: ChatHistoryItem) {
+    const summary = chat.input_summary;
+    if (summary?.committee && summary?.country) {
+      return `${summary.committee} / ${summary.country}`;
+    }
+    return chat.tool.replace(/-/g, " ");
+  }
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
-      <aside className="surface fixed bottom-0 left-0 right-0 z-40 border-x-0 border-b-0 px-2 py-2 lg:sticky lg:top-0 lg:h-screen lg:border-y-0 lg:border-l-0 lg:px-4 lg:py-5">
-        <div className="hidden lg:block">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-panel bg-[var(--ink)] text-[var(--paper)]">
-              <Landmark className="h-5 w-5" aria-hidden="true" />
+    <div className="min-h-screen flex">
+      {/* Sidebar */}
+      <aside className="w-64 shrink-0 border-r border-[var(--line)] bg-[var(--surface)] flex flex-col h-screen sticky top-0">
+        {/* Logo + New Chat */}
+        <div className="p-3 border-b border-[var(--line)]">
+          <Link href="/dashboard" className="flex items-center gap-3 mb-3">
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--ink)] text-[var(--paper)]">
+              <Landmark className="h-4 w-4" aria-hidden="true" />
             </span>
-            <span>
-              <span className="display-type block text-xl leading-none">MUN Prep</span>
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-                Delegate Desk
-              </span>
-            </span>
+            <span className="display-type text-lg">MUN Prep</span>
+          </Link>
+          <Link
+            href="/app/research"
+            className="flex items-center gap-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5 transition"
+          >
+            <Plus className="h-4 w-4" />
+            New chat
           </Link>
         </div>
 
-        <nav aria-label="Main navigation" className="mt-0 lg:mt-8">
-          <ul className="flex gap-1 overflow-x-auto lg:block lg:space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
+        {/* Chat History */}
+        <div className="flex-1 overflow-y-auto p-2">
+          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Recent chats
+          </p>
 
-              return (
-                <li key={item.href} className="min-w-[4.7rem] lg:min-w-0">
+          {loadingChats ? (
+            <div className="flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading...
+            </div>
+          ) : chats.length === 0 ? (
+            <p className="px-2 py-3 text-xs text-[var(--muted)]">
+              No chats yet. Start a new one!
+            </p>
+          ) : (
+            <nav className="space-y-0.5">
+              {chats.map((chat) => {
+                const Icon = toolIcons[chat.tool] || MessageSquare;
+                return (
                   <Link
-                    href={item.href}
-                    className={cn(
-                      "group flex min-h-12 flex-col items-center justify-center gap-1 rounded-panel px-2 text-xs font-semibold transition lg:min-h-11 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm",
-                      active
-                        ? "bg-[var(--ink)] text-[var(--paper-strong)]"
-                        : "text-[var(--muted)] hover:bg-black/5 hover:text-[var(--ink)]"
-                    )}
+                    key={chat.id}
+                    href={`/app/research`}
+                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] hover:bg-black/5 transition truncate"
                   >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span>{item.label}</span>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{getChatTitle(chat)}</span>
                   </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+                );
+              })}
+            </nav>
+          )}
+        </div>
 
-        <div className="absolute bottom-5 left-4 right-4 hidden lg:block">
-          <div className="border-t border-[var(--line)] pt-4">
-            <p className="truncate text-sm font-semibold">{user?.user_metadata?.full_name || "Delegate"}</p>
-            <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
+        {/* Bottom nav */}
+        <div className="border-t border-[var(--line)] p-2 space-y-0.5">
+          <Link
+            href="/dashboard"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              pathname === "/dashboard"
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <Landmark className="h-4 w-4" />
+            Dashboard
+          </Link>
+          <Link
+            href="/profile"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              pathname === "/profile"
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Profile
+          </Link>
+          <Link
+            href="/pricing"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              pathname === "/pricing"
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <ReceiptText className="h-4 w-4" />
+            Pricing
+          </Link>
+          <Link
+            href="/app/settings"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              pathname === "/app/settings"
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
+        </div>
+
+        {/* User info + logout */}
+        <div className="border-t border-[var(--line)] p-3">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{user?.user_metadata?.full_name || "Delegate"}</p>
+              <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
+            </div>
             <button
               type="button"
               onClick={() => logout()}
-              className="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-panel border border-[var(--line)] text-sm font-semibold text-[var(--ink)] transition hover:bg-black/5"
+              className="shrink-0 p-2 rounded-lg hover:bg-black/5 transition text-[var(--muted)]"
+              title="Sign out"
             >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sign out
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
       </aside>
 
-      <main className="pb-24 lg:pb-0">
-        <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
-          {children}
-        </div>
+      {/* Main content */}
+      <main className="flex-1 min-w-0">
+        {children}
       </main>
     </div>
   );

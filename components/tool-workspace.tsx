@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Loader2, Send, ShieldAlert } from "lucide-react";
+import { Bot, Loader2, Send, ShieldAlert, Plus } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import type { AIProvider } from "@/lib/ai/types";
@@ -43,6 +43,16 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     return map[mode];
   }, [mode]);
 
+  function handleNewChat() {
+    setCommittee(defaults.committee);
+    setAgenda(defaults.agenda);
+    setCountry(defaults.country);
+    setExperienceLevel(defaults.experienceLevel);
+    setProvider("openrouter");
+    setOutput("");
+    setStatus("");
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -82,126 +92,146 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-      <section className="surface rounded-panel p-5 sm:p-6">
-        <p className="label-text">{eyebrow}</p>
-        <h1 className="display-type mt-3 text-4xl sm:text-5xl">{title}</h1>
-        <p className="mt-4 max-w-2xl leading-7 text-[var(--muted)]">{description}</p>
-
-        <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="label-text">Committee</span>
-            <input
-              className="input-field mt-2"
-              value={committee}
-              onChange={(event) => setCommittee(event.target.value)}
-              required
-            />
-          </label>
-
-          <label className="block">
-            <span className="label-text">Agenda</span>
-            <textarea
-              className="input-field mt-2 min-h-28 resize-y"
-              value={agenda}
-              onChange={(event) => setAgenda(event.target.value)}
-              required
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="label-text">Country</span>
-              <input
-                className="input-field mt-2"
-                value={country}
-                onChange={(event) => setCountry(event.target.value)}
-                required
-              />
-            </label>
-
-            <label className="block">
-              <span className="label-text">Experience</span>
-              <select
-                className="input-field mt-2"
-                value={experienceLevel}
-                onChange={(event) => setExperienceLevel(event.target.value)}
-              >
-                <option value="first-timer">First timer</option>
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </label>
-          </div>
-
-          <fieldset>
-            <legend className="label-text">Model route</legend>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {(["openrouter", "nvidia"] as const).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setProvider(item)}
-                  className={
-                    provider === item
-                      ? "button-primary px-3 text-sm font-semibold capitalize"
-                      : "button-secondary px-3 text-sm font-semibold capitalize"
-                  }
-                >
-                  {item === "openrouter" ? "GLM" : "MiniMax"}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <button
-            className="button-primary flex w-full items-center justify-center gap-2 px-4 font-semibold"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Send className="h-4 w-4" aria-hidden="true" />
-            )}
-            {loading ? "Drafting brief..." : "Generate briefing"}
-          </button>
-        </form>
-      </section>
-
-      <section className="surface min-h-[34rem] rounded-panel p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-4">
-          <div>
-            <p className="label-text">Output desk</p>
-            <h2 className="display-type mt-2 text-3xl">Delegate brief</h2>
-          </div>
-          <Bot className="h-5 w-5 text-[var(--patina)]" aria-hidden="true" />
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Header with new chat button */}
+      <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
+        <div>
+          <p className="label-text">{eyebrow}</p>
+          <h1 className="display-type text-2xl">{title}</h1>
         </div>
+        <button
+          onClick={handleNewChat}
+          className="button-secondary flex items-center gap-2 px-4 py-2 text-sm font-semibold"
+        >
+          <Plus className="h-4 w-4" />
+          New Chat
+        </button>
+      </div>
 
-        {status ? (
-          <p className="mt-4 rounded-panel border border-[var(--line)] bg-white/40 px-3 py-2 text-sm text-[var(--muted)]">
-            {status}
-          </p>
-        ) : null}
-
+      {/* Main content area */}
+      <div className="flex-1 overflow-y-auto">
         {output ? (
-          <article className="prose prose-neutral mt-5 max-w-none whitespace-pre-wrap leading-7">
-            {output}
-          </article>
+          <div className="max-w-4xl mx-auto px-5 py-6">
+            {/* User message */}
+            <div className="mb-6 flex justify-end">
+              <div className="max-w-[80%] rounded-2xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
+                <p className="text-sm font-semibold mb-1">Your request</p>
+                <p className="text-sm opacity-80">
+                  {committee} — {country} — {agenda.slice(0, 100)}...
+                </p>
+              </div>
+            </div>
+
+            {/* AI response */}
+            <div className="flex gap-3">
+              <div className="shrink-0 mt-1">
+                <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--patina)] text-white">
+                  <Bot className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="flex-1 surface rounded-2xl px-5 py-4">
+                {status && (
+                  <p className="mb-3 text-xs text-[var(--muted)]">{status}</p>
+                )}
+                <article className="prose prose-neutral max-w-none whitespace-pre-wrap leading-7 text-sm">
+                  {output}
+                </article>
+              </div>
+            </div>
+          </div>
         ) : (
-          <div className="grid min-h-[24rem] place-items-center text-center">
-            <div className="max-w-sm">
-              <ShieldAlert className="mx-auto h-8 w-8 text-[var(--brass)]" aria-hidden="true" />
-              <p className="mt-4 font-semibold">Paid AI tools verify account access first.</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Once Razorpay access is active for your Supabase account, this desk will generate
-                structured MUN prep with the selected model route.
-              </p>
+          <div className="flex flex-col items-center justify-center h-full text-center px-5">
+            <div className="max-w-md">
+              <div className="grid h-16 w-16 mx-auto place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] mb-6">
+                <Bot className="h-8 w-8" />
+              </div>
+              <h2 className="display-type text-3xl mb-3">{title}</h2>
+              <p className="text-sm leading-6 text-[var(--muted)] mb-8">{description}</p>
             </div>
           </div>
         )}
-      </section>
+      </div>
+
+      {/* Input area at bottom */}
+      <div className="border-t border-[var(--line)] bg-[var(--surface)] px-5 py-4">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+          <div className="surface rounded-2xl border border-[var(--line)] p-4">
+            <div className="grid gap-3 sm:grid-cols-2 mb-3">
+              <input
+                className="input-field text-sm"
+                value={committee}
+                onChange={(e) => setCommittee(e.target.value)}
+                placeholder="Committee (e.g. UNHRC)"
+                required
+              />
+              <input
+                className="input-field text-sm"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="Country (e.g. India)"
+                required
+              />
+            </div>
+
+            <textarea
+              className="input-field text-sm min-h-[4rem] resize-y mb-3"
+              value={agenda}
+              onChange={(e) => setAgenda(e.target.value)}
+              placeholder="Describe your agenda or topic..."
+              required
+            />
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <select
+                  className="input-field text-xs py-1 px-2"
+                  value={experienceLevel}
+                  onChange={(e) => setExperienceLevel(e.target.value)}
+                >
+                  <option value="first-timer">First timer</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+
+                <div className="flex rounded-lg border border-[var(--line)] overflow-hidden">
+                  {(["openrouter", "nvidia"] as const).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setProvider(item)}
+                      className={
+                        provider === item
+                          ? "bg-[var(--ink)] text-[var(--paper)] px-3 py-1 text-xs font-semibold"
+                          : "px-3 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
+                      }
+                    >
+                      {item === "openrouter" ? "Max" : "Mid"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                className="button-primary flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {loading ? "Generating..." : "Send"}
+              </button>
+            </div>
+
+            {status && !output && (
+              <p className="mt-3 text-xs text-[var(--muted)]">{status}</p>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

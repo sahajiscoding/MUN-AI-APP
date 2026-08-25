@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "shrink-0 border-r border-[var(--line)] bg-[var(--surface)] flex flex-col h-screen sticky top-0 transition-all duration-300",
+          "shrink-0 border-r border-[var(--line)] bg-[var(--surface)] flex flex-col h-screen transition-all duration-300 z-20",
           collapsed ? "w-[68px]" : "w-64"
         )}
       >
@@ -279,7 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">{children}</main>
+      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
     </div>
   );
 }

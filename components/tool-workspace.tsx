@@ -1,9 +1,10 @@
 "use client";
 
-import { Bot, Loader2, Plus, Send, ShieldAlert } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { Bot, Loader2, Plus, Send } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import type { AIProvider } from "@/lib/ai/types";
+import { PaywallModal } from "@/components/paywall-modal";
 
 type ToolWorkspaceProps = {
   eyebrow: string;
@@ -22,12 +23,33 @@ const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
 };
 
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
-  const { getIdToken } = useAuth();
+  const { user, getIdToken } = useAuth();
   const [input, setInput] = useState("");
   const [provider, setProvider] = useState<AIProvider>("openrouter");
   const [output, setOutput] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  // Check entitlement on mount
+  useEffect(() => {
+    if (!user) return;
+
+    getIdToken()
+      .then((token) =>
+        fetch("/api/me/entitlement", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      )
+      .then((res) => res.json())
+      .then((data) => {
+        setHasAccess(data.entitlement?.status === "active");
+      })
+      .catch(() => {
+        setHasAccess(false);
+      });
+  }, [user, getIdToken]);
 
   function handleNewChat() {
     setInput("");
@@ -38,6 +60,12 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!input.trim() || loading) return;
+
+    // Check entitlement before sending
+    if (hasAccess === false) {
+      setShowPaywall(true);
+      return;
+    }
 
     setLoading(true);
     setStatus("");
@@ -63,6 +91,12 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       const data = await response.json();
 
       if (!response.ok) {
+        // If 402 paid access required, show paywall
+        if (data.code === "paid_access_required") {
+          setHasAccess(false);
+          setShowPaywall(true);
+          return;
+        }
         throw new Error(data.error ?? "Failed to generate response.");
       }
 
@@ -77,6 +111,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
   return (
     <div className="flex flex-col h-screen">
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} />
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3 shrink-0">
         <div>

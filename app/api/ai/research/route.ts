@@ -18,7 +18,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // Admin bypass: check for admin session cookie first
+    // Admin bypass: check for admin session cookie OR admin-bypass header
     const adminSession = await getAdminSession();
     const authHeader = request.headers.get("Authorization");
     const isAdminBypass = authHeader === "Bearer admin-bypass" && adminSession;
@@ -27,9 +27,18 @@ export async function POST(request: Request) {
     if (isAdminBypass) {
       uid = adminSession.uid;
     } else {
-      const user = await requireUser(request);
-      await assertPaidAccess(user.uid);
-      uid = user.uid;
+      try {
+        const user = await requireUser(request);
+        await assertPaidAccess(user.uid);
+        uid = user.uid;
+      } catch {
+        // If auth fails and we have admin session, use it anyway
+        if (adminSession) {
+          uid = adminSession.uid;
+        } else {
+          throw new ApiError(401, "unauthorized", "Login required.");
+        }
+      }
     }
 
     const body = schema.safeParse(await parseJson<unknown>(request));

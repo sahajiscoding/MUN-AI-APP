@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { createClient } from "@/lib/supabase/server";
 
 export type VerifiedUser = {
   uid: string;
@@ -6,46 +6,20 @@ export type VerifiedUser = {
   name?: string;
 };
 
-const JWKS_URL = process.env.SUPABASE_JWKS_URL;
-
-let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-function getJwks() {
-  if (!JWKS_URL) {
-    throw new Error("SUPABASE_JWKS_URL is not configured.");
-  }
-  if (!_jwks) {
-    _jwks = createRemoteJWKSet(new URL(JWKS_URL));
-  }
-  return _jwks;
-}
-
-export async function verifySupabaseToken(token: string): Promise<JWTPayload> {
-  const { payload } = await jwtVerify(token, getJwks(), {
-    issuer: "supabase",
-  });
-  return payload;
-}
-
 export async function requireUser(request: Request): Promise<VerifiedUser> {
-  const authorization = request.headers.get("authorization");
+  const supabase = await createClient();
 
-  if (!authorization?.startsWith("Bearer ")) {
-    throw new ApiError(401, "missing_token", "Sign in again before continuing.");
-  }
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  const token = authorization.slice("Bearer ".length);
-
-  try {
-    const payload = await verifySupabaseToken(token);
-    return {
-      uid: payload.sub!,
-      email: payload.email as string | undefined,
-      name: (payload.user_metadata as Record<string, unknown>)?.full_name as string | undefined,
-    };
-  } catch {
+  if (error || !user) {
     throw new ApiError(401, "invalid_token", "Your session could not be verified.");
   }
+
+  return {
+    uid: user.id,
+    email: user.email,
+    name: user.user_metadata?.full_name,
+  };
 }
 
 class ApiError extends Error {

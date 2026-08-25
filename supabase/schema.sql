@@ -94,6 +94,13 @@ CREATE TABLE IF NOT EXISTS public.research_notes (
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Admin users (password-protected admin access, bypasses paywall)
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  uid         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  approved_at TIMESTAMPTZ DEFAULT NOW(),
+  approved_by TEXT DEFAULT 'system'
+);
+
 -- Webhook events (idempotency tracking for Razorpay)
 CREATE TABLE IF NOT EXISTS public.webhook_events (
   event_id            TEXT PRIMARY KEY,
@@ -115,6 +122,7 @@ ALTER TABLE public.payment_orders     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_generations     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.research_notes     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_users       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.webhook_events     ENABLE ROW LEVEL SECURITY;
 
 -- Users: owner can read, insert, update (no delete)
@@ -144,6 +152,8 @@ CREATE POLICY "research_notes_select_own" ON public.research_notes FOR SELECT US
 CREATE POLICY "research_notes_insert_own" ON public.research_notes FOR INSERT WITH CHECK (auth.uid() = uid);
 CREATE POLICY "research_notes_update_own" ON public.research_notes FOR UPDATE USING (auth.uid() = uid);
 CREATE POLICY "research_notes_delete_own" ON public.research_notes FOR DELETE USING (auth.uid() = uid);
+
+-- Admin users: no direct user access (service role only)
 
 -- Webhook events: no direct user access (service role only, so no policies needed)
 

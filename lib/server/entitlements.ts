@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
+import { isUserAdmin } from "@/lib/server/admin-auth";
 
 export type EntitlementStatus = "inactive" | "active" | "expired";
 
@@ -12,6 +13,11 @@ export type Entitlement = {
 };
 
 export async function getEntitlement(uid: string): Promise<Entitlement> {
+  // Admin users bypass all entitlement checks
+  if (await isUserAdmin(uid)) {
+    return { status: "active", planId: "admin", source: "admin" };
+  }
+
   const { data, error } = await supabaseAdmin()
     .from("entitlements")
     .select("*")

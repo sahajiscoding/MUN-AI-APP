@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { runMunResearch } from "@/lib/ai/router";
 import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
+import { getAdminSession } from "@/lib/server/admin-auth";
 
 export const runtime = "nodejs";
 
@@ -17,8 +18,19 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser(request);
-    await assertPaidAccess(user.uid);
+    // Admin bypass: check for admin session cookie first
+    const adminSession = await getAdminSession();
+    const authHeader = request.headers.get("Authorization");
+    const isAdminBypass = authHeader === "Bearer admin-bypass" && adminSession;
+
+    let uid: string;
+    if (isAdminBypass) {
+      uid = adminSession.uid;
+    } else {
+      const user = await requireUser(request);
+      await assertPaidAccess(user.uid);
+      uid = user.uid;
+    }
 
     const body = schema.safeParse(await parseJson<unknown>(request));
 
@@ -32,7 +44,6 @@ export async function POST(request: Request) {
     if (result.stream) {
       const provider = result.provider;
       const model = result.model;
-      const uid = user.uid;
       const inputSummary = {
         committee: body.data.committee,
         country: body.data.country,
@@ -56,7 +67,7 @@ export async function POST(request: Request) {
 
     // Non-streaming fallback
     await supabaseAdmin().from("ai_generations").insert({
-      uid: user.uid,
+      uid,
       tool: "mun-research",
       provider: result.provider,
       model: result.model,

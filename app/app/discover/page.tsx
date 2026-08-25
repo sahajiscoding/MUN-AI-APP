@@ -7,13 +7,11 @@ import {
   ExternalLink,
   Globe,
   HelpCircle,
-  Heart,
   RefreshCw,
   Search,
   Share2,
   TrendingUp,
   Users,
-  Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { NewsItem } from "@/app/api/news/route";
@@ -112,15 +110,15 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--ink)]">
+    <div className="min-h-screen">
       {/* Top bar */}
-      <div className="sticky top-0 z-30 border-b border-white/10 bg-[var(--ink)]">
+      <div className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--paper)]/80 backdrop-blur-md">
         <div className="mx-auto max-w-[1400px] px-6">
           <div className="flex items-center justify-between h-14">
             {/* Left: Logo */}
             <div className="flex items-center gap-3">
-              <Compass className="h-5 w-5 text-[var(--brass)]" />
-              <span className="display-type text-lg text-[var(--paper)]">Discover</span>
+              <Compass className="h-5 w-5 text-[var(--patina)]" />
+              <span className="display-type text-lg text-[var(--ink)]">Discover</span>
             </div>
 
             {/* Center: Tabs */}
@@ -131,8 +129,8 @@ export default function DiscoverPage() {
                   onClick={() => setActiveTab(tab.key)}
                   className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
                     activeTab === tab.key
-                      ? "bg-[var(--paper)] text-[var(--ink)]"
-                      : "text-white/60 hover:text-white hover:bg-white/10"
+                      ? "bg-[var(--ink)] text-[var(--paper)]"
+                      : "text-[var(--muted)] hover:text-[var(--ink)] hover:bg-black/5"
                   }`}
                 >
                   {tab.label}
@@ -143,19 +141,19 @@ export default function DiscoverPage() {
             {/* Right: Search */}
             <div className="flex items-center gap-3">
               <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted)]" />
                 <input
                   type="text"
                   placeholder="Search the record"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-1.5 w-52 rounded-lg bg-white/10 border border-white/10 text-sm text-[var(--paper)] placeholder:text-white/40 focus:outline-none focus:border-[var(--brass)]/50"
+                  className="pl-9 pr-4 py-1.5 w-52 rounded-lg bg-black/5 border border-[var(--line)] text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--patina)]/50"
                 />
               </div>
-              <button className="p-2 rounded-lg hover:bg-white/10 text-white/60 transition">
+              <button className="p-2 rounded-lg hover:bg-black/5 text-[var(--muted)] transition">
                 <HelpCircle className="h-4 w-4" />
               </button>
-              <button className="p-2 rounded-lg hover:bg-white/10 text-white/60 transition">
+              <button className="p-2 rounded-lg hover:bg-black/5 text-[var(--muted)] transition">
                 <Users className="h-4 w-4" />
               </button>
             </div>
@@ -169,8 +167,8 @@ export default function DiscoverPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
                   activeTab === tab.key
-                    ? "bg-[var(--paper)] text-[var(--ink)]"
-                    : "text-white/60 hover:text-white hover:bg-white/10"
+                    ? "bg-[var(--ink)] text-[var(--paper)]"
+                    : "text-[var(--muted)] hover:text-[var(--ink)] hover:bg-black/5"
                 }`}
               >
                 {tab.label}
@@ -187,10 +185,10 @@ export default function DiscoverPage() {
           <div className="flex-1 min-w-0 space-y-6">
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <RefreshCw className="h-6 w-6 text-white/40 animate-spin" />
+                <RefreshCw className="h-6 w-6 text-[var(--muted)] animate-spin" />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-white/40">
+              <div className="text-center py-20 text-[var(--muted)]">
                 <Compass className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">
                   {activeTab === "saved"
@@ -229,19 +227,19 @@ export default function DiscoverPage() {
           {/* Right sidebar */}
           <aside className="hidden lg:block w-80 shrink-0 space-y-5">
             {/* Indicators */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+            <div className="surface rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="h-4 w-4 text-[var(--brass)]" />
-                <h3 className="text-sm font-bold text-[var(--paper)]">INDICATORS</h3>
+                <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">Indicators</h3>
               </div>
               <div className="flex items-end gap-2 mb-1">
-                <span className="text-4xl font-bold text-[var(--paper)]">16</span>
-                <span className="flex items-center gap-1 text-xs text-red-400 mb-1">
+                <span className="text-4xl font-bold text-[var(--ink)]">16</span>
+                <span className="flex items-center gap-1 text-xs text-[var(--oxblood)] mb-1">
                   <TrendingUp className="h-3 w-3" />
                   +1
                 </span>
               </div>
-              <p className="text-xs text-white/50 mb-4">Global Tension Index · 7-day</p>
+              <p className="text-xs text-[var(--muted)] mb-4">Global Tension Index · 7-day</p>
               {/* Mini sparkline */}
               <div className="flex items-end gap-1 h-10">
                 {[8, 10, 9, 12, 11, 14, 13, 15, 14, 16].map((v, i) => (
@@ -255,21 +253,21 @@ export default function DiscoverPage() {
             </div>
 
             {/* Who to Follow */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-              <h3 className="text-sm font-bold text-[var(--paper)] mb-4">WHO TO FOLLOW</h3>
+            <div className="surface rounded-xl p-5">
+              <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider mb-4">Who to Follow</h3>
               <div className="space-y-3">
                 {TOPICS_TO_FOLLOW.map((topic) => (
                   <div key={topic.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div
-                        className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-[var(--paper)]"
+                        className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
                         style={{ background: topic.color }}
                       >
                         {topic.abbr}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-[var(--paper)]">{topic.name}</p>
-                        <p className="text-xs text-white/40">TOPIC</p>
+                        <p className="text-sm font-semibold text-[var(--ink)]">{topic.name}</p>
+                        <p className="text-xs text-[var(--muted)]">TOPIC</p>
                       </div>
                     </div>
                     <button className="px-3 py-1 rounded-full border border-[var(--brass)] text-[var(--brass)] text-xs font-semibold hover:bg-[var(--brass)] hover:text-[var(--ink)] transition">
@@ -284,7 +282,7 @@ export default function DiscoverPage() {
             </div>
 
             {/* Footer */}
-            <div className="text-xs text-white/30 px-1">
+            <div className="text-xs text-[var(--muted)] px-1">
               <p>Model Diplomat · Discover</p>
               <p>The reading room&apos;s front page.</p>
             </div>
@@ -314,13 +312,13 @@ function FeaturedCard({
       href={item.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="block rounded-2xl border border-white/10 bg-white/5 overflow-hidden hover:border-white/20 transition group"
+      className="block surface rounded-2xl overflow-hidden hover:-translate-y-0.5 transition group"
     >
       <div className="flex flex-col md:flex-row">
         {/* Image placeholder */}
-        <div className="md:w-3/5 h-64 md:h-auto bg-gradient-to-br from-white/5 to-white/10 relative">
+        <div className="md:w-3/5 h-64 md:h-auto bg-gradient-to-br from-[var(--patina)]/10 to-[var(--brass)]/10 relative">
           <div className="absolute inset-0 flex items-center justify-center">
-            <Globe className="h-16 w-16 text-white/10" />
+            <Globe className="h-16 w-16 text-[var(--ink)]/10" />
           </div>
         </div>
 
@@ -333,16 +331,16 @@ function FeaturedCard({
             >
               {meta.label}
             </span>
-            <h2 className="display-type text-2xl font-bold text-[var(--paper)] leading-tight mb-3 group-hover:text-[var(--brass)] transition line-clamp-3">
+            <h2 className="display-type text-2xl font-bold text-[var(--ink)] leading-tight mb-3 group-hover:text-[var(--patina)] transition line-clamp-3">
               {item.title}
             </h2>
             {item.description && (
-              <p className="text-sm text-white/50 line-clamp-3 mb-4">{item.description}</p>
+              <p className="text-sm text-[var(--muted)] line-clamp-3 mb-4">{item.description}</p>
             )}
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-white/40">
+            <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
               <span>{item.source}</span>
               {item.pubDate && (
                 <>
@@ -358,17 +356,17 @@ function FeaturedCard({
                   e.preventDefault();
                   onToggleSave();
                 }}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition"
+                className="p-1.5 rounded-lg hover:bg-black/5 transition"
               >
                 <Bookmark
-                  className={`h-4 w-4 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-white/40"}`}
+                  className={`h-4 w-4 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-[var(--muted)]"}`}
                 />
               </button>
               <button
                 onClick={(e) => e.preventDefault()}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition"
+                className="p-1.5 rounded-lg hover:bg-black/5 transition"
               >
-                <Share2 className="h-4 w-4 text-white/40" />
+                <Share2 className="h-4 w-4 text-[var(--muted)]" />
               </button>
             </div>
           </div>
@@ -397,7 +395,7 @@ function ArticleCard({
       href={item.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex gap-4 rounded-xl border border-white/10 bg-white/5 p-4 hover:border-white/20 transition group"
+      className="flex gap-4 surface rounded-xl p-4 hover:-translate-y-0.5 transition group"
     >
       {/* Text content */}
       <div className="flex-1 min-w-0">
@@ -407,13 +405,13 @@ function ArticleCard({
         >
           {meta.label}
         </span>
-        <h3 className="display-type text-lg font-bold text-[var(--paper)] leading-snug mt-1 mb-2 group-hover:text-[var(--brass)] transition line-clamp-2">
+        <h3 className="display-type text-lg font-bold text-[var(--ink)] leading-snug mt-1 mb-2 group-hover:text-[var(--patina)] transition line-clamp-2">
           {item.title}
         </h3>
         {item.description && (
-          <p className="text-sm text-white/40 line-clamp-2 mb-3">{item.description}</p>
+          <p className="text-sm text-[var(--muted)] line-clamp-2 mb-3">{item.description}</p>
         )}
-        <div className="flex items-center gap-3 text-xs text-white/40">
+        <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
           <span>{item.source}</span>
           {item.pubDate && (
             <>
@@ -427,25 +425,25 @@ function ArticleCard({
                 e.preventDefault();
                 onToggleSave();
               }}
-              className="p-1 rounded hover:bg-white/10 transition"
+              className="p-1 rounded hover:bg-black/5 transition"
             >
               <Bookmark
-                className={`h-3.5 w-3.5 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-white/40"}`}
+                className={`h-3.5 w-3.5 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-[var(--muted)]"}`}
               />
             </button>
             <button
               onClick={(e) => e.preventDefault()}
-              className="p-1 rounded hover:bg-white/10 transition"
+              className="p-1 rounded hover:bg-black/5 transition"
             >
-              <Share2 className="h-3.5 w-3.5 text-white/40" />
+              <Share2 className="h-3.5 w-3.5 text-[var(--muted)]" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Thumbnail placeholder */}
-      <div className="hidden sm:block w-28 h-28 shrink-0 rounded-lg bg-white/5 flex items-center justify-center">
-        <ExternalLink className="h-5 w-5 text-white/15" />
+      <div className="hidden sm:block w-28 h-28 shrink-0 rounded-lg bg-gradient-to-br from-[var(--patina)]/10 to-[var(--brass)]/10 flex items-center justify-center">
+        <ExternalLink className="h-5 w-5 text-[var(--ink)]/15" />
       </div>
     </a>
   );

@@ -7,7 +7,7 @@ import { getPlan } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://munprepapp.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mun-ai-app.vercel.app";
 
 const schema = z.object({
   planId: z.string().min(1),

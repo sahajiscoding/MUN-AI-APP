@@ -5,7 +5,7 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://munprepapp.com"),
+  metadataBase: new URL("https://mun-ai-app.vercel.app"),
   title: {
     default: "MUN Prep App",
     template: "%s | MUN Prep App"

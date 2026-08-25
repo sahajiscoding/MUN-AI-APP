@@ -7,6 +7,8 @@ import { getPlan } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://munprepapp.com";
+
 const schema = z.object({
   planId: z.string().min(1),
 });
@@ -42,8 +44,13 @@ export async function POST(request: Request) {
       { onConflict: "order_ref" }
     );
 
-    // Create order on UROpay
-    const { orderId, openUrl } = await createUropayOrder(orderRef, plan.amount);
+    // Create order on UROpay with redirect URLs
+    const { orderId, openUrl } = await createUropayOrder(
+      orderRef,
+      plan.amount,
+      `${SITE_URL}/checkout/success`,
+      `${SITE_URL}/api/webhooks/uropay`
+    );
 
     // Update with UROpay order ID
     await supabaseAdmin()

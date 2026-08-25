@@ -8,7 +8,6 @@ export async function GET() {
   try {
     await requireAdmin();
 
-    // Get all users with their entitlement and admin status
     const { data: users, error: usersError } = await supabaseAdmin()
       .from("users")
       .select("uid, display_name, email, last_seen_at")
@@ -16,12 +15,10 @@ export async function GET() {
 
     if (usersError) throw usersError;
 
-    // Get entitlements
     const { data: entitlements } = await supabaseAdmin()
       .from("entitlements")
       .select("uid, status, plan_id, expires_at");
 
-    // Get admin users
     const { data: admins } = await supabaseAdmin()
       .from("admin_users")
       .select("uid");

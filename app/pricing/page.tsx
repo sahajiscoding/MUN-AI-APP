@@ -14,8 +14,7 @@ export default function PricingPage() {
           <p className="label-text text-[var(--oxblood)]">One payment, one account</p>
           <h1 className="display-type mt-3 text-5xl">Unlock MUN Prep</h1>
           <p className="mt-4 max-w-2xl leading-7 text-[var(--muted)]">
-            Razorpay checkout creates an order tied to your Supabase account. Access is granted
-            only after server-side signature verification or a verified webhook.
+            Choose a plan to unlock AI-powered MUN preparation tools. Payment coming soon.
           </p>
         </header>
         <EntitlementBanner />

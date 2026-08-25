@@ -60,7 +60,7 @@ export async function assertPaidAccess(uid: string) {
 export async function grantEntitlement(input: {
   uid: string;
   planId: string;
-  source: "razorpay";
+  source: string;
   paymentId?: string;
   orderId?: string;
 }) {

@@ -48,8 +48,7 @@ export default function HomePage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
               A focused Model UN workspace for research briefs, country policy, speeches,
-              POIs, and draft resolution strategy. Supabase login ties each paid Razorpay
-              access pass to one account.
+              POIs, and draft resolution strategy. Sign in to get started.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link className="button-primary inline-flex items-center justify-center gap-2 px-5 font-semibold" href="/dashboard">

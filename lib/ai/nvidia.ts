@@ -19,7 +19,7 @@ export async function callNvidiaMiniMax(
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json",
+      Accept: "text/event-stream",
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -28,7 +28,7 @@ export async function callNvidiaMiniMax(
       temperature: input.temperature ?? 0.8,
       top_p: 0.95,
       max_tokens: input.maxTokens ?? 2400,
-      stream: false
+      stream: true
     })
   });
 
@@ -36,16 +36,59 @@ export async function callNvidiaMiniMax(
     throw new ApiError(502, "nvidia_failed", "NVIDIA MiniMax could not complete the request.");
   }
 
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
+  // Return a ReadableStream for the client to consume
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = response.body?.getReader();
+      if (!reader) {
+        controller.close();
+        return;
+      }
 
-  if (typeof content !== "string") {
-    throw new ApiError(502, "nvidia_empty", "NVIDIA MiniMax returned an empty response.");
-  }
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") {
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed?.choices?.[0]?.delta?.content;
+                if (content) {
+                  controller.enqueue(
+                    new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
+                  );
+                }
+              } catch {
+                // skip malformed chunks
+              }
+            }
+          }
+        }
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        controller.close();
+      }
+    }
+  });
 
   return {
     provider: "nvidia",
     model,
-    content
-  };
+    stream
+  } as unknown as AICompletionResult;
 }

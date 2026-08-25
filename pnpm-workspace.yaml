@@ -1,0 +1,4 @@
+packages:
+  - ".freebuff/**"
+onlyBuiltDependencies:
+  - '@img/sharp': true

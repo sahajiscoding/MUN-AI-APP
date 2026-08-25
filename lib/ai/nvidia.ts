@@ -4,7 +4,7 @@ import type { AICompletionInput, AICompletionResult } from "@/lib/ai/types";
 export async function callNvidiaMiniMax(
   input: AICompletionInput
 ): Promise<AICompletionResult> {
-  const apiKey = process.env.NVIDIA_API_KEY || "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";
+  const apiKey = process.env.NVIDIA_API_KEY;
   const model = process.env.NVIDIA_MINIMAX_MODEL || "minimaxai/minimax-m3";
 
   if (!apiKey) {

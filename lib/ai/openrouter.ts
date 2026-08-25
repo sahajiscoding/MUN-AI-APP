@@ -15,84 +15,108 @@ export async function callOpenRouter(
     );
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://munprepapp.local",
-      "X-Title": "MUN Prep App"
-    },
-    body: JSON.stringify({
-      model,
-      messages: input.messages,
-      temperature: input.temperature ?? 0.7,
-      max_tokens: input.maxTokens ?? 2400,
-      stream: true
-    })
-  });
+  // Retry up to 2 times on rate limit
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 3000 * attempt));
+    }
 
-  if (!response.ok) {
-    throw new ApiError(
-      502,
-      "openrouter_failed",
-      "OpenRouter could not complete the request."
-    );
-  }
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://munprepapp.local",
+          "X-Title": "MUN Prep App"
+        },
+        body: JSON.stringify({
+          model,
+          messages: input.messages,
+          temperature: input.temperature ?? 0.7,
+          max_tokens: input.maxTokens ?? 2400,
+          stream: true
+        })
+      });
 
-  // Return a ReadableStream for the client to consume
-  const stream = new ReadableStream({
-    async start(controller) {
-      const reader = response.body?.getReader();
-      if (!reader) {
-        controller.close();
-        return;
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        const errMsg = errBody?.error?.message || `OpenRouter returned ${response.status}`;
+
+        // Rate limited — retry
+        if (response.status === 429) {
+          lastError = new Error(`Rate limited. ${errMsg}`);
+          continue;
+        }
+
+        throw new ApiError(502, "openrouter_failed", errMsg);
       }
 
-      const decoder = new TextDecoder();
-      let buffer = "";
+      // Success — return streaming response
+      const stream = new ReadableStream({
+        async start(controller) {
+          const reader = response.body?.getReader();
+          if (!reader) {
+            controller.close();
+            return;
+          }
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          const decoder = new TextDecoder();
+          let buffer = "";
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
 
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") {
-                controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
-                continue;
-              }
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed?.choices?.[0]?.delta?.content;
-                if (content) {
-                  controller.enqueue(
-                    new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
-                  );
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  const data = line.slice(6).trim();
+                  if (data === "[DONE]") {
+                    controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+                    continue;
+                  }
+                  try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed?.choices?.[0]?.delta?.content;
+                    if (content) {
+                      controller.enqueue(
+                        new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
+                      );
+                    }
+                  } catch {
+                    // skip malformed chunks
+                  }
                 }
-              } catch {
-                // skip malformed chunks
               }
             }
+          } catch (err) {
+            controller.error(err);
+          } finally {
+            controller.close();
           }
         }
-      } catch (err) {
-        controller.error(err);
-      } finally {
-        controller.close();
-      }
-    }
-  });
+      });
 
-  return {
-    provider: "openrouter",
-    model,
-    stream
-  } as unknown as AICompletionResult;
+      return {
+        provider: "openrouter",
+        model,
+        stream
+      } as unknown as AICompletionResult;
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw new ApiError(
+    502,
+    "openrouter_failed",
+    lastError?.message || "OpenRouter is busy. Try Mid (MiniMax) instead, or retry in a few seconds."
+  );
 }

@@ -92,6 +92,7 @@ export default function AdminDashboardPage() {
     try {
       const res = await fetch("/api/ai/research", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer admin-bypass",

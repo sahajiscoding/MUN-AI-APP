@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase/client";
 
 type AuthContextValue = {
   user: SupaUser | null;
@@ -27,10 +27,11 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SupaUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const client = useMemo(() => getSupabase(), []);
 
   const syncUserRecord = useCallback(async (supaUser: SupaUser) => {
     try {
-      const { error } = await supabase.from("users").upsert(
+      const { error } = await client.from("users").upsert(
         {
           uid: supaUser.id,
           display_name: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? "",
@@ -46,10 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn("Could not sync Supabase user profile yet.", err);
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    client.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = client.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
@@ -68,14 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [syncUserRecord]);
+  }, [client, syncUserRecord]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       loading,
       async signInWithGoogle() {
-        const { error } = await supabase.auth.signInWithOAuth({
+        const { error } = await client.auth.signInWithOAuth({
           provider: "google",
           options: {
             redirectTo: `${window.location.origin}/auth/callback`,
@@ -84,11 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async signInWithEmail(email, password) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await client.auth.signInWithPassword({ email, password });
         if (error) throw error;
       },
       async signUpWithEmail(name, email, password) {
-        const { error } = await supabase.auth.signUp({
+        const { error } = await client.auth.signUp({
           email,
           password,
           options: {
@@ -98,11 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async logout() {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await client.auth.signOut();
         if (error) throw error;
       },
       async getIdToken() {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await client.auth.getSession();
         const token = data.session?.access_token;
         if (!token) {
           throw new Error("You need to sign in again.");
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return token;
       },
     }),
-    [loading, user]
+    [client, loading, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

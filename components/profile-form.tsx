@@ -3,7 +3,7 @@
 import { Save } from "lucide-react";
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase/client";
 
 type ProfileState = {
   school: string;
@@ -41,7 +41,7 @@ export function ProfileForm() {
         return;
       }
 
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from("delegate_profiles")
         .select("*")
         .eq("uid", user.id)
@@ -79,7 +79,7 @@ export function ProfileForm() {
     setStatus("");
 
     try {
-      const { error } = await supabase.from("delegate_profiles").upsert(
+      const { error } = await getSupabase().from("delegate_profiles").upsert(
         {
           uid: user.id,
           school: profile.school,

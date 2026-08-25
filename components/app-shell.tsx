@@ -10,6 +10,7 @@ import {
   PenLine,
   ReceiptText,
   Loader2,
+  Newspaper,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,6 +18,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 import { getSupabase } from "@/lib/supabase/client";
+import { DiscoverPanel } from "@/components/discover-panel";
 
 type ChatHistoryItem = {
   id: string;
@@ -33,9 +35,9 @@ const toolIcons: Record<string, typeof MessageSquare> = {
   "mun-research": MessageSquare,
   "country-profile": ShieldCheck,
   "position-paper": PenLine,
-  "speech": MessageSquare,
-  "poi": MessageSquare,
-  "resolution": PenLine,
+  speech: MessageSquare,
+  poi: MessageSquare,
+  resolution: PenLine,
 };
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -43,6 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const [chats, setChats] = useState<ChatHistoryItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
+  const [showDiscover, setShowDiscover] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -90,39 +93,61 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        {/* Chat History */}
-        <div className="flex-1 overflow-y-auto p-2">
-          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Recent chats
-          </p>
-
-          {loadingChats ? (
-            <div className="flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Loading...
-            </div>
-          ) : chats.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-[var(--muted)]">
-              No chats yet. Start a new one!
-            </p>
-          ) : (
-            <nav className="space-y-0.5">
-              {chats.map((chat) => {
-                const Icon = toolIcons[chat.tool] || MessageSquare;
-                return (
-                  <Link
-                    key={chat.id}
-                    href={`/app/research`}
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] hover:bg-black/5 transition truncate"
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{getChatTitle(chat)}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
+        {/* Discover toggle */}
+        <div className="px-2 pt-2">
+          <button
+            onClick={() => setShowDiscover(!showDiscover)}
+            className={cn(
+              "flex items-center gap-2 w-full rounded-lg px-2 py-2 text-sm font-semibold transition",
+              showDiscover
+                ? "bg-[var(--ink)] text-[var(--paper)]"
+                : "text-[var(--muted)] hover:bg-black/5"
+            )}
+          >
+            <Newspaper className="h-4 w-4" />
+            Discover
+          </button>
         </div>
+
+        {/* Chat History or Discover Panel */}
+        {showDiscover ? (
+          <div className="flex-1 overflow-hidden">
+            <DiscoverPanel />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-2">
+            <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Recent chats
+            </p>
+
+            {loadingChats ? (
+              <div className="flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading...
+              </div>
+            ) : chats.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-[var(--muted)]">
+                No chats yet. Start a new one!
+              </p>
+            ) : (
+              <nav className="space-y-0.5">
+                {chats.map((chat) => {
+                  const Icon = toolIcons[chat.tool] || MessageSquare;
+                  return (
+                    <Link
+                      key={chat.id}
+                      href="/app/research"
+                      className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] hover:bg-black/5 transition truncate"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{getChatTitle(chat)}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
+        )}
 
         {/* Bottom nav */}
         <div className="border-t border-[var(--line)] p-2 space-y-0.5">
@@ -168,7 +193,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="border-t border-[var(--line)] p-3">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{user?.user_metadata?.full_name || "Delegate"}</p>
+              <p className="truncate text-sm font-semibold">
+                {user?.user_metadata?.full_name || "Delegate"}
+              </p>
               <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
             </div>
             <button
@@ -184,9 +211,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">
-        {children}
-      </main>
+      <main className="flex-1 min-w-0">{children}</main>
     </div>
   );
 }

@@ -1,14 +1,14 @@
 import { callNvidiaMiniMax } from "@/lib/ai/nvidia";
-import { callOpenRouter } from "@/lib/ai/openrouter";
 import { munResearchSystemPrompt } from "@/lib/ai/prompts";
-import type { AIProvider } from "@/lib/ai/types";
 
 export type ResearchInput = {
   committee: string;
   agenda: string;
   country: string;
   experienceLevel: string;
-  provider?: AIProvider;
+  provider?: string;
+  maxTokens?: number;
+  temperature?: number;
 };
 
 export async function runMunResearch(input: ResearchInput) {
@@ -19,20 +19,13 @@ export async function runMunResearch(input: ResearchInput) {
     },
     {
       role: "user" as const,
-      content: `Prepare a MUN research brief.
-
-Committee: ${input.committee}
-Agenda: ${input.agenda}
-Country: ${input.country}
-Delegate experience level: ${input.experienceLevel}
-
-Make it useful for debate, speeches, POIs, and draft resolution planning.`
+      content: `Prepare a MUN research brief.\n\nCommittee: ${input.committee}\nAgenda: ${input.agenda}\nCountry: ${input.country}\nDelegate experience level: ${input.experienceLevel}\n\nMake it useful for debate, speeches, POIs, and draft resolution planning.`
     }
   ];
 
-  if (input.provider === "nvidia") {
-    return callNvidiaMiniMax({ messages, temperature: 0.85, maxTokens: 2600 });
-  }
-
-  return callOpenRouter({ messages, temperature: 0.7, maxTokens: 2600 });
+  return callNvidiaMiniMax({
+    messages,
+    temperature: input.temperature ?? 0.85,
+    maxTokens: input.maxTokens ?? 2600
+  });
 }

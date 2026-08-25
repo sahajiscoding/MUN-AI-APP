@@ -3,7 +3,6 @@
 import { Bot, Loader2, Plus, Send } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import type { AIProvider } from "@/lib/ai/types";
 import { PaywallModal } from "@/components/paywall-modal";
 
 type ToolWorkspaceProps = {
@@ -12,6 +11,8 @@ type ToolWorkspaceProps = {
   description: string;
   mode: "research" | "country-profile" | "position-paper" | "speech" | "poi" | "resolution";
 };
+
+type ResponseMode = "quick" | "thorough";
 
 const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
   research: "Build a complete research brief.",
@@ -25,7 +26,7 @@ const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const [input, setInput] = useState("");
-  const [provider, setProvider] = useState<AIProvider>("openrouter");
+  const [responseMode, setResponseMode] = useState<ResponseMode>("thorough");
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [status, setStatus] = useState("");
@@ -81,6 +82,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setStatus("");
     setOutput("");
 
+    const maxTokens = responseMode === "thorough" ? 4000 : 1000;
+    const temperature = responseMode === "thorough" ? 0.85 : 0.7;
+
     try {
       const token = await getIdToken();
       const response = await fetch("/api/ai/research", {
@@ -94,7 +98,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           agenda: `${input}\n\nTool focus: ${toolInstructions[mode]}`,
           country: "Any",
           experienceLevel: "intermediate",
-          provider
+          provider: "nvidia",
+          maxTokens,
+          temperature
         })
       });
 
@@ -142,12 +148,12 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           }
         }
 
-        setStatus(`${provider} / streaming`);
+        setStatus(`MiniMax M3 · ${responseMode}`);
       } else {
         // Non-streaming fallback
         const data = await response.json();
         setOutput(data.content);
-        setStatus(`${data.provider} / ${data.model}`);
+        setStatus(`MiniMax M3 · ${responseMode}`);
       }
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : "Something went wrong.");
@@ -240,18 +246,18 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex rounded-lg border border-[var(--line)] overflow-hidden">
-                {(["openrouter", "nvidia"] as const).map((item) => (
+                {(["quick", "thorough"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
-                    onClick={() => setProvider(item)}
+                    onClick={() => setResponseMode(item)}
                     className={
-                      provider === item
+                      responseMode === item
                         ? "bg-[var(--ink)] text-[var(--paper)] px-2 py-1 text-xs font-semibold"
                         : "px-2 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
                     }
                   >
-                    {item === "openrouter" ? "Max" : "Mid"}
+                    {item === "quick" ? "Quick" : "Thorough"}
                   </button>
                 ))}
               </div>

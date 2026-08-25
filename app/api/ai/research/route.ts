@@ -14,6 +14,8 @@ const schema = z.object({
   country: z.string().min(2),
   experienceLevel: z.string().min(2),
   provider: z.enum(["openrouter", "nvidia"]).optional(),
+  maxTokens: z.number().optional(),
+  temperature: z.number().optional(),
 });
 
 export async function POST(request: Request) {

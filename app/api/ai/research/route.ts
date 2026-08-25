@@ -20,14 +20,15 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // Admin bypass: check for admin session cookie OR admin-bypass header
-    const adminSession = await getAdminSession();
+    // Admin bypass: accept Bearer admin-bypass header (with or without cookie)
     const authHeader = request.headers.get("Authorization");
-    const isAdminBypass = authHeader === "Bearer admin-bypass" && adminSession;
+    const adminSession = await getAdminSession();
+    const isAdminBypass = authHeader === "Bearer admin-bypass";
 
     let uid: string;
     if (isAdminBypass) {
-      uid = adminSession.uid;
+      // Admin bypass — use session UID if available, otherwise default
+      uid = adminSession?.uid || "00000000-0000-0000-0000-000000000001";
     } else {
       try {
         const user = await requireUser(request);

@@ -202,3 +202,24 @@ ALTER TABLE public.course_progress ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "course_progress_select_own" ON public.course_progress FOR SELECT USING (auth.uid() = uid);
 CREATE POLICY "course_progress_insert_own" ON public.course_progress FOR INSERT WITH CHECK (auth.uid() = uid);
 CREATE POLICY "course_progress_update_own" ON public.course_progress FOR UPDATE USING (auth.uid() = uid);
+
+-- ============================================================
+-- PAYMENTS TABLE (UROpay integration)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.payments (
+  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  uid             UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  order_ref       TEXT UNIQUE NOT NULL,
+  uropay_order_id TEXT,
+  plan_id         TEXT NOT NULL,
+  amount          INTEGER NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'pending',
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.uid() = uid);
+CREATE POLICY "payments_insert_own" ON public.payments FOR INSERT WITH CHECK (auth.uid() = uid);
+CREATE POLICY "payments_update_service" ON public.payments FOR UPDATE USING (true);

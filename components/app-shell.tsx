@@ -127,18 +127,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Bottom nav */}
         <div className="border-t border-[var(--line)] p-2 space-y-0.5">
           <Link
-            href="/dashboard"
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
-              pathname === "/dashboard"
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-          >
-            <Landmark className="h-4 w-4" />
-            Dashboard
-          </Link>
-          <Link
             href="/profile"
             className={cn(
               "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",

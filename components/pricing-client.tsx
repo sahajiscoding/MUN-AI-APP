@@ -3,6 +3,11 @@
 import { Check, LockKeyhole } from "lucide-react";
 import { formatPlanPrice, plans } from "@/lib/plans";
 
+const paymentLinks: Record<string, string> = {
+  "weekly-pass": "https://p.urpy.link/9wBv",
+  "monthly-pass": "https://p.urpy.link/rFaW",
+};
+
 export function PricingClient() {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -28,13 +33,14 @@ export function PricingClient() {
             ))}
           </ul>
 
-          <button
-            className="button-primary mt-7 w-full px-4 font-semibold"
-            type="button"
-            disabled
+          <a
+            href={paymentLinks[plan.id] || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="button-primary mt-7 block w-full px-4 py-3 text-center font-semibold"
           >
-            Coming soon
-          </button>
+            Buy now
+          </a>
         </article>
       ))}
     </div>

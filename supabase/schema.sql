@@ -183,3 +183,22 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
+
+-- Course progress (tracks lesson completion and quiz scores)
+CREATE TABLE IF NOT EXISTS public.course_progress (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uid         UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  course_slug TEXT NOT NULL,
+  completed_lessons INTEGER[] DEFAULT '{}',
+  quiz_score INTEGER DEFAULT 0,
+  quiz_total INTEGER DEFAULT 0,
+  completed_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(uid, course_slug)
+);
+
+ALTER TABLE public.course_progress ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "course_progress_select_own" ON public.course_progress FOR SELECT USING (auth.uid() = uid);
+CREATE POLICY "course_progress_insert_own" ON public.course_progress FOR INSERT WITH CHECK (auth.uid() = uid);
+CREATE POLICY "course_progress_update_own" ON public.course_progress FOR UPDATE USING (auth.uid() = uid);

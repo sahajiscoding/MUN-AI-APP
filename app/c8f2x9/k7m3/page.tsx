@@ -37,7 +37,7 @@ export default function AdminDashboardPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiOutput, setAiOutput] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
-  const [aiProvider, setAiProvider] = useState<"openrouter" | "nvidia">("openrouter");
+  const [aiMode, setAiMode] = useState<"quick" | "thorough" | "max">("thorough");
 
   useEffect(() => {
     fetchUsers();
@@ -89,6 +89,9 @@ export default function AdminDashboardPage() {
     setAiStreaming(true);
     setAiOutput("");
 
+    const maxTokens = aiMode === "max" ? 8000 : aiMode === "thorough" ? 4000 : 1000;
+    const temperature = aiMode === "max" ? 1.0 : aiMode === "thorough" ? 0.85 : 0.7;
+
     try {
       const res = await fetch("/api/ai/research", {
         method: "POST",
@@ -102,7 +105,9 @@ export default function AdminDashboardPage() {
           agenda: aiPrompt,
           country: "Any",
           experienceLevel: "intermediate",
-          provider: aiProvider,
+          provider: "nvidia",
+          maxTokens,
+          temperature
         }),
       });
 
@@ -188,18 +193,18 @@ export default function AdminDashboardPage() {
           <form onSubmit={handleAiTest} className="space-y-3">
             <div className="flex gap-2">
               <div className="flex rounded-lg border border-white/10 overflow-hidden">
-                {(["openrouter", "nvidia"] as const).map((p) => (
+                {(["quick", "thorough", "max"] as const).map((m) => (
                   <button
-                    key={p}
+                    key={m}
                     type="button"
-                    onClick={() => setAiProvider(p)}
+                    onClick={() => setAiMode(m)}
                     className={
-                      aiProvider === p
+                      aiMode === m
                         ? "bg-[var(--paper)] text-[var(--ink)] px-3 py-1.5 text-xs font-semibold"
                         : "px-3 py-1.5 text-xs font-semibold text-white/50 hover:bg-white/10"
                     }
                   >
-                    {p === "openrouter" ? "Max (GLM)" : "Mid (MiniMax)"}
+                    {m === "quick" ? "Quick" : m === "thorough" ? "Thorough" : "Max"}
                   </button>
                 ))}
               </div>

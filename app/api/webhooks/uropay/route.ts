@@ -14,13 +14,11 @@ type UroPayWebhookEvent = {
   orderId?: string;
   tenantOrderRef?: string;
   status?: string;
-
   amount_captured?: number | string | null;
   commission?: number | string | null;
   transaction_fee?: number | string | null;
   tax?: number | string | null;
   net_amount?: number | string | null;
-
   environment?: string | null;
 };
 
@@ -36,13 +34,10 @@ function normalizeStatus(
   switch (status) {
     case "PAID":
       return "paid";
-
     case "FAILED":
       return "failed";
-
     case "EXPIRED":
       return "expired";
-
     default:
       return null;
   }
@@ -66,78 +61,36 @@ function toNumberOrNull(
     : null;
 }
 
-/**
- * UroPay webhook endpoint.
- *
- * Important:
- * 1. Verify signature before trusting payload.
- * 2. Find our payment using tenantOrderRef.
- * 3. Verify the order amount.
- * 4. Ask UroPay for authoritative order status.
- * 5. Process PAID exactly once.
- * 6. Only then grant Premium.
- */
 export async function POST(
   request: Request
 ) {
   try {
-    // --------------------------------------------------
-    // 1. Read RAW body.
-    // --------------------------------------------------
-
     const rawBody = await request.text();
-
-    // --------------------------------------------------
-    // 2. Collect headers.
-    // --------------------------------------------------
 
     const headers: Record<string, string> = {};
 
-    request.headers.forEach(
-      (value, key) => {
-        headers[key.toLowerCase()] = value;
-      }
-    );
+    request.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
 
-    // --------------------------------------------------
-    // 3. Verify HMAC signature BEFORE parsing.
-    // --------------------------------------------------
-
-    if (
-      !verifyWebhookSignature(
-        headers,
-        rawBody
-      )
-    ) {
+    if (!verifyWebhookSignature(headers, rawBody)) {
       console.error(
         "UroPay webhook rejected: invalid signature."
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "invalid_signature",
-        },
+        { ok: false, error: "invalid_signature" },
         { status: 401 }
       );
     }
 
-    // --------------------------------------------------
-    // 4. Parse the verified payload.
-    // --------------------------------------------------
-
     let event: UroPayWebhookEvent;
 
     try {
-      event = JSON.parse(
-        rawBody
-      ) as UroPayWebhookEvent;
+      event = JSON.parse(rawBody) as UroPayWebhookEvent;
     } catch {
       return Response.json(
-        {
-          ok: false,
-          error: "invalid_json",
-        },
+        { ok: false, error: "invalid_json" },
         { status: 400 }
       );
     }
@@ -153,17 +106,11 @@ export async function POST(
         : "";
 
     const tenantOrderRef =
-      typeof event.tenantOrderRef ===
-      "string"
+      typeof event.tenantOrderRef === "string"
         ? event.tenantOrderRef.trim()
         : "";
 
-    const webhookStatus =
-      normalizeStatus(event.status);
-
-    // --------------------------------------------------
-    // 5. Validate required fields.
-    // --------------------------------------------------
+    const webhookStatus = normalizeStatus(event.status);
 
     if (
       !eventId ||
@@ -176,19 +123,12 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "invalid_webhook_payload",
-        },
+        { ok: false, error: "invalid_webhook_payload" },
         { status: 400 }
       );
     }
 
     const admin = supabaseAdmin();
-
-    // --------------------------------------------------
-    // 6. Find our payment.
-    // --------------------------------------------------
 
     const {
       data: payment,
@@ -196,10 +136,7 @@ export async function POST(
     } = await admin
       .from("payments")
       .select("*")
-      .eq(
-        "order_ref",
-        tenantOrderRef
-      )
+      .eq("order_ref", tenantOrderRef)
       .maybeSingle();
 
     if (paymentLookupError) {
@@ -209,10 +146,7 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "database_error",
-        },
+        { ok: false, error: "database_error" },
         { status: 500 }
       );
     }
@@ -223,20 +157,11 @@ export async function POST(
         tenantOrderRef
       );
 
-      // The webhook is authentic, but it doesn't belong
-      // to a payment created by our application.
       return Response.json(
-        {
-          ok: false,
-          error: "payment_not_found",
-        },
+        { ok: false, error: "payment_not_found" },
         { status: 404 }
       );
     }
-
-    // --------------------------------------------------
-    // 7. Verify the UroPay order ID matches our record.
-    // --------------------------------------------------
 
     if (
       payment.uropay_order_id &&
@@ -251,30 +176,20 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "order_id_mismatch",
-        },
+        { ok: false, error: "order_id_mismatch" },
         { status: 409 }
       );
     }
 
-    // --------------------------------------------------
-    // 8. Idempotency:
-    //    If this exact event was already stored,
-    //    acknowledge it and do nothing.
-    // --------------------------------------------------
-
+    // An event ID is globally unique in our payments table.
+    // A repeated copy of the exact same event is safe to acknowledge.
     const {
       data: existingEvent,
       error: existingEventError,
     } = await admin
       .from("payments")
-      .select("id, status, event_id")
-      .eq(
-        "event_id",
-        eventId
-      )
+      .select("id")
+      .eq("event_id", eventId)
       .maybeSingle();
 
     if (existingEventError) {
@@ -284,14 +199,12 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "database_error",
-        },
+        { ok: false, error: "database_error" },
         { status: 500 }
       );
     }
 
+    // If the exact event was already stored, do not process it twice.
     if (existingEvent) {
       return Response.json({
         ok: true,
@@ -299,53 +212,23 @@ export async function POST(
       });
     }
 
-    // --------------------------------------------------
-    // 9. If this payment is already paid,
-    //    don't grant Premium again.
-    // --------------------------------------------------
-
-    if (payment.status === "paid") {
-      return Response.json({
-        ok: true,
-        already_processed: true,
-      });
-    }
-
-    // --------------------------------------------------
-    // 10. Environment check.
-    // --------------------------------------------------
-
     if (
       payment.environment &&
       event.environment &&
-      String(
-        payment.environment
-      ).toLowerCase() !==
-        String(
-          event.environment
-        ).toLowerCase()
+      String(payment.environment).toLowerCase() !==
+        String(event.environment).toLowerCase()
     ) {
       console.error(
         "UroPay webhook rejected: environment mismatch."
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "environment_mismatch",
-        },
+        { ok: false, error: "environment_mismatch" },
         { status: 409 }
       );
     }
 
-    // --------------------------------------------------
-    // 11. Get the authoritative order status from UroPay.
-    // --------------------------------------------------
-
-    const authoritativeOrder =
-      await getOrderStatus(
-        orderId
-      );
+    const authoritativeOrder = await getOrderStatus(orderId);
 
     if (!authoritativeOrder) {
       console.error(
@@ -353,18 +236,14 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "order_status_unavailable",
-        },
+        { ok: false, error: "order_status_unavailable" },
         { status: 502 }
       );
     }
 
-    const authoritativeStatus =
-      normalizeStatus(
-        authoritativeOrder.status
-      );
+    const authoritativeStatus = normalizeStatus(
+      authoritativeOrder.status
+    );
 
     if (!authoritativeStatus) {
       console.error(
@@ -373,23 +252,12 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "unknown_order_status",
-        },
+        { ok: false, error: "unknown_order_status" },
         { status: 502 }
       );
     }
 
-    // --------------------------------------------------
-    // 12. Never trust the webhook status over the
-    //     authoritative order status.
-    // --------------------------------------------------
-
-    if (
-      authoritativeStatus !==
-      webhookStatus
-    ) {
+    if (authoritativeStatus !== webhookStatus) {
       console.error(
         "UroPay status mismatch.",
         {
@@ -398,56 +266,30 @@ export async function POST(
         }
       );
 
-      // Do not grant anything.
       return Response.json(
-        {
-          ok: false,
-          error: "status_mismatch",
-        },
+        { ok: false, error: "status_mismatch" },
         { status: 409 }
       );
     }
 
-    // --------------------------------------------------
-    // 13. Verify the expected amount.
-    //
-    // Our DB amount is stored in paise:
-    // weekly  = 19900
-    // monthly = 29900
-    //
-    // UroPay amount is expected in rupees.
-    // --------------------------------------------------
+    const authoritativeAmount = Number(
+      authoritativeOrder.amount
+    );
 
-    const authoritativeAmount =
-      Number(
-        authoritativeOrder.amount
-      );
-
-    if (
-      !Number.isFinite(
-        authoritativeAmount
-      )
-    ) {
+    if (!Number.isFinite(authoritativeAmount)) {
       console.error(
         "UroPay order has invalid amount."
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "invalid_order_amount",
-        },
+        { ok: false, error: "invalid_order_amount" },
         { status: 502 }
       );
     }
 
-    const expectedAmountRupees =
-      Number(payment.amount) / 100;
+    const expectedAmountRupees = Number(payment.amount) / 100;
 
-    if (
-      authoritativeAmount !==
-      expectedAmountRupees
-    ) {
+    if (authoritativeAmount !== expectedAmountRupees) {
       console.error(
         "UroPay amount mismatch.",
         {
@@ -457,60 +299,32 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "amount_mismatch",
-        },
+        { ok: false, error: "amount_mismatch" },
         { status: 409 }
       );
     }
 
     // --------------------------------------------------
-    // 14. If the authoritative result isn't PAID,
-    //     record the final state but DO NOT grant Premium.
+    // NON-PAID EVENTS
     // --------------------------------------------------
 
-    if (
-      authoritativeStatus !==
-      "paid"
-    ) {
-      const { error: updateError } =
-        await admin
-          .from("payments")
-          .update({
-            status: authoritativeStatus,
-            amount_captured:
-              toNumberOrNull(
-                event.amount_captured
-              ),
-            commission:
-              toNumberOrNull(
-                event.commission
-              ),
-            transaction_fee:
-              toNumberOrNull(
-                event.transaction_fee
-              ),
-            tax:
-              toNumberOrNull(
-                event.tax
-              ),
-            net_amount:
-              toNumberOrNull(
-                event.net_amount
-              ),
-            environment:
-              event.environment ??
-              payment.environment ??
-              null,
-            event_id: eventId,
-            updated_at:
-              new Date().toISOString(),
-          })
-          .eq(
-            "id",
-            payment.id
-          );
+    if (authoritativeStatus !== "paid") {
+      const { error: updateError } = await admin
+        .from("payments")
+        .update({
+          status: authoritativeStatus,
+          amount_captured: toNumberOrNull(event.amount_captured),
+          commission: toNumberOrNull(event.commission),
+          transaction_fee: toNumberOrNull(event.transaction_fee),
+          tax: toNumberOrNull(event.tax),
+          net_amount: toNumberOrNull(event.net_amount),
+          environment:
+            event.environment ?? payment.environment ?? null,
+          event_id: eventId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id)
+        .eq("status", "pending");
 
       if (updateError) {
         console.error(
@@ -519,10 +333,7 @@ export async function POST(
         );
 
         return Response.json(
-          {
-            ok: false,
-            error: "payment_update_failed",
-          },
+          { ok: false, error: "payment_update_failed" },
           { status: 500 }
         );
       }
@@ -534,8 +345,82 @@ export async function POST(
     }
 
     // --------------------------------------------------
-    // 15. PAID:
-    //    Mark payment paid.
+    // PAID EVENT
+    // --------------------------------------------------
+
+    // Important recovery behavior:
+    // A previous request may have changed the payment to PAID
+    // but failed before granting the entitlement. In that case,
+    // a later legitimate webhook must be able to repair access.
+    // We only skip processing when the entitlement itself records
+    // this exact payment as its latest payment.
+    if (payment.status === "paid") {
+      const {
+        data: entitlement,
+        error: entitlementLookupError,
+      } = await admin
+        .from("entitlements")
+        .select(
+          "uid, status, plan_id, latest_payment_id"
+        )
+        .eq("uid", payment.uid)
+        .maybeSingle();
+
+      if (entitlementLookupError) {
+        console.error(
+          "Failed to inspect entitlement for paid payment:",
+          entitlementLookupError
+        );
+
+        return Response.json(
+          { ok: false, error: "entitlement_lookup_failed" },
+          { status: 500 }
+        );
+      }
+
+      if (
+        entitlement?.status === "active" &&
+        entitlement.latest_payment_id === payment.id
+      ) {
+        return Response.json({
+          ok: true,
+          already_processed: true,
+          entitlement_granted: true,
+        });
+      }
+
+      const plan = getPlan(payment.plan_id);
+
+      if (!plan) {
+        console.error(
+          "Paid payment references unknown plan:",
+          payment.plan_id
+        );
+
+        return Response.json(
+          { ok: false, error: "plan_not_found" },
+          { status: 500 }
+        );
+      }
+
+      await grantEntitlement({
+        uid: payment.uid,
+        planId: plan.id,
+        source: "uropay-recovery",
+        paymentId: payment.id,
+        orderId,
+      });
+
+      return Response.json({
+        ok: true,
+        status: "paid",
+        entitlement_granted: true,
+        recovered: true,
+      });
+    }
+
+    // --------------------------------------------------
+    // First successful PAID processing.
     // --------------------------------------------------
 
     const {
@@ -545,42 +430,18 @@ export async function POST(
       .from("payments")
       .update({
         status: "paid",
-        amount_captured:
-          toNumberOrNull(
-            event.amount_captured
-          ),
-        commission:
-          toNumberOrNull(
-            event.commission
-          ),
-        transaction_fee:
-          toNumberOrNull(
-            event.transaction_fee
-          ),
-        tax:
-          toNumberOrNull(
-            event.tax
-          ),
-        net_amount:
-          toNumberOrNull(
-            event.net_amount
-          ),
+        amount_captured: toNumberOrNull(event.amount_captured),
+        commission: toNumberOrNull(event.commission),
+        transaction_fee: toNumberOrNull(event.transaction_fee),
+        tax: toNumberOrNull(event.tax),
+        net_amount: toNumberOrNull(event.net_amount),
         environment:
-          event.environment ??
-          payment.environment ??
-          null,
+          event.environment ?? payment.environment ?? null,
         event_id: eventId,
-        updated_at:
-          new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
-      .eq(
-        "id",
-        payment.id
-      )
-      .eq(
-        "status",
-        "pending"
-      )
+      .eq("id", payment.id)
+      .eq("status", "pending")
       .select("*")
       .maybeSingle();
 
@@ -591,30 +452,19 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "payment_update_failed",
-        },
+        { ok: false, error: "payment_update_failed" },
         { status: 500 }
       );
     }
 
     if (!updatedPayment) {
-      // Another request may have processed the payment
-      // between our checks. Do not grant Premium twice.
       return Response.json({
         ok: true,
         already_processed: true,
       });
     }
 
-    // --------------------------------------------------
-    // 16. Find the plan.
-    // --------------------------------------------------
-
-    const plan = getPlan(
-      payment.plan_id
-    );
+    const plan = getPlan(payment.plan_id);
 
     if (!plan) {
       console.error(
@@ -623,17 +473,10 @@ export async function POST(
       );
 
       return Response.json(
-        {
-          ok: false,
-          error: "plan_not_found",
-        },
+        { ok: false, error: "plan_not_found" },
         { status: 500 }
       );
     }
-
-    // --------------------------------------------------
-    // 17. Grant/extend Premium entitlement.
-    // --------------------------------------------------
 
     await grantEntitlement({
       uid: payment.uid,
@@ -658,27 +501,16 @@ export async function POST(
       error
     );
 
-    // IMPORTANT:
-    // Return 500 instead of pretending processing succeeded.
-    // This allows the payment provider/reconciliation system
-    // to retry when appropriate.
     return Response.json(
-      {
-        ok: false,
-        error: "webhook_processing_failed",
-      },
+      { ok: false, error: "webhook_processing_failed" },
       { status: 500 }
     );
   }
 }
 
-/**
- * GET fallback.
- */
 export async function GET() {
   return Response.json({
     ok: true,
-    message:
-      "UroPay webhook endpoint active",
+    message: "UroPay webhook endpoint active",
   });
 }

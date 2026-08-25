@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "AGGIN";
 const COOKIE_NAME = "admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24; // 24 hours
+const DEFAULT_ADMIN_UID = "00000000-0000-0000-0000-000000000001";
 
 export type AdminSession = {
   uid: string;
@@ -20,26 +21,74 @@ export async function adminLogin(password: string): Promise<AdminSession> {
     throw new ApiError(401, "invalid_password", "Incorrect admin password.");
   }
 
-  // Use a service-role query to get all admin users
-  const { data: admins, error } = await supabaseAdmin()
+  // Try to get an existing admin user
+  let adminUid: string;
+  let adminEmail: string;
+
+  const { data: admins } = await supabaseAdmin()
     .from("admin_users")
-    .select("uid, approved_at")
+    .select("uid")
     .limit(1);
 
-  if (error || !admins || admins.length === 0) {
-    throw new ApiError(403, "no_admins", "No admin users configured. Run the SQL schema first.");
+  if (admins && admins.length > 0) {
+    // Use existing admin
+    adminUid = admins[0].uid;
+    const { data: userData } = await supabaseAdmin().auth.admin.getUserById(adminUid);
+    adminEmail = userData?.user?.email || "admin@munprep.app";
+  } else {
+    // No admins exist yet — create a default admin user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin().auth.admin.createUser({
+      email: "admin@munprep.app",
+      password: "admin-temp-password-change-me",
+      email_confirm: true,
+      user_metadata: { full_name: "Admin" },
+    });
+
+    if (authError || !authData?.user) {
+      // If user already exists, try to get it
+      const { data: existingUsers } = await supabaseAdmin().auth.admin.listUsers();
+      const existing = existingUsers?.users?.find((u) => u.email === "admin@munprep.app");
+
+      if (existing) {
+        adminUid = existing.id;
+        adminEmail = existing.email || "admin@munprep.app";
+      } else {
+        // Last resort: use a fixed UID
+        adminUid = DEFAULT_ADMIN_UID;
+        adminEmail = "admin@munprep.app";
+      }
+    } else {
+      adminUid = authData.user.id;
+      adminEmail = authData.user.email || "admin@munprep.app";
+    }
+
+    // Insert into admin_users table (ignore if fails)
+    await supabaseAdmin().from("admin_users").upsert(
+      {
+        uid: adminUid,
+        approved_at: new Date().toISOString(),
+        approved_by: "system",
+      },
+      { onConflict: "uid" }
+    );
+
+    // Also grant active entitlement
+    await supabaseAdmin().from("entitlements").upsert(
+      {
+        uid: adminUid,
+        status: "active",
+        plan_id: "admin",
+        source: "admin",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "uid" }
+    );
   }
 
-  // For simplicity, use the first admin user
-  const admin = admins[0];
-
-  // Get user email from auth
-  const { data: userData } = await supabaseAdmin().auth.admin.getUserById(admin.uid);
-
   return {
-    uid: admin.uid,
-    email: userData?.user?.email || "admin@munprep.app",
-    approvedAt: admin.approved_at,
+    uid: adminUid,
+    email: adminEmail,
+    approvedAt: new Date().toISOString(),
   };
 }
 

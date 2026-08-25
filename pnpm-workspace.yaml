@@ -1,5 +1,3 @@
-packages:
-  - ".freebuff/**"
-onlyBuiltDependencies:
-  - '@img/sharp': true
-  - 'unrs-resolver': true
+allowBuilds:
+  '@img/sharp': true
+  unrs-resolver: true

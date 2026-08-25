@@ -1,13 +1,24 @@
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
 
 const API_BASE = "https://api.uropai.in";
-const API_KEY = process.env.UROPAY_API_KEY || "";
-const API_SECRET = process.env.UROPAY_API_SECRET || "";
-const WEBHOOK_SECRET = process.env.UROPAY_WEBHOOK_SECRET || "";
+
+const API_KEY = process.env.UROPAY_API_KEY;
+const API_SECRET = process.env.UROPAY_API_SECRET;
+const WEBHOOK_SECRET = process.env.UROPAY_WEBHOOK_SECRET;
+
+function requireCredential(
+  value: string | undefined,
+  name: string
+): string {
+  if (!value) {
+    throw new Error(`${name} is not configured.`);
+  }
+
+  return value;
+}
 
 /**
- * Sign a request for UROpay API (HMAC-SHA256)
- * Canonical string: ${method}\n${path}\n${timestamp}\n${nonce}\n${queryString}\n${rawBody}
+ * Create an HMAC-SHA256 signature for a UroPay API request.
  */
 function signRequest(
   method: string,
@@ -15,15 +26,30 @@ function signRequest(
   query: string,
   body: string
 ): Record<string, string> {
+  const apiKey = requireCredential(API_KEY, "UROPAY_API_KEY");
+  const apiSecret = requireCredential(
+    API_SECRET,
+    "UROPAY_API_SECRET"
+  );
+
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = randomUUID();
-  const canonical = [method, path, timestamp, nonce, query, body].join("\n");
-  const signature = createHmac("sha256", API_SECRET)
+
+  const canonical = [
+    method,
+    path,
+    timestamp,
+    nonce,
+    query,
+    body,
+  ].join("\n");
+
+  const signature = createHmac("sha256", apiSecret)
     .update(canonical)
     .digest("hex");
 
   return {
-    "X-Api-Key": API_KEY,
+    "X-Api-Key": apiKey,
     "X-Timestamp": timestamp,
     "X-Nonce": nonce,
     "X-Signature": signature,
@@ -31,7 +57,11 @@ function signRequest(
 }
 
 /**
- * Create a UROpay order and return the checkout URL
+ * Create a UroPay order.
+ *
+ * amountPaise:
+ *   19900 = ₹199
+ *   29900 = ₹299
  */
 export async function createUropayOrder(
   orderRef: string,
@@ -39,86 +69,244 @@ export async function createUropayOrder(
   returnUrl?: string,
   webhookUrl?: string
 ) {
-  if (!API_KEY || !API_SECRET) {
-    throw new Error(
-      "UROpay credentials missing. Set UROPAY_API_KEY and UROPAY_API_SECRET."
-    );
+  if (!Number.isInteger(amountPaise) || amountPaise <= 0) {
+    throw new Error("Invalid payment amount.");
   }
 
   const path = "/v1/orders";
+
   const bodyObj: Record<string, unknown> = {
     tenantOrderRef: orderRef,
-    amount: Math.round(amountPaise / 100), // UROpay expects rupees
+
+    // Our database stores INR in paise.
+    // UroPay expects whole rupees.
+    amount: Math.round(amountPaise / 100),
+
     currency: "INR",
   };
 
-  if (returnUrl) bodyObj.returnUrl = returnUrl;
-  if (webhookUrl) bodyObj.webhookUrl = webhookUrl;
+  if (returnUrl) {
+    bodyObj.returnUrl = returnUrl;
+  }
+
+  if (webhookUrl) {
+    bodyObj.webhookUrl = webhookUrl;
+  }
 
   const rawBody = JSON.stringify(bodyObj);
-  const headers = signRequest("POST", path, "", rawBody);
+
+  const headers = signRequest(
+    "POST",
+    path,
+    "",
+    rawBody
+  );
+
   headers["Content-Type"] = "application/json";
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers,
     body: rawBody,
+    cache: "no-store",
   });
 
-  const json = await res.json();
+  let json: any = null;
 
-  if (!res.ok || !json?.data?.openUrl) {
-    throw new Error(json?.message || "Failed to create UROpay order");
+  try {
+    json = await response.json();
+  } catch {
+    throw new Error(
+      `UroPay returned an invalid response (${response.status}).`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      json?.message ||
+        json?.error ||
+        `UroPay order creation failed (${response.status}).`
+    );
+  }
+
+  const orderId = json?.data?.id;
+  const openUrl = json?.data?.openUrl;
+
+  if (!orderId || !openUrl) {
+    throw new Error(
+      "UroPay response did not contain an order ID and checkout URL."
+    );
   }
 
   return {
-    orderId: json.data.id,
-    openUrl: json.data.openUrl,
+    orderId: String(orderId),
+    openUrl: String(openUrl),
   };
 }
 
 /**
- * Verify UROpay webhook signature using timing-safe comparison
- * Canonical: POST\n/tenant-webhook\n${timestamp}\n${nonce}\n${queryString}\n${rawBody}
+ * Verify a UroPay webhook signature.
+ *
+ * IMPORTANT:
+ * The raw request body must be passed here.
+ * Do not JSON.parse() the body before verification.
  */
 export function verifyWebhookSignature(
   headers: Record<string, string>,
   rawBody: string
 ): boolean {
-  if (!WEBHOOK_SECRET) return false;
+  if (!WEBHOOK_SECRET) {
+    console.error(
+      "UROPAY_WEBHOOK_SECRET is not configured."
+    );
 
-  const timestamp = headers["x-timestamp"] || "";
-  const nonce = headers["x-nonce"] || "";
-  const receivedSig = headers["x-signature"] || "";
+    return false;
+  }
 
-  const canonical = ["POST", "/tenant-webhook", timestamp, nonce, "", rawBody].join(
-    "\n"
-  );
-  const expected = createHmac("sha256", WEBHOOK_SECRET)
+  const timestamp =
+    headers["x-timestamp"] || "";
+
+  const nonce =
+    headers["x-nonce"] || "";
+
+  const receivedSignature =
+    headers["x-signature"] || "";
+
+  if (!timestamp || !nonce || !receivedSignature) {
+    return false;
+  }
+
+  // Reject obviously invalid timestamps.
+  const timestampNumber = Number(timestamp);
+
+  if (
+    !Number.isFinite(timestampNumber) ||
+    timestampNumber <= 0
+  ) {
+    return false;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+
+  // Five-minute replay window.
+  const MAX_AGE_SECONDS = 5 * 60;
+
+  if (
+    Math.abs(now - timestampNumber) >
+    MAX_AGE_SECONDS
+  ) {
+    console.error(
+      "UroPay webhook rejected: timestamp outside replay window."
+    );
+
+    return false;
+  }
+
+  const canonical = [
+    "POST",
+    "/tenant-webhook",
+    timestamp,
+    nonce,
+    "",
+    rawBody,
+  ].join("\n");
+
+  const expectedSignature = createHmac(
+    "sha256",
+    WEBHOOK_SECRET
+  )
     .update(canonical)
     .digest("hex");
 
-  // Timing-safe comparison
-  const expectedBuf = Buffer.from(expected, "hex");
-  const actualBuf = Buffer.from(receivedSig, "hex");
+  let expectedBuffer: Buffer;
+  let receivedBuffer: Buffer;
 
-  return (
-    expectedBuf.length === actualBuf.length &&
-    timingSafeEqual(expectedBuf, actualBuf)
+  try {
+    expectedBuffer = Buffer.from(
+      expectedSignature,
+      "hex"
+    );
+
+    receivedBuffer = Buffer.from(
+      receivedSignature,
+      "hex"
+    );
+  } catch {
+    return false;
+  }
+
+  if (
+    expectedBuffer.length === 0 ||
+    receivedBuffer.length === 0
+  ) {
+    return false;
+  }
+
+  if (
+    expectedBuffer.length !==
+    receivedBuffer.length
+  ) {
+    return false;
+  }
+
+  return timingSafeEqual(
+    expectedBuffer,
+    receivedBuffer
   );
 }
 
 /**
- * Look up order status from UROpay API (authoritative source of truth)
+ * Get the authoritative status of a UroPay order.
+ *
+ * UroPay's webhook is only a notification.
+ * This GET request is the authoritative confirmation.
  */
-export async function getOrderStatus(orderId: string) {
-  if (!API_KEY || !API_SECRET) return null;
+export async function getOrderStatus(
+  orderId: string
+) {
+  if (!orderId) {
+    throw new Error(
+      "UroPay order ID is required."
+    );
+  }
 
-  const path = `/v1/orders/${orderId}`;
-  const headers = signRequest("GET", path, "", "");
+  const path = `/v1/orders/${encodeURIComponent(
+    orderId
+  )}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { headers });
-  const json = await res.json();
+  const headers = signRequest(
+    "GET",
+    path,
+    "",
+    ""
+  );
+
+  const response = await fetch(
+    `${API_BASE}${path}`,
+    {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    }
+  );
+
+  let json: any = null;
+
+  try {
+    json = await response.json();
+  } catch {
+    throw new Error(
+      `UroPay status response was invalid (${response.status}).`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      json?.message ||
+        json?.error ||
+        `UroPay status lookup failed (${response.status}).`
+    );
+  }
 
   return json?.data || null;
 }

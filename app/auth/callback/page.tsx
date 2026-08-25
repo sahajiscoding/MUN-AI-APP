@@ -3,13 +3,13 @@
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.exchangeCodeForSession(window.location.search).then(() => {
+    getSupabase().auth.exchangeCodeForSession(window.location.search).then(() => {
       router.replace("/dashboard");
     });
   }, [router]);

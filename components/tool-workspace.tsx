@@ -1,7 +1,7 @@
 "use client";
 
-import { Bot, Loader2, Send, ShieldAlert, Plus } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { Bot, Loader2, Plus, Send, ShieldAlert } from "lucide-react";
+import { FormEvent, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import type { AIProvider } from "@/lib/ai/types";
 
@@ -12,49 +12,33 @@ type ToolWorkspaceProps = {
   mode: "research" | "country-profile" | "position-paper" | "speech" | "poi" | "resolution";
 };
 
-const defaults = {
-  committee: "UNHRC",
-  agenda: "Protecting journalists in conflict zones",
-  country: "India",
-  experienceLevel: "intermediate"
+const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
+  research: "Build a complete research brief.",
+  "country-profile": "Prioritize foreign policy, voting patterns, blocs, and red lines.",
+  "position-paper": "Prioritize position paper structure, arguments, and policy proposals.",
+  speech: "Prioritize opening speech angles and moderated caucus speeches.",
+  poi: "Prioritize POIs, likely attacks, rebuttals, and defensive prep.",
+  resolution: "Prioritize operative clauses, sponsors, signatories, and negotiation strategy."
 };
 
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { getIdToken } = useAuth();
-  const [committee, setCommittee] = useState(defaults.committee);
-  const [agenda, setAgenda] = useState(defaults.agenda);
-  const [country, setCountry] = useState(defaults.country);
-  const [experienceLevel, setExperienceLevel] = useState(defaults.experienceLevel);
+  const [input, setInput] = useState("");
   const [provider, setProvider] = useState<AIProvider>("openrouter");
   const [output, setOutput] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const toolInstruction = useMemo(() => {
-    const map: Record<ToolWorkspaceProps["mode"], string> = {
-      research: "Build a complete research brief.",
-      "country-profile": "Prioritize foreign policy, voting patterns, blocs, and red lines.",
-      "position-paper": "Prioritize position paper structure, arguments, and policy proposals.",
-      speech: "Prioritize opening speech angles and moderated caucus speeches.",
-      poi: "Prioritize POIs, likely attacks, rebuttals, and defensive prep.",
-      resolution: "Prioritize operative clauses, sponsors, signatories, and negotiation strategy."
-    };
-
-    return map[mode];
-  }, [mode]);
-
   function handleNewChat() {
-    setCommittee(defaults.committee);
-    setAgenda(defaults.agenda);
-    setCountry(defaults.country);
-    setExperienceLevel(defaults.experienceLevel);
-    setProvider("openrouter");
+    setInput("");
     setOutput("");
     setStatus("");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!input.trim() || loading) return;
+
     setLoading(true);
     setStatus("");
     setOutput("");
@@ -68,10 +52,10 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          committee,
-          agenda: `${agenda}\n\nTool focus: ${toolInstruction}`,
-          country,
-          experienceLevel,
+          committee: "General",
+          agenda: `${input}\n\nTool focus: ${toolInstructions[mode]}`,
+          country: "Any",
+          experienceLevel: "intermediate",
           provider
         })
       });
@@ -79,11 +63,11 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error ?? "The AI workspace could not generate a brief.");
+        throw new Error(data.error ?? "Failed to generate response.");
       }
 
       setOutput(data.content);
-      setStatus(`Generated with ${data.provider} / ${data.model}`);
+      setStatus(`${data.provider} / ${data.model}`);
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : "Something went wrong.");
     } finally {
@@ -92,9 +76,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* Header with new chat button */}
-      <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
+    <div className="flex flex-col h-screen">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3 shrink-0">
         <div>
           <p className="label-text">{eyebrow}</p>
           <h1 className="display-type text-2xl">{title}</h1>
@@ -104,21 +88,18 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           className="button-secondary flex items-center gap-2 px-4 py-2 text-sm font-semibold"
         >
           <Plus className="h-4 w-4" />
-          New Chat
+          New chat
         </button>
       </div>
 
-      {/* Main content area */}
+      {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {output ? (
-          <div className="max-w-4xl mx-auto px-5 py-6">
+          <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
             {/* User message */}
-            <div className="mb-6 flex justify-end">
+            <div className="flex justify-end">
               <div className="max-w-[80%] rounded-2xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
-                <p className="text-sm font-semibold mb-1">Your request</p>
-                <p className="text-sm opacity-80">
-                  {committee} — {country} — {agenda.slice(0, 100)}...
-                </p>
+                <p className="text-sm leading-6">{input}</p>
               </div>
             </div>
 
@@ -146,90 +127,65 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 <Bot className="h-8 w-8" />
               </div>
               <h2 className="display-type text-3xl mb-3">{title}</h2>
-              <p className="text-sm leading-6 text-[var(--muted)] mb-8">{description}</p>
+              <p className="text-sm leading-6 text-[var(--muted)]">{description}</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Input area at bottom */}
-      <div className="border-t border-[var(--line)] bg-[var(--surface)] px-5 py-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="surface rounded-2xl border border-[var(--line)] p-4">
-            <div className="grid gap-3 sm:grid-cols-2 mb-3">
-              <input
-                className="input-field text-sm"
-                value={committee}
-                onChange={(e) => setCommittee(e.target.value)}
-                placeholder="Committee (e.g. UNHRC)"
-                required
-              />
-              <input
-                className="input-field text-sm"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="Country (e.g. India)"
-                required
-              />
-            </div>
-
+      {/* Input area */}
+      <div className="border-t border-[var(--line)] px-5 py-4 shrink-0">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+          <div className="flex items-end gap-2 surface rounded-2xl border border-[var(--line)] px-4 py-3">
             <textarea
-              className="input-field text-sm min-h-[4rem] resize-y mb-3"
-              value={agenda}
-              onChange={(e) => setAgenda(e.target.value)}
-              placeholder="Describe your agenda or topic..."
-              required
+              className="flex-1 resize-none bg-transparent outline-none text-sm leading-6 max-h-32 min-h-[2.5rem]"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={`Ask about ${title.toLowerCase()}...`}
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }
+              }}
             />
 
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <select
-                  className="input-field text-xs py-1 px-2"
-                  value={experienceLevel}
-                  onChange={(e) => setExperienceLevel(e.target.value)}
-                >
-                  <option value="first-timer">First timer</option>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-
-                <div className="flex rounded-lg border border-[var(--line)] overflow-hidden">
-                  {(["openrouter", "nvidia"] as const).map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setProvider(item)}
-                      className={
-                        provider === item
-                          ? "bg-[var(--ink)] text-[var(--paper)] px-3 py-1 text-xs font-semibold"
-                          : "px-3 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
-                      }
-                    >
-                      {item === "openrouter" ? "Max" : "Mid"}
-                    </button>
-                  ))}
-                </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex rounded-lg border border-[var(--line)] overflow-hidden">
+                {(["openrouter", "nvidia"] as const).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setProvider(item)}
+                    className={
+                      provider === item
+                        ? "bg-[var(--ink)] text-[var(--paper)] px-2 py-1 text-xs font-semibold"
+                        : "px-2 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
+                    }
+                  >
+                    {item === "openrouter" ? "Max" : "Mid"}
+                  </button>
+                ))}
               </div>
 
               <button
-                className="button-primary flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl"
                 type="submit"
-                disabled={loading}
+                disabled={loading || !input.trim()}
+                className="grid h-8 w-8 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] disabled:opacity-40 transition"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
                 )}
-                {loading ? "Generating..." : "Send"}
               </button>
             </div>
-
-            {status && !output && (
-              <p className="mt-3 text-xs text-[var(--muted)]">{status}</p>
-            )}
           </div>
+
+          {status && !output && (
+            <p className="mt-2 text-xs text-[var(--muted)] text-center">{status}</p>
+          )}
         </form>
       </div>
     </div>

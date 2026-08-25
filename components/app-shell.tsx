@@ -4,7 +4,6 @@ import {
   Landmark,
   LogOut,
   Plus,
-  Settings,
   ShieldCheck,
   MessageSquare,
   PenLine,
@@ -201,18 +200,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <ReceiptText className="h-4 w-4" />
             Pricing
-          </Link>
-          <Link
-            href="/app/settings"
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
-              pathname === "/app/settings"
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
           </Link>
         </div>
 

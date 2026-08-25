@@ -30,8 +30,9 @@ export async function createClient() {
 
 // Admin client for server-side database writes (uses service role key)
 function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SECRET_KEY;
+  // Try private vars first, fall back to NEXT_PUBLIC vars
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !serviceKey) {
     throw new Error("Supabase server credentials are missing.");

@@ -13,7 +13,6 @@ export async function POST(request: Request) {
       throw new ApiError(400, "missing_uid", "Provide a user UID to approve.");
     }
 
-    // Add to admin_users table
     const { error } = await supabaseAdmin().from("admin_users").upsert(
       {
         uid: body.uid,
@@ -25,7 +24,6 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    // Also grant active entitlement so they bypass paywall
     await supabaseAdmin().from("entitlements").upsert(
       {
         uid: body.uid,

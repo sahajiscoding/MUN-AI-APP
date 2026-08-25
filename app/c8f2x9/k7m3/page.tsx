@@ -34,7 +34,6 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // AI testing state
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiOutput, setAiOutput] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
@@ -46,9 +45,9 @@ export default function AdminDashboardPage() {
 
   async function fetchUsers() {
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await fetch("/api/c8f2x9/users");
       if (res.status === 401) {
-        router.push("/admin");
+        router.push("/c8f2x9");
         return;
       }
       const data = await res.json();
@@ -61,7 +60,7 @@ export default function AdminDashboardPage() {
   }
 
   async function approveUser(uid: string) {
-    await fetch("/api/admin/approve", {
+    await fetch("/api/c8f2x9/approve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uid }),
@@ -70,7 +69,7 @@ export default function AdminDashboardPage() {
   }
 
   async function revokeUser(uid: string) {
-    await fetch("/api/admin/revoke", {
+    await fetch("/api/c8f2x9/revoke", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uid }),
@@ -79,8 +78,8 @@ export default function AdminDashboardPage() {
   }
 
   async function handleLogout() {
-    await fetch("/api/admin/login", { method: "DELETE" });
-    router.push("/admin");
+    await fetch("/api/c8f2x9/login", { method: "DELETE" });
+    router.push("/c8f2x9");
   }
 
   async function handleAiTest(e: FormEvent) {
@@ -91,7 +90,6 @@ export default function AdminDashboardPage() {
     setAiOutput("");
 
     try {
-      // Admin bypass: use a special admin token
       const res = await fetch("/api/ai/research", {
         method: "POST",
         headers: {
@@ -159,13 +157,12 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[var(--ink)]">
-      {/* Top bar */}
       <div className="border-b border-white/10 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--patina)] text-white">
             <Crown className="h-4 w-4" />
           </div>
-          <h1 className="text-lg font-bold text-[var(--paper)]">Admin Dashboard</h1>
+          <h1 className="text-lg font-bold text-[var(--paper)]">Dashboard</h1>
         </div>
         <button
           onClick={handleLogout}
@@ -177,13 +174,13 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-8">
-        {/* AI Testing Section */}
+        {/* AI Testing */}
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center gap-2 mb-4">
             <Bot className="h-5 w-5 text-[var(--brass)]" />
             <h2 className="text-lg font-bold text-[var(--paper)]">Free AI Testing</h2>
             <span className="ml-2 px-2 py-0.5 rounded-full bg-[var(--patina)]/20 text-[var(--patina)] text-xs font-semibold">
-              Admin Only
+              Internal
             </span>
           </div>
 
@@ -212,7 +209,7 @@ export default function AdminDashboardPage() {
                 type="text"
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Type anything to test the AI..."
+                placeholder="Type anything to test..."
                 className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-sm text-[var(--paper)] placeholder:text-white/40 focus:outline-none focus:border-[var(--brass)]/50"
               />
               <button
@@ -241,14 +238,14 @@ export default function AdminDashboardPage() {
           )}
         </section>
 
-        {/* User Management Section */}
+        {/* User Management */}
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-[var(--patina)]" />
-              <h2 className="text-lg font-bold text-[var(--paper)]">User Management</h2>
+              <h2 className="text-lg font-bold text-[var(--paper)]">Users</h2>
               <span className="ml-2 px-2 py-0.5 rounded-full bg-white/10 text-white/50 text-xs">
-                {users.length} users
+                {users.length}
               </span>
             </div>
             <div className="relative">
@@ -257,7 +254,7 @@ export default function AdminDashboardPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search users..."
+                placeholder="Search..."
                 className="pl-9 pr-4 py-1.5 w-52 rounded-lg bg-white/10 border border-white/10 text-sm text-[var(--paper)] placeholder:text-white/40 focus:outline-none focus:border-[var(--brass)]/50"
               />
             </div>
@@ -329,7 +326,7 @@ export default function AdminDashboardPage() {
                             <button
                               onClick={() => approveUser(user.uid)}
                               className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-[var(--patina)] hover:bg-[var(--patina)]/10 transition"
-                              title="Approve as admin"
+                              title="Approve"
                             >
                               <UserPlus className="h-3 w-3" />
                               Approve
@@ -338,7 +335,7 @@ export default function AdminDashboardPage() {
                             <button
                               onClick={() => revokeUser(user.uid)}
                               className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-400/10 transition"
-                              title="Revoke admin"
+                              title="Revoke"
                             >
                               <Trash2 className="h-3 w-3" />
                               Revoke

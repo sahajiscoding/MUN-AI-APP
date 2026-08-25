@@ -13,7 +13,6 @@ export async function POST(request: Request) {
       throw new ApiError(400, "missing_uid", "Provide a user UID to revoke.");
     }
 
-    // Remove from admin_users
     const { error } = await supabaseAdmin()
       .from("admin_users")
       .delete()
@@ -21,7 +20,6 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    // Revoke their entitlement
     await supabaseAdmin()
       .from("entitlements")
       .update({ status: "inactive", plan_id: null, source: "admin_revoke" })

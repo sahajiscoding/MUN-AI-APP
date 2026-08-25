@@ -2,7 +2,7 @@ import { ApiError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "munadmin2024";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "AGGIN";
 const COOKIE_NAME = "admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24; // 24 hours
 

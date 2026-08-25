@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/admin/login", {
+      const res = await fetch("/api/c8f2x9/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      router.push("/admin/dashboard");
+      router.push("/c8f2x9/k7m3");
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -42,16 +42,14 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--ink)] px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--patina)] text-white mb-4">
             <Landmark className="h-7 w-7" />
           </div>
-          <h1 className="display-type text-3xl text-[var(--paper)]">Admin Panel</h1>
-          <p className="text-sm text-white/50 mt-2">Enter admin password to continue</p>
+          <h1 className="display-type text-3xl text-[var(--paper)]">Panel</h1>
+          <p className="text-sm text-white/50 mt-2">Enter password to continue</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -59,7 +57,7 @@ export default function AdminLoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Admin password"
+              placeholder="Password"
               autoFocus
               className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/10 text-[var(--paper)] placeholder:text-white/40 text-sm focus:outline-none focus:border-[var(--brass)]/50"
             />

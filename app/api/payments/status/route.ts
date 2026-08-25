@@ -3,7 +3,10 @@ import { z } from "zod";
 import { jsonError, ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getEntitlement } from "@/lib/server/entitlements";
+import {
+  getEntitlement,
+  grantEntitlement,
+} from "@/lib/server/entitlements";
 
 export const runtime = "nodejs";
 
@@ -21,31 +24,15 @@ type PaymentStatus =
   | "failed"
   | "expired";
 
-export async function GET(
-  request: Request
-) {
+export async function GET(request: Request) {
   try {
-    // --------------------------------------------------
-    // 1. Require the user to be logged in.
-    // --------------------------------------------------
+    const user = await requireUser(request);
 
-    const user =
-      await requireUser(request);
+    const url = new URL(request.url);
 
-    // --------------------------------------------------
-    // 2. Read orderRef from the URL.
-    // --------------------------------------------------
-
-    const url =
-      new URL(request.url);
-
-    const parsed =
-      querySchema.safeParse({
-        orderRef:
-          url.searchParams.get(
-            "orderRef"
-          ),
-      });
+    const parsed = querySchema.safeParse({
+      orderRef: url.searchParams.get("orderRef"),
+    });
 
     if (!parsed.success) {
       throw new ApiError(
@@ -55,20 +42,8 @@ export async function GET(
       );
     }
 
-    const orderRef =
-      parsed.data.orderRef;
-
-    // --------------------------------------------------
-    // 3. Find the payment.
-    //
-    // IMPORTANT:
-    // We filter by BOTH orderRef and the authenticated
-    // user's UID. A user must never be able to inspect
-    // another user's payment.
-    // --------------------------------------------------
-
-    const admin =
-      supabaseAdmin();
+    const orderRef = parsed.data.orderRef;
+    const admin = supabaseAdmin();
 
     const {
       data: payment,
@@ -89,14 +64,8 @@ export async function GET(
           updated_at
         `
       )
-      .eq(
-        "order_ref",
-        orderRef
-      )
-      .eq(
-        "uid",
-        user.uid
-      )
+      .eq("order_ref", orderRef)
+      .eq("uid", user.uid)
       .maybeSingle();
 
     if (paymentError) {
@@ -120,16 +89,9 @@ export async function GET(
       );
     }
 
-    // --------------------------------------------------
-    // 4. Normalize the payment status.
-    // --------------------------------------------------
-
-    const rawStatus =
-      String(
-        payment.status || ""
-      )
-        .trim()
-        .toLowerCase();
+    const rawStatus = String(payment.status || "")
+      .trim()
+      .toLowerCase();
 
     let status: PaymentStatus;
 
@@ -137,125 +99,105 @@ export async function GET(
       case "paid":
         status = "paid";
         break;
-
       case "failed":
         status = "failed";
         break;
-
       case "expired":
         status = "expired";
         break;
-
       case "pending":
       default:
         status = "pending";
         break;
     }
 
-    // --------------------------------------------------
-    // 5. NEVER treat "paid" by itself as enough.
-    //
-    // The webhook marks the payment as paid and then
-    // grants the entitlement.
-    //
-    // If entitlement creation temporarily failed,
-    // we keep the user on the "processing" page
-    // instead of incorrectly saying access is unlocked.
-    // --------------------------------------------------
-
+    // A payment is not enough by itself for the UI to claim
+    // that Premium is active. The entitlement must also exist.
+    // If the webhook marked the payment paid but entitlement
+    // creation failed, repair it here from the server-side
+    // payment record. The client cannot mark a payment as paid.
     if (status === "paid") {
-      const entitlement =
-        await getEntitlement(
-          user.uid
-        );
+      let entitlement = await getEntitlement(user.uid);
 
       const entitlementMatchesPayment =
-        entitlement.status ===
-          "active" &&
-        entitlement.planId ===
-          payment.plan_id;
+        entitlement.status === "active" &&
+        entitlement.planId === payment.plan_id;
 
-      if (
-        !entitlementMatchesPayment
-      ) {
+      if (!entitlementMatchesPayment) {
+        try {
+          entitlement = await grantEntitlement({
+            uid: payment.uid,
+            planId: payment.plan_id,
+            source: "uropay-recovery",
+            paymentId: payment.id,
+            orderId: payment.uropay_order_id ?? payment.order_ref,
+          });
+        } catch (error) {
+          console.error(
+            "Paid payment entitlement recovery failed:",
+            error
+          );
+
+          return Response.json({
+            ok: true,
+            status: "pending",
+            reason: "payment_confirmed_access_processing",
+            orderRef: payment.order_ref,
+            planId: payment.plan_id,
+          });
+        }
+      }
+
+      const accessConfirmed =
+        entitlement.status === "active" &&
+        entitlement.planId === payment.plan_id;
+
+      if (!accessConfirmed) {
         return Response.json({
           ok: true,
           status: "pending",
-          reason:
-            "payment_confirmed_access_processing",
-          orderRef:
-            payment.order_ref,
-          planId:
-            payment.plan_id,
+          reason: "payment_confirmed_access_processing",
+          orderRef: payment.order_ref,
+          planId: payment.plan_id,
         });
       }
 
       return Response.json({
         ok: true,
         status: "paid",
-        reason:
-          "payment_confirmed",
-        orderRef:
-          payment.order_ref,
-        planId:
-          payment.plan_id,
-        expiresAt:
-          entitlement.expiresAt ??
-          null,
+        reason: "payment_confirmed",
+        orderRef: payment.order_ref,
+        planId: payment.plan_id,
+        expiresAt: entitlement.expiresAt ?? null,
       });
     }
 
-    // --------------------------------------------------
-    // 6. FAILED
-    // --------------------------------------------------
-
-    if (
-      status === "failed"
-    ) {
+    if (status === "failed") {
       return Response.json({
         ok: true,
         status: "failed",
-        reason:
-          "payment_failed",
-        orderRef:
-          payment.order_ref,
-        planId:
-          payment.plan_id,
+        reason: "payment_failed",
+        orderRef: payment.order_ref,
+        planId: payment.plan_id,
       });
     }
 
-    // --------------------------------------------------
-    // 7. EXPIRED
-    // --------------------------------------------------
-
-    if (
-      status === "expired"
-    ) {
+    if (status === "expired") {
       return Response.json({
         ok: true,
         status: "expired",
-        reason:
-          "payment_expired",
-        orderRef:
-          payment.order_ref,
-        planId:
-          payment.plan_id,
+        reason: "payment_expired",
+        orderRef: payment.order_ref,
+        planId: payment.plan_id,
       });
     }
-
-    // --------------------------------------------------
-    // 8. PENDING
-    // --------------------------------------------------
 
     return Response.json({
       ok: true,
       status: "pending",
-      reason:
-        "payment_processing",
-      orderRef:
-        payment.order_ref,
-      planId:
-        payment.plan_id,
+      reason: "payment_processing",
+      orderRef: payment.order_ref,
+      planId: payment.plan_id,
     });
   } catch (error) {
     return jsonError(error);

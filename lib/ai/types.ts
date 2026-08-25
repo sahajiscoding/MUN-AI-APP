@@ -16,5 +16,6 @@ export type AICompletionInput = {
 export type AICompletionResult = {
   provider: AIProvider;
   model: string;
-  content: string;
+  content?: string;
+  stream?: ReadableStream<Uint8Array>;
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, Loader2, Plus, Send } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import type { AIProvider } from "@/lib/ai/types";
 import { PaywallModal } from "@/components/paywall-modal";
@@ -27,10 +27,19 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   const [input, setInput] = useState("");
   const [provider, setProvider] = useState<AIProvider>("openrouter");
   const [output, setOutput] = useState("");
+  const [streaming, setStreaming] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const outputRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll as content streams in
+  useEffect(() => {
+    if (outputRef.current && streaming) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output, streaming]);
 
   // Check entitlement on mount
   useEffect(() => {
@@ -68,6 +77,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     }
 
     setLoading(true);
+    setStreaming(true);
     setStatus("");
     setOutput("");
 
@@ -88,10 +98,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         })
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        // If 402 paid access required, show paywall
+        const data = await response.json();
         if (data.code === "paid_access_required") {
           setHasAccess(false);
           setShowPaywall(true);
@@ -100,12 +108,52 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         throw new Error(data.error ?? "Failed to generate response.");
       }
 
-      setOutput(data.content);
-      setStatus(`${data.provider} / ${data.model}`);
+      const contentType = response.headers.get("Content-Type") || "";
+
+      if (contentType.includes("text/event-stream") && response.body) {
+        // Streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullContent += parsed.content;
+                  setOutput(fullContent);
+                }
+              } catch {
+                // skip malformed chunks
+              }
+            }
+          }
+        }
+
+        setStatus(`${provider} / streaming`);
+      } else {
+        // Non-streaming fallback
+        const data = await response.json();
+        setOutput(data.content);
+        setStatus(`${data.provider} / ${data.model}`);
+      }
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : "Something went wrong.");
     } finally {
       setLoading(false);
+      setStreaming(false);
     }
   }
 
@@ -129,7 +177,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={outputRef} className="flex-1 overflow-y-auto">
         {output ? (
           <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
             {/* User message */}
@@ -152,6 +200,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 )}
                 <article className="prose prose-neutral max-w-none whitespace-pre-wrap leading-7 text-sm">
                   {output}
+                  {streaming && (
+                    <span className="inline-block w-2 h-4 bg-[var(--ink)] animate-pulse ml-0.5 align-middle" />
+                  )}
                 </article>
               </div>
             </div>

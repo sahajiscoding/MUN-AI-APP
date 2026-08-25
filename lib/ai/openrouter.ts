@@ -27,7 +27,8 @@ export async function callOpenRouter(
       model,
       messages: input.messages,
       temperature: input.temperature ?? 0.7,
-      max_tokens: input.maxTokens ?? 2400
+      max_tokens: input.maxTokens ?? 2400,
+      stream: true
     })
   });
 
@@ -39,16 +40,59 @@ export async function callOpenRouter(
     );
   }
 
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
+  // Return a ReadableStream for the client to consume
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = response.body?.getReader();
+      if (!reader) {
+        controller.close();
+        return;
+      }
 
-  if (typeof content !== "string") {
-    throw new ApiError(502, "openrouter_empty", "OpenRouter returned an empty response.");
-  }
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") {
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed?.choices?.[0]?.delta?.content;
+                if (content) {
+                  controller.enqueue(
+                    new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
+                  );
+                }
+              } catch {
+                // skip malformed chunks
+              }
+            }
+          }
+        }
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        controller.close();
+      }
+    }
+  });
 
   return {
     provider: "openrouter",
     model,
-    content
-  };
+    stream
+  } as unknown as AICompletionResult;
 }

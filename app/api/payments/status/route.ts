@@ -7,6 +7,7 @@ import {
   getEntitlement,
   grantEntitlement,
 } from "@/lib/server/entitlements";
+import { getOrderStatus } from "@/lib/payments/uropay";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,27 @@ type PaymentStatus =
   | "paid"
   | "failed"
   | "expired";
+
+function normalizeStatus(value: unknown): PaymentStatus | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  switch (value.trim().toUpperCase()) {
+    case "PAID":
+      return "paid";
+    case "FAILED":
+      return "failed";
+    case "EXPIRED":
+      return "expired";
+    case "PENDING":
+    case "PROCESSING":
+    case "CREATED":
+      return "pending";
+    default:
+      return null;
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -45,10 +67,7 @@ export async function GET(request: Request) {
     const orderRef = parsed.data.orderRef;
     const admin = supabaseAdmin();
 
-    const {
-      data: payment,
-      error: paymentError,
-    } = await admin
+    const { data: payment, error: paymentError } = await admin
       .from("payments")
       .select(
         `
@@ -69,11 +88,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (paymentError) {
-      console.error(
-        "Payment status lookup failed:",
-        paymentError
-      );
-
+      console.error("Payment status lookup failed:", paymentError);
       throw new ApiError(
         500,
         "payment_lookup_failed",
@@ -89,33 +104,112 @@ export async function GET(request: Request) {
       );
     }
 
-    const rawStatus = String(payment.status || "")
-      .trim()
-      .toLowerCase();
+    let status = normalizeStatus(payment.status) ?? "pending";
 
-    let status: PaymentStatus;
+    // UroPay documents the webhook as best-effort/advisory and the
+    // order GET endpoint as the authoritative source of truth. If the
+    // webhook is delayed or never arrives, reconcile the order here.
+    // This is what prevents a genuinely PAID order from remaining
+    // stuck forever as pending in our database.
+    if (
+      payment.uropay_order_id &&
+      (status === "pending" || status === "paid")
+    ) {
+      try {
+        const authoritativeOrder = await getOrderStatus(
+          payment.uropay_order_id
+        );
 
-    switch (rawStatus) {
-      case "paid":
-        status = "paid";
-        break;
-      case "failed":
-        status = "failed";
-        break;
-      case "expired":
-        status = "expired";
-        break;
-      case "pending":
-      default:
-        status = "pending";
-        break;
+        const authoritativeStatus = normalizeStatus(
+          authoritativeOrder?.status
+        );
+
+        if (!authoritativeStatus) {
+          console.error(
+            "UroPay returned an unknown order status:",
+            authoritativeOrder?.status
+          );
+        } else {
+          const authoritativeAmount = Number(
+            authoritativeOrder?.amount
+          );
+
+          const expectedAmountRupees =
+            Number(payment.amount) / 100;
+
+          if (
+            !Number.isFinite(authoritativeAmount) ||
+            authoritativeAmount !== expectedAmountRupees
+          ) {
+            console.error(
+              "UroPay authoritative amount mismatch:",
+              {
+                orderRef: payment.order_ref,
+                expectedAmountRupees,
+                authoritativeAmount,
+              }
+            );
+
+            throw new ApiError(
+              409,
+              "payment_amount_mismatch",
+              "The payment amount could not be verified."
+            );
+          }
+
+          status = authoritativeStatus;
+
+          if (status !== "pending") {
+            const { error: updateError } = await admin
+              .from("payments")
+              .update({
+                status,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", payment.id)
+              .eq("uid", user.uid);
+
+            if (updateError) {
+              console.error(
+                "Failed to reconcile payment status:",
+                updateError
+              );
+
+              throw new ApiError(
+                500,
+                "payment_reconciliation_failed",
+                "The payment was confirmed, but we could not update your payment record yet."
+              );
+            }
+          }
+        }
+      } catch (error) {
+        // Preserve an already-known paid state, but don't invent success
+        // when UroPay cannot be queried. For a pending payment, a temporary
+        // UroPay/API failure simply means the page should keep checking.
+        if (error instanceof ApiError) {
+          throw error;
+        }
+
+        console.error(
+          "UroPay authoritative status check failed:",
+          error
+        );
+
+        if (status !== "paid") {
+          return Response.json({
+            ok: true,
+            status: "pending",
+            reason: "payment_status_check_retry",
+            orderRef: payment.order_ref,
+            planId: payment.plan_id,
+          });
+        }
+      }
     }
 
-    // A payment is not enough by itself for the UI to claim
-    // that Premium is active. The entitlement must also exist.
-    // If the webhook marked the payment paid but entitlement
-    // creation failed, repair it here from the server-side
-    // payment record. The client cannot mark a payment as paid.
+    // A payment is not enough by itself for the UI to claim that Premium
+    // is active. The entitlement must also exist.
     if (status === "paid") {
       let entitlement = await getEntitlement(user.uid);
 

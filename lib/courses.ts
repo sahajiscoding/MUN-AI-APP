@@ -5,6 +5,13 @@ export type Course = {
   icon: string;
   description: string;
   lessons: Lesson[];
+  quiz?: QuizQuestion[];
+};
+
+export type QuizQuestion = {
+  question: string;
+  options: string[];
+  correct: number;
 };
 
 export type Lesson = {

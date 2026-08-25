@@ -14,7 +14,7 @@ export default function CheckoutFailurePage() {
         <h1 className="display-type mt-5 text-5xl">Payment not verified.</h1>
         <p className="mt-4 leading-7 text-[var(--muted)]">
           The account was not unlocked because verification failed or was cancelled. If money was
-          deducted, the Razorpay webhook can still reconcile the order after it arrives.
+          deducted, the payment provider can still reconcile the order.
         </p>
         <Link className="button-primary mt-7 inline-flex items-center justify-center px-5 font-semibold" href="/pricing">
           Try again

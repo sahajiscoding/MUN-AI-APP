@@ -1,14 +1,35 @@
 "use client";
 
-import { Check, LockKeyhole } from "lucide-react";
+import { Check, Loader2, LockKeyhole } from "lucide-react";
+import { useState } from "react";
 import { formatPlanPrice, plans } from "@/lib/plans";
 
-const paymentLinks: Record<string, string> = {
-  "weekly-pass": "https://p.urpy.link/9wBv",
-  "monthly-pass": "https://p.urpy.link/rFaW",
-};
-
 export function PricingClient() {
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function handleBuy(planId: string) {
+    setLoading(planId);
+    try {
+      const res = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "Failed to create order");
+      }
+
+      // Redirect to UROpay checkout
+      window.location.href = data.openUrl;
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      setLoading(null);
+    }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {plans.map((plan) => (
@@ -33,14 +54,20 @@ export function PricingClient() {
             ))}
           </ul>
 
-          <a
-            href={paymentLinks[plan.id] || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="button-primary mt-7 block w-full px-4 py-3 text-center font-semibold"
+          <button
+            onClick={() => handleBuy(plan.id)}
+            disabled={loading !== null}
+            className="button-primary mt-7 w-full px-4 py-3 font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            Buy now
-          </a>
+            {loading === plan.id ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Redirecting...
+              </>
+            ) : (
+              "Buy now"
+            )}
+          </button>
         </article>
       ))}
     </div>

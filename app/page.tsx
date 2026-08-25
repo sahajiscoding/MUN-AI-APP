@@ -31,12 +31,12 @@ export default function HomePage() {
               </span>
               <span className="display-type text-2xl">MUN Prep</span>
             </Link>
-            <div className="flex items-center gap-2">
-              <Link className="button-secondary px-4 text-sm font-semibold" href="/login">
+            <div className="flex items-center gap-3">
+              <Link className="rounded-full border border-[var(--line)] px-5 py-2 text-sm font-semibold text-[var(--ink)] hover:bg-black/5 transition" href="/login">
                 Sign in
               </Link>
-              <Link className="button-primary px-4 text-sm font-semibold" href="/signup">
-                Start
+              <Link className="rounded-full bg-[var(--ink)] px-5 py-2 text-sm font-semibold text-[var(--paper)] hover:bg-[var(--ink)]/80 transition" href="/signup">
+                Get started
               </Link>
             </div>
           </nav>

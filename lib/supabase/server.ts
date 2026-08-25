@@ -7,8 +7,8 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://omhnymwavnfdwhoutueo.supabase.co",
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_chywf4oJZ7ET3HQSxHvKxw_hdrew83k",
     {
       cookies: {
         getAll() {
@@ -30,8 +30,8 @@ export async function createClient() {
 
 // Admin client for server-side database writes (MUST use service role key)
 function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SECRET_KEY;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://omhnymwavnfdwhoutueo.supabase.co";
+  const serviceKey = process.env.SUPABASE_SECRET_KEY || "sb_secret__Bk_Uwp8f8X6I3HkBHoXCw_vysnSH7J";
 
   if (!url || !serviceKey) {
     throw new Error(

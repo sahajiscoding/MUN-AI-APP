@@ -1,4 +1,5 @@
 import { callNvidiaMiniMax } from "@/lib/ai/nvidia";
+import { callOpenRouter } from "@/lib/ai/openrouter";
 import { munResearchSystemPrompt } from "@/lib/ai/prompts";
 
 export type ResearchInput = {
@@ -23,9 +24,15 @@ export async function runMunResearch(input: ResearchInput) {
     }
   ];
 
-  return callNvidiaMiniMax({
+  const aiInput = {
     messages,
     temperature: input.temperature ?? 0.85,
     maxTokens: input.maxTokens ?? 2600
-  });
+  };
+
+  // Use OpenRouter if explicitly requested, otherwise NVIDIA
+  if (input.provider === "openrouter") {
+    return callOpenRouter(aiInput);
+  }
+  return callNvidiaMiniMax(aiInput);
 }

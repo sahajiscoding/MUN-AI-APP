@@ -1,26 +1,69 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient as createSupabaseClient,
+} from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-// Cookie-based client for reading user sessions (uses anon key)
+function getRequiredEnv(
+  name: string
+): string {
+  const value =
+    process.env[name];
+
+  if (!value) {
+    throw new Error(
+      `${name} is not configured.`
+    );
+  }
+
+  return value;
+}
+
+// Cookie-based client for reading
+// authenticated user sessions.
 export async function createClient() {
-  const cookieStore = await cookies();
+  const cookieStore =
+    await cookies();
+
+  const supabaseUrl =
+    getRequiredEnv(
+      "NEXT_PUBLIC_SUPABASE_URL"
+    );
+
+  const supabasePublishableKey =
+    getRequiredEnv(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+    );
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://omhnymwavnfdwhoutueo.supabase.co",
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_chywf4oJZ7ET3HQSxHvKxw_hdrew83k",
+    supabaseUrl,
+    supabasePublishableKey,
     {
       cookies: {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+
+        setAll(
+          cookiesToSet
+        ) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+            cookiesToSet.forEach(
+              ({
+                name,
+                value,
+                options,
+              }) => {
+                cookieStore.set(
+                  name,
+                  value,
+                  options
+                );
+              }
             );
           } catch {
-            // Called from a Server Component — safe to ignore
+            // Server Components cannot
+            // always modify cookies.
           }
         },
       },
@@ -28,23 +71,45 @@ export async function createClient() {
   );
 }
 
-// Admin client for server-side database writes (MUST use service role key)
+// Trusted server-side Supabase client.
+//
+// IMPORTANT:
+// This key must NEVER be exposed to
+// browser/client code.
 function getSupabaseAdmin() {
-
-  if (!url || !serviceKey) {
-    throw new Error(
-      "Supabase admin credentials missing. Set SUPABASE_URL and SUPABASE_SECRET_KEY in Vercel environment variables (Standard type, not Sensitive)."
+  const url =
+    getRequiredEnv(
+      "NEXT_PUBLIC_SUPABASE_URL"
     );
-  }
 
-  return createSupabaseClient(url, serviceKey);
+  const serviceKey =
+    getRequiredEnv(
+      "SUPABASE_SECRET_KEY"
+    );
+
+  return createSupabaseClient(
+    url,
+    serviceKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 }
 
-let _admin: ReturnType<typeof getSupabaseAdmin> | null = null;
+let adminClient:
+  | ReturnType<
+      typeof getSupabaseAdmin
+    >
+  | null = null;
 
 export function supabaseAdmin() {
-  if (!_admin) {
-    _admin = getSupabaseAdmin();
+  if (!adminClient) {
+    adminClient =
+      getSupabaseAdmin();
   }
-  return _admin;
+
+  return adminClient;
 }

@@ -12,7 +12,7 @@ type ToolWorkspaceProps = {
   mode: "research" | "country-profile" | "position-paper" | "speech" | "poi" | "resolution";
 };
 
-type ResponseMode = "quick" | "thorough";
+type ResponseMode = "quick" | "thorough" | "max";
 
 const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
   research: "Build a complete research brief.",
@@ -82,8 +82,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setStatus("");
     setOutput("");
 
-    const maxTokens = responseMode === "thorough" ? 4000 : 1000;
-    const temperature = responseMode === "thorough" ? 0.85 : 0.7;
+    const maxTokens = responseMode === "max" ? 8000 : responseMode === "thorough" ? 4000 : 1000;
+    const temperature = responseMode === "max" ? 1.0 : responseMode === "thorough" ? 0.85 : 0.7;
 
     try {
       const token = await getIdToken();
@@ -246,7 +246,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex rounded-lg border border-[var(--line)] overflow-hidden">
-                {(["quick", "thorough"] as const).map((item) => (
+                {(["quick", "thorough", "max"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
@@ -257,7 +257,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                         : "px-2 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
                     }
                   >
-                    {item === "quick" ? "Quick" : "Thorough"}
+                    {item === "quick" ? "Quick" : item === "thorough" ? "Thorough" : "Max"}
                   </button>
                 ))}
               </div>

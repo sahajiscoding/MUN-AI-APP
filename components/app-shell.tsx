@@ -4,6 +4,8 @@ import {
   Landmark,
   LogOut,
   Plus,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
   MessageSquare,
   PenLine,
@@ -19,7 +21,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 import { getSupabase } from "@/lib/supabase/client";
-
 
 type ChatHistoryItem = {
   id: string;
@@ -46,7 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const [chats, setChats] = useState<ChatHistoryItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
-
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -76,21 +77,45 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-[var(--line)] bg-[var(--surface)] flex flex-col h-screen sticky top-0">
-        {/* Logo + New Chat */}
+      <aside
+        className={cn(
+          "shrink-0 border-r border-[var(--line)] bg-[var(--surface)] flex flex-col h-screen sticky top-0 transition-all duration-300",
+          collapsed ? "w-[68px]" : "w-64"
+        )}
+      >
+        {/* Logo + New Chat + Toggle */}
         <div className="p-3 border-b border-[var(--line)]">
-          <Link href="/dashboard" className="flex items-center gap-3 mb-3">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--ink)] text-[var(--paper)]">
-              <Landmark className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <span className="display-type text-lg">MUN Prep</span>
-          </Link>
+          <div className="flex items-center justify-between mb-3">
+            <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--ink)] text-[var(--paper)] shrink-0">
+                <Landmark className="h-4 w-4" aria-hidden="true" />
+              </span>
+              {!collapsed && (
+                <span className="display-type text-lg truncate">MUN Prep</span>
+              )}
+            </Link>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-1.5 rounded-lg hover:bg-black/5 transition text-[var(--muted)] shrink-0"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+          </div>
           <Link
             href="/app/research"
-            className="flex items-center gap-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5 transition"
+            className={cn(
+              "flex items-center gap-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5 transition",
+              collapsed && "justify-center px-0"
+            )}
+            title="New chat"
           >
-            <Plus className="h-4 w-4" />
-            New chat
+            <Plus className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>New chat</span>}
           </Link>
         </div>
 
@@ -100,31 +125,42 @@ export function AppShell({ children }: { children: ReactNode }) {
             href="/app/discover"
             className={cn(
               "flex items-center gap-2 w-full rounded-lg px-2 py-2 text-sm font-semibold transition",
+              collapsed && "justify-center px-0",
               pathname === "/app/discover"
                 ? "bg-[var(--ink)] text-[var(--paper)]"
                 : "text-[var(--muted)] hover:bg-black/5"
             )}
+            title="Discover"
           >
-            <Newspaper className="h-4 w-4" />
-            Discover
+            <Newspaper className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Discover</span>}
           </Link>
         </div>
 
         {/* Chat History */}
         <div className="flex-1 overflow-y-auto p-2">
-          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Recent chats
-          </p>
+          {!collapsed && (
+            <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Recent chats
+            </p>
+          )}
 
           {loadingChats ? (
-            <div className="flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]",
+                collapsed && "justify-center"
+              )}
+            >
               <Loader2 className="h-3 w-3 animate-spin" />
-              Loading...
+              {!collapsed && <span>Loading...</span>}
             </div>
           ) : chats.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-[var(--muted)]">
-              No chats yet. Start a new one!
-            </p>
+            !collapsed && (
+              <p className="px-2 py-3 text-xs text-[var(--muted)]">
+                No chats yet. Start a new one!
+              </p>
+            )
           ) : (
             <nav className="space-y-0.5">
               {chats.map((chat) => {
@@ -133,10 +169,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Link
                     key={chat.id}
                     href="/app/research"
-                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] hover:bg-black/5 transition truncate"
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] hover:bg-black/5 transition truncate",
+                      collapsed && "justify-center px-0"
+                    )}
+                    title={getChatTitle(chat)}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{getChatTitle(chat)}</span>
+                    {!collapsed && (
+                      <span className="truncate">{getChatTitle(chat)}</span>
+                    )}
                   </Link>
                 );
               })}
@@ -146,32 +188,38 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Learn section */}
         <div className="px-2 pt-2">
-          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Learn
-          </p>
+          {!collapsed && (
+            <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Learn
+            </p>
+          )}
           <Link
             href="/app/courses"
             className={cn(
               "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              collapsed && "justify-center px-0",
               pathname.startsWith("/app/courses")
                 ? "bg-[var(--ink)] text-[var(--paper)]"
                 : "text-[var(--muted)] hover:bg-black/5"
             )}
+            title="Courses"
           >
-            <BookOpen className="h-4 w-4" />
-            Courses
+            <BookOpen className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Courses</span>}
           </Link>
           <Link
             href="/app/glossary"
             className={cn(
               "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              collapsed && "justify-center px-0",
               pathname === "/app/glossary"
                 ? "bg-[var(--ink)] text-[var(--paper)]"
                 : "text-[var(--muted)] hover:bg-black/5"
             )}
+            title="Glossary"
           >
-            <BookMarked className="h-4 w-4" />
-            Glossary
+            <BookMarked className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Glossary</span>}
           </Link>
         </div>
 
@@ -181,37 +229,43 @@ export function AppShell({ children }: { children: ReactNode }) {
             href="/profile"
             className={cn(
               "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              collapsed && "justify-center px-0",
               pathname === "/profile"
                 ? "bg-[var(--ink)] text-[var(--paper)]"
                 : "text-[var(--muted)] hover:bg-black/5"
             )}
+            title="Profile"
           >
-            <ShieldCheck className="h-4 w-4" />
-            Profile
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Profile</span>}
           </Link>
           <Link
             href="/pricing"
             className={cn(
               "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+              collapsed && "justify-center px-0",
               pathname === "/pricing"
                 ? "bg-[var(--ink)] text-[var(--paper)]"
                 : "text-[var(--muted)] hover:bg-black/5"
             )}
+            title="Pricing"
           >
-            <ReceiptText className="h-4 w-4" />
-            Pricing
+            <ReceiptText className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Pricing</span>}
           </Link>
         </div>
 
         {/* User info + logout */}
         <div className="border-t border-[var(--line)] p-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {user?.user_metadata?.full_name || "Delegate"}
-              </p>
-              <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
-            </div>
+          <div className={cn("flex items-center justify-between", collapsed && "justify-center")}>
+            {!collapsed && (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">
+                  {user?.user_metadata?.full_name || "Delegate"}
+                </p>
+                <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => logout()}

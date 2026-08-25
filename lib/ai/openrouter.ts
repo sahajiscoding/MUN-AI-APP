@@ -28,7 +28,7 @@ export async function callOpenRouter(
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://munprepapp.local",
+          "HTTP-Referer": "https://mun-ai-app.vercel.app",
           "X-Title": "MUN Prep App"
         },
         body: JSON.stringify({

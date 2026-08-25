@@ -30,8 +30,6 @@ export async function createClient() {
 
 // Admin client for server-side database writes (MUST use service role key)
 function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://omhnymwavnfdwhoutueo.supabase.co";
-  const serviceKey = process.env.SUPABASE_SECRET_KEY || "sb_secret__Bk_Uwp8f8X6I3HkBHoXCw_vysnSH7J";
 
   if (!url || !serviceKey) {
     throw new Error(

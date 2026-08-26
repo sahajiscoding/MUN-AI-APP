@@ -121,17 +121,15 @@ export function PricingClient() {
             <div>
               <p className="font-semibold">
                 {hasAdminAccess
-                  ? "Admin access is active"
-                  : currentPlan
-                    ? `${currentPlan.name} is active`
-                    : "Paid workspace is active"}
+                  ? "You have admin access"
+                  : `You have ${currentPlan?.name ?? "an active plan"}`}
               </p>
               <p className="text-sm text-[var(--muted)]">
                 {hasAdminAccess
                   ? "All paid tools are included for this account."
                   : entitlement?.expiresAt
-                    ? `Access expires ${new Date(entitlement.expiresAt).toLocaleDateString("en-IN")}. Buy another pass to extend your access.`
-                    : "Your paid workspace is ready to use."}
+                    ? `Expires ${new Date(entitlement.expiresAt).toLocaleDateString("en-IN")}.`
+                    : "Your paid access is ready to use."}
               </p>
             </div>
           </div>
@@ -142,8 +140,9 @@ export function PricingClient() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {plans.map((plan) => {
+      {!entitlementLoading && !hasActiveAccess ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {plans.map((plan) => {
           const isCurrentPlan = hasActiveAccess && entitlement?.planId === plan.id;
           const disabled =
             loading !== null || entitlementLoading || entitlementError || isCurrentPlan || hasAdminAccess;
@@ -195,9 +194,10 @@ export function PricingClient() {
                 )}
               </button>
             </article>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

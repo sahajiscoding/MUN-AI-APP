@@ -1,5 +1,5 @@
 import { ApiError, jsonError } from "@/lib/api";
-import { loadChatTranscript, type ChatTranscript } from "@/lib/server/chat-storage";
+import { loadChatTranscript, type ChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { requireUser } from "@/lib/server/auth";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -19,6 +19,15 @@ type GenerationRow = {
 function legacyTranscript(row: GenerationRow): ChatTranscript {
   const summary = row.input_summary ?? {};
   const agenda = typeof summary.agenda === "string" ? summary.agenda : "";
+  const output = row.output ?? "";
+  const turns = Array.isArray(summary.turns)
+    ? summary.turns.filter((turn): turn is ChatTurn => {
+        if (!turn || typeof turn !== "object") return false;
+        const item = turn as Record<string, unknown>;
+        return (item.role === "user" || item.role === "assistant") &&
+          typeof item.content === "string" && item.content.length <= 12000;
+      })
+    : [];
 
   return {
     id: row.id,
@@ -27,8 +36,12 @@ function legacyTranscript(row: GenerationRow): ChatTranscript {
     provider: row.provider,
     model: row.model,
     inputSummary: summary,
-    prompt: agenda.split("\n\nTool focus:")[0] || agenda,
-    output: row.output ?? "",
+    prompt: turns.find((turn) => turn.role === "user")?.content || agenda.split("\n\nTool focus:")[0] || agenda,
+    output: turns.filter((turn) => turn.role === "assistant").at(-1)?.content || output,
+    turns: turns.length > 0 ? turns : [
+      ...(agenda ? [{ role: "user" as const, content: agenda.split("\n\nTool focus:")[0] || agenda }] : []),
+      ...(output ? [{ role: "assistant" as const, content: output }] : []),
+    ],
     createdAt: row.created_at,
   };
 }

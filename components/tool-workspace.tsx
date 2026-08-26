@@ -21,14 +21,6 @@ type ConversationTurn = {
   content: string;
 };
 
-type AiUsageSnapshot = {
-  limit: number;
-  used: number;
-  reserved: number;
-  remaining: number;
-  resetAt: string;
-};
-
 const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: number; temperature: number }> = {
   quick: { label: "Quick", maxTokens: 1000, temperature: 0.7 },
   thorough: { label: "Thorough", maxTokens: 2600, temperature: 0.85 },
@@ -58,7 +50,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   const [loadingSavedChat, setLoadingSavedChat] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [usage, setUsage] = useState<AiUsageSnapshot | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const outputRef = useRef<HTMLDivElement>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
@@ -186,32 +177,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     };
   }, [chatId, getIdToken, user]);
 
-  const refreshUsage = useCallback(async () => {
-    if (!user) {
-      setUsage(null);
-      return;
-    }
-
-    try {
-      const token = await getIdToken();
-      const response = await fetch("/api/me/ai-usage", {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      if (!response.ok) return;
-      const nextUsage = (await response.json()) as AiUsageSnapshot;
-      if (Number.isFinite(nextUsage.used) && Number.isFinite(nextUsage.remaining)) {
-        setUsage(nextUsage);
-      }
-    } catch {
-      // The usage indicator is informational; the server remains authoritative.
-    }
-  }, [getIdToken, user]);
-
-  useEffect(() => {
-    void refreshUsage();
-  }, [refreshUsage]);
-
   // Check entitlement on mount
   useEffect(() => {
     if (!user) return;
@@ -315,12 +280,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
       if (!response.ok) {
         const data = await response.json();
-        if (data.code === "daily_token_limit_reached") {
-          rollbackPendingTurn();
-          if (data.details) setUsage(data.details as AiUsageSnapshot);
-          setStatus(data.error ?? "Daily AI limit reached. Your allowance resets at UTC midnight.");
-          return;
-        }
         if (data.code === "paid_access_required") {
           rollbackPendingTurn();
           setHasAccess(false);
@@ -395,7 +354,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         setChatId(savedChatId);
         window.dispatchEvent(new Event("mun:chat-created"));
       }
-      void refreshUsage();
     } catch (caught) {
       rollbackPendingTurn();
       if (caught instanceof Error && caught.name === "AbortError") {
@@ -419,11 +377,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         <div>
           <p className="label-text">{eyebrow}</p>
           <h1 className="display-type text-2xl">{title}</h1>
-          {usage ? (
-            <p className="mt-1 text-xs text-[var(--muted)]" aria-label={`${usage.used.toLocaleString()} of ${usage.limit.toLocaleString()} AI tokens used today`}>
-              AI usage today: {usage.used.toLocaleString()} / {usage.limit.toLocaleString()} tokens · {usage.remaining.toLocaleString()} remaining
-            </p>
-          ) : null}
         </div>
         <button
           onClick={handleNewChat}

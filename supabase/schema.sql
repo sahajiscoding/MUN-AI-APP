@@ -202,3 +202,66 @@ DROP POLICY IF EXISTS "payments_select_own" ON public.payments;
 DROP POLICY IF EXISTS "payments_insert_own" ON public.payments;
 DROP POLICY IF EXISTS "payments_update_service" ON public.payments;
 CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.uid() = uid);
+
+
+-- ============================================================
+-- REFERRAL PARTNERS, ATTRIBUTION, AND COMMISSIONS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.referral_partners (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  whatsapp TEXT,
+  referral_code TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'suspended')),
+  commission_rate NUMERIC(5,2) NOT NULL DEFAULT 16.72 CHECK (commission_rate >= 0 AND commission_rate <= 100),
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.referrals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_id UUID NOT NULL REFERENCES public.referral_partners(id) ON DELETE CASCADE,
+  referred_uid UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  referral_code TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'registered' CHECK (status IN ('registered', 'converted', 'cancelled')),
+  first_payment_id UUID REFERENCES public.payments(id) ON DELETE SET NULL,
+  first_order_id TEXT,
+  converted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (referred_uid)
+);
+
+CREATE TABLE IF NOT EXISTS public.referral_commissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_id UUID NOT NULL REFERENCES public.referral_partners(id) ON DELETE CASCADE,
+  referral_id UUID NOT NULL REFERENCES public.referrals(id) ON DELETE CASCADE,
+  payment_id UUID REFERENCES public.payments(id) ON DELETE SET NULL,
+  order_id TEXT,
+  plan_id TEXT NOT NULL,
+  payment_amount NUMERIC(10,2) NOT NULL CHECK (payment_amount >= 0),
+  commission_rate NUMERIC(5,2) NOT NULL DEFAULT 16.72 CHECK (commission_rate >= 0 AND commission_rate <= 100),
+  commission_amount NUMERIC(10,2) NOT NULL CHECK (commission_amount >= 0),
+  status TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'paid', 'cancelled')),
+  paid_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (payment_id)
+);
+
+ALTER TABLE public.referral_partners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.referral_commissions ENABLE ROW LEVEL SECURITY;
+-- No client policies: all referral operations use authenticated server routes.
+
+CREATE INDEX IF NOT EXISTS referral_partners_code_idx ON public.referral_partners (referral_code);
+CREATE INDEX IF NOT EXISTS referrals_partner_idx ON public.referrals (partner_id);
+CREATE INDEX IF NOT EXISTS referrals_user_idx ON public.referrals (referred_uid);
+CREATE INDEX IF NOT EXISTS referrals_status_idx ON public.referrals (status);
+CREATE INDEX IF NOT EXISTS referral_commissions_partner_idx ON public.referral_commissions (partner_id);
+CREATE INDEX IF NOT EXISTS referral_commissions_status_idx ON public.referral_commissions (status);
+CREATE UNIQUE INDEX IF NOT EXISTS referral_commissions_payment_uidx ON public.referral_commissions (payment_id) WHERE payment_id IS NOT NULL;

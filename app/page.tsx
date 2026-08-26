@@ -19,11 +19,16 @@ const workspaces = [
   }
 ];
 
-export default function HomePage() {
+export default function HomePage({ referralName }: { referralName?: string } = {}) {
   return (
     <main className="min-h-screen">
       <section className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
         <div className="flex flex-col justify-between px-5 py-7 sm:px-8 lg:px-12">
+          {referralName ? (
+            <div className="mb-5 rounded-panel border border-[var(--patina)]/30 bg-[var(--patina)]/10 px-4 py-3 text-sm font-semibold text-[var(--ink)]" role="status">
+              <span aria-hidden="true">🎁 </span>Referred by {referralName}
+            </div>
+          ) : null}
           <nav className="flex items-center justify-between gap-4" aria-label="Public navigation">
             <Link href="/" className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-panel bg-[var(--ink)] text-[var(--paper)]">

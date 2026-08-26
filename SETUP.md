@@ -90,3 +90,23 @@ Set the provider keys only as server-side Vercel/environment variables. The appl
 ## Pre-deployment checklist
 
 Before a production release, run the lint, typecheck, build, and frozen-lockfile checks. Apply and verify Supabase migrations first. Confirm that `/api/chats`, `/api/progress`, `/api/me/entitlement`, `/api/payments/status`, and administrator endpoints return `401` without credentials. With a dedicated test account, generate a response, list Recent chats, open the transcript, verify a non-owner cannot open it, and confirm the mobile composer remains above the fixed navigation. For payments, use UroPay test mode and replay the same webhook event to verify it is acknowledged without a duplicate entitlement grant.
+
+
+## Referral partners and commissions
+
+The referral system uses the existing Supabase Auth, `users`, `payments`, and `entitlements` records. Apply `supabase/migrations/20260826_referral_system.sql` after the hardened data-contract migration. It creates `referral_partners`, `referrals`, and `referral_commissions`, enables RLS, and intentionally creates no browser policies; referral attribution and commission settlement are performed by server-side routes only.
+
+After applying the migration, create a partner from the administrator dashboard at `/admin/referrals`, or use a reviewed SQL insert such as:
+
+```sql
+insert into public.referral_partners
+  (name, email, whatsapp, referral_code, status, commission_rate)
+values
+  ('Test Partner', 'your-email@gmail.com', '9999999999', 'MUNTEST01', 'active', 16.72);
+```
+
+The resulting referral URL is `https://mun-ai-app.vercel.app/MUNTEST01`. Active partner names are loaded from Supabase and displayed as “Referred by …”; the name is never trusted from the URL. The app stores only the normalized code in the secure, HttpOnly `mun_referral_code` cookie for 30 days. First-touch attribution is enforced by the unique customer UID constraint and is never overwritten by a later partner URL.
+
+A commission is created only after the UroPay webhook verifies the order, payment status, amount, and event idempotency, marks the payment successful, and grants Premium. The server converts verified paise to rupees and calculates the commission from the partner’s stored rate. Failed, pending, duplicate, or browser success-page requests do not create commissions. The administrator referral dashboard can mark an unpaid record as paid; this changes only the ledger status and `paid_at`, and performs no bank or automatic payout.
+
+Before live use, test an active referral URL, first-touch behavior with two codes, a suspended partner, a self-referral, a successful weekly payment, a successful monthly payment, a failed/pending payment, duplicate webhook delivery, a non-referred purchase, and manual settlement. Referral tables must be present before testing; if they are absent, normal homepage and payment flows continue without referral attribution, while the server logs the unavailable referral lookup.

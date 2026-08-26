@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit } from "@/lib/server/rate-limit";
-import { AI_DAILY_TOKEN_LIMIT, actualUsageOrFallback, estimateAiReservation, reconcileAiTokens, releaseAiTokens, reserveAiTokens } from "@/lib/server/ai-usage";
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -43,10 +42,7 @@ type GenerationDetails = {
   turns: ChatTurn[];
 };
 
-type StreamPersistenceDetails = Omit<GenerationDetails, "output"> & {
-  reservationId: string;
-  reservedTokens: number;
-};
+type StreamPersistenceDetails = Omit<GenerationDetails, "output">;
 
 export async function POST(request: Request) {
   try {
@@ -88,28 +84,7 @@ export async function POST(request: Request) {
       country: body.data.country,
       agenda: body.data.agenda.slice(0, 500),
     };
-    const maxTokens = body.data.maxTokens ?? 2600;
-    const { reservation, reservedTokens } = await reserveAiTokens(uid, estimateAiReservation({
-      prompt: body.data.agenda,
-      committee: body.data.committee,
-      country: body.data.country,
-      experienceLevel: body.data.experienceLevel,
-      priorTurns,
-      maxTokens,
-      limit: AI_DAILY_TOKEN_LIMIT,
-    }));
-
-    let result;
-    try {
-      result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
-    } catch (error) {
-      try {
-        await releaseAiTokens(uid, reservation);
-      } catch (releaseError) {
-        console.error("Failed to release AI usage reservation:", releaseError instanceof Error ? releaseError.message : "unknown error");
-      }
-      throw error;
-    }
+    const result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
 
     if (result.stream) {
       const persistedStream = persistStream(result.stream, {
@@ -121,8 +96,6 @@ export async function POST(request: Request) {
         inputSummary,
         prompt: body.data.agenda,
         turns: priorTurns.concat({ role: "user", content: body.data.agenda }),
-        reservationId: reservation,
-        reservedTokens,
       });
 
       return new Response(persistedStream, {
@@ -137,7 +110,6 @@ export async function POST(request: Request) {
     }
 
     const output = result.content || "";
-    await reconcileAiTokens(uid, reservation, actualUsageOrFallback(result.usage, reservedTokens));
     await saveCompletedChat({
       chatId,
       uid,
@@ -167,33 +139,7 @@ function persistStream(
   const decoder = new TextDecoder();
   let content = "";
   let buffer = "";
-  let providerUsage: { totalTokens?: number } | undefined;
-  let receivedProviderData = false;
   let cancelled = false;
-  let settlementPromise: Promise<void> | null = null;
-
-  const settleUsageOnce = () => {
-    if (settlementPromise) return settlementPromise;
-
-    settlementPromise = (async () => {
-      if (providerUsage?.totalTokens !== undefined) {
-        await reconcileAiTokens(details.uid, details.reservationId, providerUsage.totalTokens);
-        return;
-      }
-
-      if (receivedProviderData) {
-        // Without provider accounting, charge the complete reservation. The
-        // reservation was an upper bound and this avoids undercounting a
-        // partially received or provider-specific stream.
-        await reconcileAiTokens(details.uid, details.reservationId, details.reservedTokens);
-        return;
-      }
-
-      await releaseAiTokens(details.uid, details.reservationId);
-    })();
-
-    return settlementPromise;
-  };
 
   const consumeLine = (line: string) => {
     if (!line.startsWith("data: ")) return;
@@ -201,8 +147,7 @@ function persistStream(
     if (data === "[DONE]") return;
 
     try {
-      const parsed = JSON.parse(data) as { content?: string; usage?: { totalTokens?: number } };
-      if (parsed.usage) providerUsage = parsed.usage;
+      const parsed = JSON.parse(data) as { content?: string };
       if (parsed.content) content += parsed.content;
     } catch {
       // Ignore incomplete or provider-specific SSE lines.
@@ -216,7 +161,6 @@ function persistStream(
           const { done, value } = await reader.read();
           if (done) break;
 
-          receivedProviderData = true;
           controller.enqueue(value);
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
@@ -226,8 +170,6 @@ function persistStream(
 
         buffer += decoder.decode();
         if (buffer) consumeLine(buffer);
-        await settleUsageOnce();
-
         if (!cancelled && content) {
           await saveCompletedChat({
             ...details,
@@ -237,11 +179,6 @@ function persistStream(
         }
         if (!cancelled) controller.close();
       } catch (error) {
-        try {
-          await settleUsageOnce();
-        } catch (usageError) {
-          console.error("Failed to settle interrupted AI usage:", usageError instanceof Error ? usageError.message : "unknown error");
-        }
         if (!cancelled) controller.error(error);
       } finally {
         reader.releaseLock();
@@ -249,15 +186,7 @@ function persistStream(
     },
     async cancel(reason) {
       cancelled = true;
-      try {
-        await reader.cancel(reason);
-      } finally {
-        try {
-          await settleUsageOnce();
-        } catch (usageError) {
-          console.error("Failed to settle cancelled AI usage:", usageError instanceof Error ? usageError.message : "unknown error");
-        }
-      }
+      await reader.cancel(reason);
     },
   });
 }

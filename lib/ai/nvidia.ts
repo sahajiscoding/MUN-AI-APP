@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/api";
-import type { AICompletionInput, AICompletionResult } from "@/lib/ai/types";
+import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 export async function callNvidiaMiniMax(
   input: AICompletionInput
@@ -28,7 +28,8 @@ export async function callNvidiaMiniMax(
       temperature: input.temperature ?? 0.8,
       top_p: 0.95,
       max_tokens: input.maxTokens ?? 2400,
-      stream: true
+      stream: true,
+      stream_options: { include_usage: true }
     }),
     signal: AbortSignal.timeout(90_000)
   });
@@ -66,12 +67,19 @@ export async function callNvidiaMiniMax(
                 continue;
               }
               try {
-                const parsed = JSON.parse(data);
+                const parsed = JSON.parse(data) as {
+                  choices?: Array<{ delta?: { content?: string } }>;
+                  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+                };
                 const content = parsed?.choices?.[0]?.delta?.content;
                 if (content) {
                   controller.enqueue(
                     new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
                   );
+                }
+                const usage = normalizeAIUsage(parsed.usage);
+                if (usage) {
+                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ usage })}\n\n`));
                 }
               } catch {
                 // skip malformed chunks

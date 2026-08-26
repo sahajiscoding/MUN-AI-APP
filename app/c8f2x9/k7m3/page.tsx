@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   Bot,
   CheckCircle2,
   Crown,
@@ -15,6 +16,15 @@ import {
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+type AdminUsageRow = {
+  uid: string;
+  displayName: string;
+  email: string;
+  lastActivity: string | null;
+  used: number;
+  remaining: number;
+};
 
 type AdminUser = {
   uid: string;
@@ -36,6 +46,8 @@ export default function AdminDashboardPage() {
   const [search, setSearch] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [actionBusy, setActionBusy] = useState("");
+  const [aiUsage, setAiUsage] = useState<AdminUsageRow[]>([]);
+  const [aiUsageLimit, setAiUsageLimit] = useState(100000);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiOutput, setAiOutput] = useState("");
@@ -62,6 +74,18 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     void fetchUsers();
+    void (async () => {
+      try {
+        const response = await fetch("/api/admin/ai-usage", { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+          setAiUsage(Array.isArray(data.users) ? data.users : []);
+          if (Number.isSafeInteger(data.limit) && data.limit > 0) setAiUsageLimit(data.limit);
+        }
+      } catch {
+        // The usage table is supplemental; user management remains available.
+      }
+    })();
   }, [fetchUsers]);
 
   async function mutateAdmin(uid: string, action: "approve" | "revoke") {
@@ -254,6 +278,44 @@ export default function AdminDashboardPage() {
                   <span className="inline-block w-2 h-4 bg-[var(--brass)] animate-pulse ml-0.5 align-middle" />
                 )}
               </article>
+            </div>
+          )}
+        </section>
+
+        {/* AI Usage */}
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Activity className="h-5 w-5 text-[var(--brass)]" aria-hidden="true" />
+            <h2 className="text-lg font-bold text-[var(--paper)]">AI Usage</h2>
+            <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/50">UTC today</span>
+          </div>
+          {aiUsage.length === 0 ? (
+            <p className="text-sm text-white/40">No daily usage rows are available yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="px-3 py-3 text-left font-semibold text-white/50">User</th>
+                    <th className="px-3 py-3 text-right font-semibold text-white/50">Today</th>
+                    <th className="px-3 py-3 text-right font-semibold text-white/50">Remaining</th>
+                    <th className="px-3 py-3 text-right font-semibold text-white/50">Last activity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aiUsage.map((row) => (
+                    <tr key={row.uid} className="border-b border-white/5">
+                      <td className="px-3 py-3">
+                        <p className="font-semibold text-[var(--paper)]">{row.displayName}</p>
+                        <p className="text-xs text-white/40">{row.email}</p>
+                      </td>
+                      <td className="px-3 py-3 text-right text-white/70">{row.used.toLocaleString()} / {aiUsageLimit.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-right text-[var(--patina)]">{row.remaining.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-right text-xs text-white/40">{row.lastActivity ? new Date(row.lastActivity).toLocaleString() : "Never"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>

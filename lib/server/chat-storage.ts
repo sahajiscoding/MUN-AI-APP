@@ -80,7 +80,9 @@ export async function saveChatTranscript(transcript: ChatTranscript) {
       chatPath(transcript.uid, transcript.id),
       JSON.stringify(transcript),
       {
-        contentType: "application/json; charset=utf-8",
+        // The private bucket allow-list is application/json. Keep the upload
+        // MIME type exact so Supabase Storage accepts the transcript.
+        contentType: "application/json",
         upsert: true,
       }
     );
@@ -105,4 +107,49 @@ export async function loadChatTranscript(uid: string, chatId: string) {
   } catch {
     return null;
   }
+}
+
+function transcriptToChatSummary(transcript: ChatTranscript) {
+  return {
+    id: transcript.id,
+    tool: transcript.tool,
+    input_summary: transcript.inputSummary,
+    created_at: transcript.createdAt,
+  };
+}
+
+/**
+ * Lists transcripts stored under one user's private Storage prefix.
+ * Returns null when Storage itself is unavailable so callers can distinguish
+ * an empty history from an infrastructure failure.
+ */
+export async function listChatTranscripts(uid: string, limit: number) {
+  if (!(await ensureChatBucket())) return null;
+
+  const supabase = supabaseAdmin();
+  const { data: files, error } = await supabase.storage
+    .from(CHAT_BUCKET)
+    .list(uid, {
+      limit: Math.min(Math.max(limit * 2, limit), 100),
+      sortBy: { column: "created_at", order: "desc" },
+    });
+
+  if (error) {
+    console.warn("Could not list chat transcripts from Supabase Storage.", error.message);
+    return null;
+  }
+
+  const chatIds = (files ?? [])
+    .map((file) => file.name.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\.json$/i)?.[1])
+    .filter((id): id is string => Boolean(id));
+
+  const transcripts = await Promise.all(
+    chatIds.map((chatId) => loadChatTranscript(uid, chatId))
+  );
+
+  return transcripts
+    .filter((transcript): transcript is ChatTranscript => Boolean(transcript))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit)
+    .map(transcriptToChatSummary);
 }

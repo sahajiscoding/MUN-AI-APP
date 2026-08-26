@@ -14,6 +14,12 @@ type ToolWorkspaceProps = {
 
 type ResponseMode = "quick" | "thorough" | "max";
 
+const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: number; temperature: number }> = {
+  quick: { label: "Quick", maxTokens: 1000, temperature: 0.7 },
+  thorough: { label: "Thorough", maxTokens: 2600, temperature: 0.85 },
+  max: { label: "Max", maxTokens: 6000, temperature: 1.0 },
+};
+
 const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
   research: "Build a complete research brief.",
   "country-profile": "Prioritize foreign policy, voting patterns, blocs, and red lines.",
@@ -26,14 +32,16 @@ const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const [input, setInput] = useState("");
-  const [responseMode, setResponseMode] = useState<ResponseMode>("thorough");
+  const [responseMode, setResponseMode] = useState<ResponseMode>("quick");
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const outputRef = useRef<HTMLDivElement>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   // Auto-scroll as content streams in
   useEffect(() => {
@@ -41,6 +49,21 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [output, streaming]);
+
+  // Keep the user informed while the model is waiting for its first token.
+  useEffect(() => {
+    if (!loading) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [loading]);
 
   // Check entitlement on mount
   useEffect(() => {
@@ -62,9 +85,21 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   }, [user, getIdToken]);
 
   function handleNewChat() {
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
     setInput("");
     setOutput("");
     setStatus("");
+    setLoading(false);
+    setStreaming(false);
+  }
+
+  function handleCancel() {
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    setStatus("Generation cancelled.");
+    setLoading(false);
+    setStreaming(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -79,22 +114,27 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
     setLoading(true);
     setStreaming(true);
-    setStatus("");
+    setElapsedSeconds(0);
+    setStatus("Preparing your request…");
     setOutput("");
 
-    const maxTokens = responseMode === "max" ? 8000 : responseMode === "thorough" ? 4000 : 1000;
-    const temperature = responseMode === "max" ? 1.0 : responseMode === "thorough" ? 0.85 : 0.7;
+    const { maxTokens, temperature } = responseModeConfig[responseMode];
+
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
 
     try {
       const token = await getIdToken();
+      setStatus(`Connecting to MiniMax M3 · ${responseMode}…`);
       const response = await fetch("/api/ai/research", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          committee: "General",
+          signal: controller.signal,
+          body: JSON.stringify({
+            committee: "General",
           agenda: `${input}\n\nTool focus: ${toolInstructions[mode]}`,
           country: "Any",
           experienceLevel: "intermediate",
@@ -103,6 +143,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           temperature
         })
       });
+
+      setStatus("Waiting for the first token…");
 
       if (!response.ok) {
         const data = await response.json();
@@ -138,6 +180,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               try {
                 const parsed = JSON.parse(data);
                 if (parsed.content) {
+                  if (!fullContent) {
+                    setStatus(`MiniMax M3 · ${responseMode} · writing`);
+                  }
                   fullContent += parsed.content;
                   setOutput(fullContent);
                 }
@@ -156,8 +201,13 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         setStatus(`MiniMax M3 · ${responseMode}`);
       }
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Something went wrong.");
+      if (caught instanceof Error && caught.name === "AbortError") {
+        setStatus("Generation cancelled.");
+      } else {
+        setStatus(caught instanceof Error ? caught.message : "Something went wrong.");
+      }
     } finally {
+      requestControllerRef.current = null;
       setLoading(false);
       setStreaming(false);
     }
@@ -184,7 +234,33 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
       {/* Messages area */}
       <div ref={outputRef} className="flex-1 overflow-y-auto">
-        {output ? (
+        {loading && !output ? (
+          <div className="flex h-full items-center justify-center px-5 text-center" aria-live="polite">
+            <div className="w-full max-w-md">
+              <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-sm">
+                <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
+              </div>
+              <h2 className="display-type mb-2 text-2xl">Generating your response</h2>
+              <p className="text-sm leading-6 text-[var(--muted)]">
+                {status || "The model is preparing your answer…"}
+              </p>
+              <div className="mt-5 flex items-center justify-center gap-3 text-xs text-[var(--muted)]">
+                <span>{elapsedSeconds}s elapsed</span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  {responseModeConfig[responseMode].label} mode · up to {responseModeConfig[responseMode].maxTokens} tokens
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="button-secondary mt-6 px-4 py-2 text-sm font-semibold"
+              >
+                Cancel generation
+              </button>
+            </div>
+          </div>
+        ) : output ? (
           <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
             {/* User message */}
             <div className="flex justify-end">
@@ -265,6 +341,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
+                aria-label="Send message"
+                title="Send message"
                 className="grid h-8 w-8 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] disabled:opacity-40 transition"
               >
                 {loading ? (

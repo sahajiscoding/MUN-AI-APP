@@ -1,4 +1,3 @@
-import { EntitlementBanner } from "@/components/entitlement-banner";
 import { PricingClient } from "@/components/pricing-client";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
 
@@ -17,7 +16,6 @@ export default function PricingPage() {
             Choose a plan to unlock AI-powered MUN preparation tools. Existing access is shown below, and new purchases open securely through UroPay.
           </p>
         </header>
-        <EntitlementBanner />
         <PricingClient />
       </div>
     </ProtectedAppShell>

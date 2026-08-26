@@ -14,21 +14,27 @@ export function AuthForm({ mode }: AuthFormProps) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const next = getSafeNext(searchParams.get("next"));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setConfirmationSent(false);
 
     try {
       if (mode === "signup") {
-        await signUpWithEmail(name, email, password);
+        const result = await signUpWithEmail(name, email, password);
+        if (!result.sessionCreated) {
+          setConfirmationSent(true);
+          return;
+        }
       } else {
         await signInWithEmail(email, password);
       }
@@ -158,8 +164,14 @@ export function AuthForm({ mode }: AuthFormProps) {
                 </div>
               </label>
 
+              {confirmationSent ? (
+                <p className="rounded-panel border border-[var(--patina)]/30 bg-[var(--patina)]/10 px-3 py-3 text-sm text-[var(--ink)]" role="status" aria-live="polite">
+                  Account created. Check your email to confirm your address, then return here to sign in.
+                </p>
+              ) : null}
+
               {error ? (
-                <p className="rounded-panel border border-red-900/20 bg-red-900/5 px-3 py-2 text-sm text-red-900">
+                <p className="rounded-panel border border-red-900/20 bg-red-900/5 px-3 py-2 text-sm text-red-900" role="alert">
                   {error}
                 </p>
               ) : null}
@@ -187,6 +199,19 @@ export function AuthForm({ mode }: AuthFormProps) {
       </main>
     </div>
   );
+}
+
+function getSafeNext(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return "/dashboard";
+  }
+
+  try {
+    const target = new URL(value, window.location.origin);
+    return target.origin === window.location.origin ? `${target.pathname}${target.search}${target.hash}` : "/dashboard";
+  } catch {
+    return "/dashboard";
+  }
 }
 
 function formatAuthError(error: unknown) {

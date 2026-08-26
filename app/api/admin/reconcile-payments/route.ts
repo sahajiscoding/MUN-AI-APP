@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { timingSafeEqual } from "node:crypto";
 import { reconcilePaidPayments } from "@/lib/server/payment-reconciliation";
 
 export const runtime = "nodejs";
@@ -27,8 +28,9 @@ function isAuthorized(
     return false;
   }
 
-  return suppliedSecret ===
-    configuredSecret;
+  const supplied = Buffer.from(suppliedSecret);
+  const configured = Buffer.from(configuredSecret);
+  return supplied.length === configured.length && timingSafeEqual(supplied, configured);
 }
 
 export async function POST(
@@ -47,15 +49,12 @@ export async function POST(
       );
     }
 
-    const results =
-      await reconcilePaidPayments(
-        50
-      );
+    const results = await reconcilePaidPayments(50);
 
     return NextResponse.json({
       ok: true,
       processed: results.length,
-      results,
+      failed: results.filter((result) => !result.repaired && !result.reason.startsWith("Entitlement already")).length,
     });
   } catch (error) {
     console.error(

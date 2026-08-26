@@ -1,5 +1,5 @@
 export type Plan = {
-  id: string;
+  id: "weekly-pass" | "monthly-pass";
   name: string;
   description: string;
   amount: number;
@@ -41,8 +41,21 @@ export const plans: Plan[] = [
   }
 ];
 
-export function getPlan(planId: string) {
-  return plans.find((plan) => plan.id === planId);
+const legacyPlanIds: Record<string, Plan["id"]> = {
+  weekly: "weekly-pass",
+  "weekly-pass": "weekly-pass",
+  monthly: "monthly-pass",
+  "monthly-pass": "monthly-pass",
+};
+
+export function canonicalPlanId(planId: string | null | undefined) {
+  if (!planId) return null;
+  return legacyPlanIds[planId.trim().toLowerCase()] ?? null;
+}
+
+export function getPlan(planId: string | null | undefined) {
+  const canonicalId = canonicalPlanId(planId);
+  return plans.find((plan) => plan.id === canonicalId);
 }
 
 export function formatPlanPrice(plan: Plan) {

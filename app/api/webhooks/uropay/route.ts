@@ -64,6 +64,7 @@ function toNumberOrNull(
 export async function POST(
   request: Request
 ) {
+  let claimedEventId: string | null = null;
   try {
     const rawBody = await request.text();
 
@@ -181,37 +182,6 @@ export async function POST(
       );
     }
 
-    // An event ID is globally unique in our payments table.
-    // A repeated copy of the exact same event is safe to acknowledge.
-    const {
-      data: existingEvent,
-      error: existingEventError,
-    } = await admin
-      .from("payments")
-      .select("id")
-      .eq("event_id", eventId)
-      .maybeSingle();
-
-    if (existingEventError) {
-      console.error(
-        "Event lookup failed:",
-        existingEventError
-      );
-
-      return Response.json(
-        { ok: false, error: "database_error" },
-        { status: 500 }
-      );
-    }
-
-    // If the exact event was already stored, do not process it twice.
-    if (existingEvent) {
-      return Response.json({
-        ok: true,
-        already_processed: true,
-      });
-    }
-
     if (
       payment.environment &&
       event.environment &&
@@ -304,6 +274,25 @@ export async function POST(
       );
     }
 
+    // Atomically claim the provider event before changing payment or
+    // entitlement state. A unique-violation means another delivery won.
+    const { error: eventClaimError } = await admin.from("webhook_events").insert({
+      event_id: eventId,
+      event: "uropay",
+      status: "processing",
+      order_ref: tenantOrderRef,
+      uropay_order_id: orderId,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (eventClaimError?.code === "23505") {
+      return Response.json({ ok: true, already_processed: true });
+    }
+    if (eventClaimError) {
+      throw eventClaimError;
+    }
+    claimedEventId = eventId;
+
     // --------------------------------------------------
     // NON-PAID EVENTS
     // --------------------------------------------------
@@ -332,12 +321,11 @@ export async function POST(
           updateError
         );
 
-        return Response.json(
-          { ok: false, error: "payment_update_failed" },
-          { status: 500 }
-        );
+        throw new Error("payment_update_failed");
       }
 
+      await markWebhookEventProcessed(admin, eventId);
+      claimedEventId = null;
       return Response.json({
         ok: true,
         status: authoritativeStatus,
@@ -372,16 +360,15 @@ export async function POST(
           entitlementLookupError
         );
 
-        return Response.json(
-          { ok: false, error: "entitlement_lookup_failed" },
-          { status: 500 }
-        );
+        throw new Error("entitlement_lookup_failed");
       }
 
       if (
         entitlement?.status === "active" &&
         entitlement.latest_payment_id === payment.id
       ) {
+        await markWebhookEventProcessed(admin, eventId);
+        claimedEventId = null;
         return Response.json({
           ok: true,
           already_processed: true,
@@ -397,10 +384,7 @@ export async function POST(
           payment.plan_id
         );
 
-        return Response.json(
-          { ok: false, error: "plan_not_found" },
-          { status: 500 }
-        );
+        throw new Error("plan_not_found");
       }
 
       await grantEntitlement({
@@ -410,6 +394,8 @@ export async function POST(
         paymentId: payment.id,
         orderId,
       });
+      await markWebhookEventProcessed(admin, eventId);
+      claimedEventId = null;
 
       return Response.json({
         ok: true,
@@ -458,6 +444,8 @@ export async function POST(
     }
 
     if (!updatedPayment) {
+      await markWebhookEventProcessed(admin, eventId);
+      claimedEventId = null;
       return Response.json({
         ok: true,
         already_processed: true,
@@ -485,6 +473,8 @@ export async function POST(
       paymentId: payment.id,
       orderId,
     });
+    await markWebhookEventProcessed(admin, eventId);
+    claimedEventId = null;
 
     console.log(
       `UroPay payment confirmed: ${plan.name} for user ${payment.uid}`
@@ -496,9 +486,12 @@ export async function POST(
       entitlement_granted: true,
     });
   } catch (error) {
+    if (claimedEventId) {
+      await supabaseAdmin().from("webhook_events").delete().eq("event_id", claimedEventId);
+    }
     console.error(
       "UroPay webhook processing error:",
-      error
+      error instanceof Error ? error.message : "unknown error"
     );
 
     return Response.json(
@@ -508,9 +501,14 @@ export async function POST(
   }
 }
 
+async function markWebhookEventProcessed(admin: ReturnType<typeof supabaseAdmin>, eventId: string) {
+  const { error } = await admin
+    .from("webhook_events")
+    .update({ status: "processed", updated_at: new Date().toISOString() })
+    .eq("event_id", eventId);
+  if (error) throw error;
+}
+
 export async function GET() {
-  return Response.json({
-    ok: true,
-    message: "UroPay webhook endpoint active",
-  });
+  return Response.json({ ok: true });
 }

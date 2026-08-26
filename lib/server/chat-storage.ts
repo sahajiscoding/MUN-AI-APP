@@ -14,6 +14,8 @@ export type ChatTranscript = {
   createdAt: string;
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function chatPath(uid: string, chatId: string) {
   return `${uid}/${chatId}.json`;
 }
@@ -52,25 +54,18 @@ function toTranscript(value: unknown): ChatTranscript | null {
 }
 
 async function ensureChatBucket() {
-  const supabase = supabaseAdmin();
-  const { data, error } = await supabase.storage.getBucket(CHAT_BUCKET);
-  if (data) return true;
+  const { data, error } = await supabaseAdmin().storage.getBucket(CHAT_BUCKET);
+  if (data && data.public === false) return true;
 
-  const { error: createError } = await supabase.storage.createBucket(CHAT_BUCKET, {
-    public: false,
-    fileSizeLimit: "10MB",
-    allowedMimeTypes: ["application/json"],
-  });
-
-  if (createError && !createError.message.toLowerCase().includes("already exists")) {
-    console.warn("Could not provision the private chat-history bucket.", (error || createError).message);
-    return false;
-  }
-
-  return true;
+  console.error(
+    "Chat-history Storage is unavailable or not private. Apply the Supabase migration before serving chat history.",
+    error?.message || "bucket configuration mismatch"
+  );
+  return false;
 }
 
 export async function saveChatTranscript(transcript: ChatTranscript) {
+  if (!UUID_PATTERN.test(transcript.uid) || !UUID_PATTERN.test(transcript.id)) return false;
   if (!(await ensureChatBucket())) return false;
 
   const supabase = supabaseAdmin();
@@ -96,6 +91,8 @@ export async function saveChatTranscript(transcript: ChatTranscript) {
 }
 
 export async function loadChatTranscript(uid: string, chatId: string) {
+  if (!UUID_PATTERN.test(uid) || !UUID_PATTERN.test(chatId)) return null;
+
   const { data, error } = await supabaseAdmin().storage
     .from(CHAT_BUCKET)
     .download(chatPath(uid, chatId));
@@ -124,7 +121,7 @@ function transcriptToChatSummary(transcript: ChatTranscript) {
  * an empty history from an infrastructure failure.
  */
 export async function listChatTranscripts(uid: string, limit: number) {
-  if (!(await ensureChatBucket())) return null;
+  if (!UUID_PATTERN.test(uid) || !(await ensureChatBucket())) return null;
 
   const supabase = supabaseAdmin();
   const { data: files, error } = await supabase.storage

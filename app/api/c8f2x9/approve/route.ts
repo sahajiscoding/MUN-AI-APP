@@ -9,8 +9,8 @@ export async function POST(request: Request) {
     const admin = await requireAdmin();
     const body = await parseJson<{ uid: string }>(request);
 
-    if (!body.uid) {
-      throw new ApiError(400, "missing_uid", "Provide a user UID to approve.");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.uid || "")) {
+      throw new ApiError(400, "invalid_uid", "Provide a valid user UID to approve.");
     }
 
     const { error } = await supabaseAdmin().from("admin_users").upsert(
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    await supabaseAdmin().from("entitlements").upsert(
+    const { error: entitlementError } = await supabaseAdmin().from("entitlements").upsert(
       {
         uid: body.uid,
         status: "active",
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       },
       { onConflict: "uid" }
     );
+    if (entitlementError) throw entitlementError;
 
     return Response.json({ ok: true, message: "User approved as admin." });
   } catch (error) {

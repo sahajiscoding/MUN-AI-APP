@@ -53,6 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, getIdToken } = useAuth();
   const [chats, setChats] = useState<ChatHistoryItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
+  const [chatError, setChatError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -73,24 +74,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (!user) {
         if (!cancelled) {
           setChats([]);
+          setChatError("");
           setLoadingChats(false);
         }
         return;
       }
 
       setLoadingChats(true);
+      setChatError("");
       try {
         const token = await getIdToken();
         const response = await fetch("/api/chats?limit=50", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = (await response.json()) as { chats?: ChatHistoryItem[] };
+        const data = (await response.json()) as { chats?: ChatHistoryItem[]; error?: string };
 
         if (!cancelled) {
           setChats(response.ok ? data.chats ?? [] : []);
+          setChatError(response.ok ? "" : data.error || "Could not load your saved chats.");
         }
       } catch {
-        if (!cancelled) setChats([]);
+        if (!cancelled) {
+          setChats([]);
+          setChatError("Could not load your saved chats.");
+        }
       } finally {
         if (!cancelled) setLoadingChats(false);
       }
@@ -225,6 +232,19 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                   {!collapsed && <span>Loading chats...</span>}
                 </div>
+              ) : chatError ? (
+                !collapsed && (
+                  <div className="px-2 py-3">
+                    <p className="text-xs leading-5 text-[var(--muted)]">{chatError}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new Event("mun:chat-history-refresh"))}
+                      className="mt-2 text-xs font-semibold text-[var(--patina)] hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )
               ) : chats.length === 0 ? (
                 !collapsed && (
                   <p className="px-2 py-3 text-xs text-[var(--muted)]">

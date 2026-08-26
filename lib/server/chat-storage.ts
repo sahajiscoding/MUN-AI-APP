@@ -140,7 +140,7 @@ export async function listChatTranscripts(uid: string, limit: number) {
   }
 
   const chatIds = (files ?? [])
-    .map((file) => file.name.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\.json$/i)?.[1])
+    .map((file) => file.name.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/i)?.[1])
     .filter((id): id is string => Boolean(id));
 
   const transcripts = await Promise.all(

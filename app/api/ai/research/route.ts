@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit } from "@/lib/server/rate-limit";
-import { saveChatTranscript } from "@/lib/server/chat-storage";
+import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -19,6 +19,15 @@ const schema = z.object({
   provider: z.enum(["openrouter", "nvidia"]).optional(),
   maxTokens: z.number().int().min(256).max(8000).optional(),
   temperature: z.number().min(0).max(1.5).optional(),
+  chatId: z.string().uuid().optional(),
+  conversation: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().trim().min(1).max(12000),
+  })).max(12).superRefine((turns, context) => {
+    if (turns.reduce((total, turn) => total + turn.content.length, 0) > 36_000) {
+      context.addIssue({ code: "custom", message: "Conversation context is too large." });
+    }
+  }).optional(),
 });
 
 type GenerationDetails = {
@@ -30,6 +39,7 @@ type GenerationDetails = {
   inputSummary: Record<string, unknown>;
   prompt: string;
   output: string;
+  turns: ChatTurn[];
 };
 
 export async function POST(request: Request) {
@@ -59,14 +69,20 @@ export async function POST(request: Request) {
       throw new ApiError(400, "invalid_research_request", "Add committee, agenda, and country.");
     }
 
-    const chatId = crypto.randomUUID();
-    const tool = body.data.tool || "research";
-    const inputSummary = {
+    const existing = body.data.chatId ? await loadOwnedChat(uid, body.data.chatId) : null;
+    if (body.data.chatId && !existing) {
+      throw new ApiError(404, "chat_not_found", "That saved chat could not be found.");
+    }
+
+    const chatId = body.data.chatId || crypto.randomUUID();
+    const priorTurns = limitTurns(existing?.turns ?? body.data.conversation ?? []);
+    const tool = existing?.tool || body.data.tool || "research";
+    const inputSummary = existing?.inputSummary ?? {
       committee: body.data.committee,
       country: body.data.country,
       agenda: body.data.agenda.slice(0, 500),
     };
-    const result = await runMunResearch(body.data);
+    const result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
 
     if (result.stream) {
       const persistedStream = persistStream(result.stream, {
@@ -77,6 +93,7 @@ export async function POST(request: Request) {
         model: result.model,
         inputSummary,
         prompt: body.data.agenda,
+        turns: priorTurns.concat({ role: "user", content: body.data.agenda }),
       });
 
       return new Response(persistedStream, {
@@ -100,6 +117,10 @@ export async function POST(request: Request) {
       inputSummary,
       prompt: body.data.agenda,
       output,
+      turns: priorTurns.concat(
+        { role: "user", content: body.data.agenda },
+        { role: "assistant", content: output }
+      ),
     });
 
     return Response.json({ ...result, chatId });
@@ -147,7 +168,13 @@ function persistStream(
 
         buffer += decoder.decode();
         if (buffer) consumeLine(buffer);
-        if (content) await saveCompletedChat({ ...details, output: content });
+        if (content) {
+          await saveCompletedChat({
+            ...details,
+            output: content,
+            turns: details.turns.concat({ role: "assistant", content }),
+          });
+        }
         controller.close();
       } catch (error) {
         controller.error(error);
@@ -161,6 +188,53 @@ function persistStream(
   });
 }
 
+function limitTurns(turns: ChatTurn[]) {
+  const selected: ChatTurn[] = [];
+  let total = 0;
+  for (const turn of turns.slice(-12).reverse()) {
+    const content = turn.content.trim().slice(0, 12_000);
+    if (!content || total + content.length > 36_000) break;
+    selected.unshift({ role: turn.role, content });
+    total += content.length;
+  }
+  return selected;
+}
+
+async function loadOwnedChat(uid: string, chatId: string) {
+  const stored = await loadChatTranscript(uid, chatId);
+  if (stored && stored.uid === uid) return stored;
+
+  const { data, error } = await supabaseAdmin()
+    .from("ai_generations")
+    .select("id, uid, tool, provider, model, input_summary, output, created_at")
+    .eq("id", chatId)
+    .eq("uid", uid)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const summary = (data.input_summary ?? {}) as Record<string, unknown>;
+  const prompt = typeof summary.agenda === "string" ? summary.agenda : "";
+  const output = typeof data.output === "string" ? data.output : "";
+  const rawTurns = Array.isArray(summary.turns) ? summary.turns : [];
+  const turns = rawTurns.length > 0 ? limitTurns(rawTurns as ChatTurn[]) : [
+    ...(prompt ? [{ role: "user" as const, content: prompt }] : []),
+    ...(output ? [{ role: "assistant" as const, content: output }] : []),
+  ];
+
+  return {
+    id: data.id,
+    uid: data.uid,
+    tool: data.tool,
+    provider: data.provider,
+    model: data.model,
+    inputSummary: summary,
+    prompt,
+    output,
+    turns,
+    createdAt: data.created_at,
+  };
+}
+
 async function saveCompletedChat(details: GenerationDetails) {
   await saveChatTranscript({
     id: details.chatId,
@@ -171,18 +245,20 @@ async function saveCompletedChat(details: GenerationDetails) {
     inputSummary: details.inputSummary,
     prompt: details.prompt,
     output: details.output,
+    turns: details.turns,
     createdAt: new Date().toISOString(),
   });
 
-  const { error } = await supabaseAdmin().from("ai_generations").insert({
+  const { error } = await supabaseAdmin().from("ai_generations").upsert({
     id: details.chatId,
     uid: details.uid,
     tool: details.tool,
     provider: details.provider,
     model: details.model,
-    input_summary: details.inputSummary,
+    input_summary: { ...details.inputSummary, turns: details.turns },
     output: details.output,
-  });
+    created_at: new Date().toISOString(),
+  }, { onConflict: "id" });
 
   if (error) {
     console.error("Failed to index generation in Supabase:", error.message);

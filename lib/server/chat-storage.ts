@@ -2,6 +2,11 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 const CHAT_BUCKET = "chat-history";
 
+export type ChatTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type ChatTranscript = {
   id: string;
   uid: string;
@@ -11,6 +16,7 @@ export type ChatTranscript = {
   inputSummary: Record<string, unknown>;
   prompt: string;
   output: string;
+  turns: ChatTurn[];
   createdAt: string;
 };
 
@@ -18,6 +24,23 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 function chatPath(uid: string, chatId: string) {
   return `${uid}/${chatId}.json`;
+}
+
+function normalizeTurns(value: unknown, prompt: string, output: string): ChatTurn[] {
+  if (Array.isArray(value)) {
+    const turns = value.filter((turn): turn is ChatTurn => {
+      if (!turn || typeof turn !== "object") return false;
+      const item = turn as Record<string, unknown>;
+      return (item.role === "user" || item.role === "assistant") &&
+        typeof item.content === "string" && item.content.length <= 12000;
+    });
+    if (turns.length > 0) return turns;
+  }
+
+  return [
+    ...(prompt ? [{ role: "user" as const, content: prompt }] : []),
+    ...(output ? [{ role: "assistant" as const, content: output }] : []),
+  ];
 }
 
 function toTranscript(value: unknown): ChatTranscript | null {
@@ -49,6 +72,7 @@ function toTranscript(value: unknown): ChatTranscript | null {
         : {},
     prompt: item.prompt,
     output: item.output,
+    turns: normalizeTurns(item.turns, item.prompt, item.output),
     createdAt: item.createdAt,
   };
 }
@@ -107,10 +131,11 @@ export async function loadChatTranscript(uid: string, chatId: string) {
 }
 
 function transcriptToChatSummary(transcript: ChatTranscript) {
+  const { turns: _turns, ...summary } = transcript.inputSummary;
   return {
     id: transcript.id,
     tool: transcript.tool,
-    input_summary: transcript.inputSummary,
+    input_summary: summary,
     created_at: transcript.createdAt,
   };
 }

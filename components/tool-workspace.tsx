@@ -16,6 +16,11 @@ type ToolWorkspaceProps = {
 
 type ResponseMode = "quick" | "thorough" | "max";
 
+type ConversationTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: number; temperature: number }> = {
   quick: { label: "Quick", maxTokens: 1000, temperature: 0.7 },
   thorough: { label: "Thorough", maxTokens: 2600, temperature: 0.85 },
@@ -31,21 +36,12 @@ function isSafeExternalUrl(value: string) {
   }
 }
 
-const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
-  research: "Build a complete research brief.",
-  "country-profile": "Prioritize foreign policy, voting patterns, blocs, and red lines.",
-  "position-paper": "Prioritize position paper structure, arguments, and policy proposals.",
-  speech: "Prioritize opening speech angles and moderated caucus speeches.",
-  poi: "Prioritize POIs, likely attacks, rebuttals, and defensive prep.",
-  resolution: "Prioritize operative clauses, sponsors, signatories, and negotiation strategy."
-};
-
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const pathname = usePathname();
   const [chatId, setChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [submittedPrompt, setSubmittedPrompt] = useState("");
+  const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [responseMode, setResponseMode] = useState<ResponseMode>("quick");
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -129,6 +125,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setLoadingSavedChat(true);
     setStreaming(false);
     setStatus("Loading saved chat…");
+    setTurns([]);
     setOutput("");
 
     async function loadChat() {
@@ -138,7 +135,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = (await response.json()) as {
-          chat?: { prompt: string; output: string; model: string };
+          chat?: { prompt: string; output: string; model: string; turns?: ConversationTurn[] };
           error?: string;
         };
 
@@ -147,15 +144,21 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         }
 
         if (!cancelled) {
-          setInput(data.chat.prompt);
-          setSubmittedPrompt(data.chat.prompt);
-          setOutput(data.chat.output);
+          const loadedTurns = Array.isArray(data.chat.turns) && data.chat.turns.length > 0
+            ? data.chat.turns
+            : [
+                ...(data.chat.prompt ? [{ role: "user" as const, content: data.chat.prompt }] : []),
+                ...(data.chat.output ? [{ role: "assistant" as const, content: data.chat.output }] : []),
+              ];
+          setTurns(loadedTurns);
+          setInput("");
+          setOutput("");
           setStatus(`${data.chat.model} · saved chat`);
         }
       } catch (error) {
         if (!cancelled) {
           setInput("");
-          setSubmittedPrompt("");
+          setTurns([]);
           setOutput("");
           setStatus(error instanceof Error ? error.message : "That saved chat could not be opened.");
         }
@@ -197,7 +200,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
     setInput("");
-    setSubmittedPrompt("");
+    setTurns([]);
     setOutput("");
     setStatus("");
     setLoading(false);
@@ -229,9 +232,10 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       return;
     }
 
+    const priorTurns = turns;
     shouldAutoScrollRef.current = true;
     setShowJumpToLatest(false);
-    setSubmittedPrompt(prompt);
+    setTurns((current) => [...current, { role: "user", content: prompt }]);
     setLoading(true);
     setLoadingSavedChat(false);
     setStreaming(true);
@@ -256,7 +260,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           signal: controller.signal,
           body: JSON.stringify({
             committee: "General",
-            agenda: `${prompt}\n\nTool focus: ${toolInstructions[mode]}`,
+            agenda: prompt,
+            chatId: chatId || undefined,
+            conversation: priorTurns.slice(-12),
             tool: mode,
           country: "Any",
           experienceLevel: "intermediate",
@@ -317,10 +323,18 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         }
 
         setStatus(`MiniMax M3 · ${responseMode}`);
+        if (fullContent) {
+          setTurns((current) => [...current, { role: "assistant", content: fullContent }]);
+          setOutput("");
+        }
       } else {
         // Non-streaming fallback
         const data = await response.json();
-        setOutput(data.content);
+        const content = typeof data.content === "string" ? data.content : "";
+        if (content) {
+          setTurns((current) => [...current, { role: "assistant", content }]);
+        }
+        setOutput("");
         savedChatId = data.chatId || savedChatId;
         setStatus(`MiniMax M3 · ${responseMode}`);
       }
@@ -364,7 +378,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
       {/* Messages area */}
       <div ref={outputRef} onScroll={handleOutputScroll} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {loading && !output ? (
+        {loading && turns.length === 0 && !output ? (
           <div className="flex h-full items-center justify-center px-5 text-center" aria-live="polite">
             <div className="w-full max-w-md">
               <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-sm">
@@ -392,46 +406,77 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               </button>
             </div>
           </div>
-        ) : output ? (
+        ) : turns.length > 0 || output ? (
           <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
-            {/* User message */}
-            <div className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
-                <p className="whitespace-pre-wrap text-sm leading-6">{submittedPrompt}</p>
-              </div>
-            </div>
-
-            {/* AI response */}
-            <div className="flex gap-3">
-              <div className="shrink-0 mt-1">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--patina)] text-white">
-                  <Bot className="h-4 w-4" />
+            {turns.map((turn, index) =>
+              turn.role === "user" ? (
+                <div className="flex justify-end" key={`${turn.role}-${index}`}>
+                  <div className="max-w-[80%] rounded-2xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
+                    <p className="whitespace-pre-wrap text-sm leading-6">{turn.content}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 surface rounded-2xl px-5 py-4">
-                {status && (
-                  <p className="mb-3 text-xs text-[var(--muted)]">{status}</p>
-                )}
-                <div className="chat-markdown text-sm leading-7">
-                  <Streamdown
-                    mode={streaming ? "streaming" : "static"}
-                    isAnimating={streaming}
-                    animated={streaming}
-                    parseIncompleteMarkdown
-                    lineNumbers={false}
-                    linkSafety={{ enabled: true, onLinkCheck: isSafeExternalUrl }}
-                  >
-                    {output}
-                  </Streamdown>
-                  {streaming && (
+              ) : (
+                <div className="flex gap-3" key={`${turn.role}-${index}`}>
+                  <div className="mt-1 shrink-0">
+                    <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--patina)] text-white">
+                      <Bot className="h-4 w-4" aria-hidden="true" />
+                    </div>
+                  </div>
+                  <div className="surface flex-1 rounded-2xl px-5 py-4">
+                    <div className="chat-markdown text-sm leading-7">
+                      <Streamdown
+                        mode="static"
+                        parseIncompleteMarkdown
+                        lineNumbers={false}
+                        linkSafety={{ enabled: true, onLinkCheck: isSafeExternalUrl }}
+                      >
+                        {turn.content}
+                      </Streamdown>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+
+            {output ? (
+              <div className="flex gap-3">
+                <div className="mt-1 shrink-0">
+                  <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--patina)] text-white">
+                    <Bot className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="surface flex-1 rounded-2xl px-5 py-4">
+                  {status ? <p className="mb-3 text-xs text-[var(--muted)]" aria-live="polite">{status}</p> : null}
+                  <div className="chat-markdown text-sm leading-7">
+                    <Streamdown
+                      mode="streaming"
+                      isAnimating
+                      animated
+                      parseIncompleteMarkdown
+                      lineNumbers={false}
+                      linkSafety={{ enabled: true, onLinkCheck: isSafeExternalUrl }}
+                    >
+                      {output}
+                    </Streamdown>
                     <span
-                      className="inline-block h-4 w-2 animate-pulse bg-[var(--ink)] ml-0.5 align-middle"
+                      className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-[var(--ink)] align-middle"
                       aria-label="Response is still being generated"
                     />
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : loading && turns.length > 0 ? (
+              <div className="flex gap-3" aria-live="polite">
+                <div className="mt-1 shrink-0">
+                  <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--patina)] text-white">
+                    <Bot className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="surface flex-1 rounded-2xl px-5 py-4">
+                  <p className="text-sm text-[var(--muted)]">{status || "Generating your response…"}</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-5">

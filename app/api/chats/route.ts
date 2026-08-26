@@ -21,7 +21,11 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    const databaseChats = data ?? [];
+    const databaseChats = (data ?? []).map((chat) => {
+      const summary = (chat.input_summary ?? {}) as Record<string, unknown>;
+      const { turns: _turns, ...lightSummary } = summary;
+      return { ...chat, input_summary: lightSummary };
+    });
     const storageChats =
       error || databaseChats.length < limit
         ? await listChatTranscripts(user.uid, limit)

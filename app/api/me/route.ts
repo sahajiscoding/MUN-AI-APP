@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
+import { attachReferralToUser } from "@/lib/referrals";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -28,6 +29,10 @@ export async function PUT(request: Request) {
       { onConflict: "uid" }
     );
     if (error) throw error;
+
+    // First-touch attribution is attached only after a verified Supabase UID
+    // exists. Existing referrals are never overwritten.
+    await attachReferralToUser(user.uid);
 
     return Response.json({ ok: true });
   } catch (error) {

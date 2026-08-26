@@ -3,7 +3,7 @@ import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { runMunResearch } from "@/lib/ai/router";
 import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
-import { getAdminSession } from "@/lib/server/admin-auth";
+import { requireAdmin } from "@/lib/server/admin-auth";
 import { saveChatTranscript } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -33,25 +33,19 @@ type GenerationDetails = {
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get("Authorization");
-    const adminSession = await getAdminSession();
-    const isAdminBypass = authHeader === "Bearer admin-bypass";
-
     let uid: string;
-    if (isAdminBypass) {
-      uid = adminSession?.uid || "00000000-0000-0000-0000-000000000001";
-    } else {
-      try {
-        const user = await requireUser(request);
-        await assertPaidAccess(user.uid);
-        uid = user.uid;
-      } catch {
-        if (adminSession) {
-          uid = adminSession.uid;
-        } else {
-          throw new ApiError(401, "unauthorized", "Login required.");
-        }
+    try {
+      const user = await requireUser(request);
+      await assertPaidAccess(user.uid);
+      uid = user.uid;
+    } catch (error) {
+      // A regular user who lacks Premium must still receive the paywall error;
+      // only a separately verified administrator session may bypass it.
+      if (!(error instanceof ApiError) || error.status !== 401) {
+        throw error;
       }
+      const admin = await requireAdmin();
+      uid = admin.uid;
     }
 
     const body = schema.safeParse(await parseJson<unknown>(request));

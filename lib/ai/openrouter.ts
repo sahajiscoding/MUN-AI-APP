@@ -4,7 +4,7 @@ import type { AICompletionInput, AICompletionResult } from "@/lib/ai/types";
 export async function callOpenRouter(
   input: AICompletionInput
 ): Promise<AICompletionResult> {
-  const apiKey = process.env.OPENROUTER_API_KEY || "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";
+  const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_GLM_MODEL || "z-ai/glm-5.2:free";
 
   if (!apiKey || !model) {

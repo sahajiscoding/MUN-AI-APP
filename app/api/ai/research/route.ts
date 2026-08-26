@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
-import { supabaseAdmin } from "@/lib/supabase/server";
 import { runMunResearch } from "@/lib/ai/router";
 import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
 import { getAdminSession } from "@/lib/server/admin-auth";
+import { saveChatTranscript } from "@/lib/server/chat-storage";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -13,21 +14,31 @@ const schema = z.object({
   agenda: z.string().min(5),
   country: z.string().min(2),
   experienceLevel: z.string().min(2),
+  tool: z.enum(["research", "country-profile", "position-paper", "speech", "poi", "resolution"]).optional(),
   provider: z.enum(["openrouter", "nvidia"]).optional(),
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
 });
 
+type GenerationDetails = {
+  chatId: string;
+  uid: string;
+  tool: string;
+  provider: string;
+  model: string;
+  inputSummary: Record<string, unknown>;
+  prompt: string;
+  output: string;
+};
+
 export async function POST(request: Request) {
   try {
-    // Admin bypass: accept Bearer admin-bypass header (with or without cookie)
     const authHeader = request.headers.get("Authorization");
     const adminSession = await getAdminSession();
     const isAdminBypass = authHeader === "Bearer admin-bypass";
 
     let uid: string;
     if (isAdminBypass) {
-      // Admin bypass — use session UID if available, otherwise default
       uid = adminSession?.uid || "00000000-0000-0000-0000-000000000001";
     } else {
       try {
@@ -35,7 +46,6 @@ export async function POST(request: Request) {
         await assertPaidAccess(user.uid);
         uid = user.uid;
       } catch {
-        // If auth fails and we have admin session, use it anyway
         if (adminSession) {
           uid = adminSession.uid;
         } else {
@@ -45,105 +55,136 @@ export async function POST(request: Request) {
     }
 
     const body = schema.safeParse(await parseJson<unknown>(request));
-
     if (!body.success) {
       throw new ApiError(400, "invalid_research_request", "Add committee, agenda, and country.");
     }
 
+    const chatId = crypto.randomUUID();
+    const tool = body.data.tool || "research";
+    const inputSummary = {
+      committee: body.data.committee,
+      country: body.data.country,
+      agenda: body.data.agenda.slice(0, 500),
+    };
     const result = await runMunResearch(body.data);
 
-    // If streaming, return SSE response
     if (result.stream) {
-      const provider = result.provider;
-      const model = result.model;
-      const inputSummary = {
-        committee: body.data.committee,
-        country: body.data.country,
-        agenda: body.data.agenda.slice(0, 500),
-      };
+      const persistedStream = persistStream(result.stream, {
+        chatId,
+        uid,
+        tool,
+        provider: result.provider,
+        model: result.model,
+        inputSummary,
+        prompt: body.data.agenda,
+      });
 
-      // Tee the stream: one copy goes to client, one is collected for DB
-      const [clientStream, dbStream] = result.stream.tee();
-
-      // Background: collect content from dbStream and save to DB
-      collectAndSave(dbStream, uid, provider, model, inputSummary);
-
-      return new Response(clientStream, {
+      return new Response(persistedStream, {
         headers: {
           "Content-Type": "text/event-stream; charset=utf-8",
           "Cache-Control": "no-cache, no-transform",
-          "Connection": "keep-alive",
+          Connection: "keep-alive",
           "X-Accel-Buffering": "no",
+          "X-Chat-Id": chatId,
         },
       });
     }
 
-    // Non-streaming fallback
-    await supabaseAdmin().from("ai_generations").insert({
+    const output = result.content || "";
+    await saveCompletedChat({
+      chatId,
       uid,
-      tool: "mun-research",
+      tool,
       provider: result.provider,
       model: result.model,
-      input_summary: {
-        committee: body.data.committee,
-        country: body.data.country,
-        agenda: body.data.agenda.slice(0, 500),
-      },
-      output: result.content,
+      inputSummary,
+      prompt: body.data.agenda,
+      output,
     });
 
-    return Response.json(result);
+    return Response.json({ ...result, chatId });
   } catch (error) {
     return jsonError(error);
   }
 }
 
-async function collectAndSave(
-  stream: ReadableStream<Uint8Array>,
-  uid: string,
-  provider: string,
-  model: string,
-  inputSummary: Record<string, unknown>
+function persistStream(
+  source: ReadableStream<Uint8Array>,
+  details: Omit<GenerationDetails, "output">
 ) {
-  try {
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-    let content = "";
-    let buffer = "";
+  const reader = source.getReader();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const decoder = new TextDecoder();
+      let content = "";
+      let buffer = "";
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      const consumeLine = (line: string) => {
+        if (!line.startsWith("data: ")) return;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") return;
 
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) content += parsed.content;
-          } catch {
-            // skip
-          }
+        try {
+          const parsed = JSON.parse(data) as { content?: string };
+          if (parsed.content) content += parsed.content;
+        } catch {
+          // Ignore incomplete or provider-specific SSE lines.
         }
-      }
-    }
+      };
 
-    if (content) {
-      await supabaseAdmin().from("ai_generations").insert({
-        uid,
-        tool: "mun-research",
-        provider,
-        model,
-        input_summary: inputSummary,
-        output: content,
-      });
-    }
-  } catch (err) {
-    console.error("Failed to save generation:", err);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          controller.enqueue(value);
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          lines.forEach(consumeLine);
+        }
+
+        buffer += decoder.decode();
+        if (buffer) consumeLine(buffer);
+        if (content) await saveCompletedChat({ ...details, output: content });
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
+async function saveCompletedChat(details: GenerationDetails) {
+  await saveChatTranscript({
+    id: details.chatId,
+    uid: details.uid,
+    tool: details.tool,
+    provider: details.provider,
+    model: details.model,
+    inputSummary: details.inputSummary,
+    prompt: details.prompt,
+    output: details.output,
+    createdAt: new Date().toISOString(),
+  });
+
+  const { error } = await supabaseAdmin().from("ai_generations").insert({
+    id: details.chatId,
+    uid: details.uid,
+    tool: details.tool,
+    provider: details.provider,
+    model: details.model,
+    input_summary: details.inputSummary,
+    output: details.output,
+  });
+
+  if (error) {
+    console.error("Failed to index generation in Supabase:", error.message);
   }
 }

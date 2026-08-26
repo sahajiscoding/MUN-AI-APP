@@ -177,7 +177,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               {mode === "signup" ? "Already have an account?" : "Need an account?"}{" "}
               <Link
                 className="font-semibold text-[var(--ink)] underline decoration-[var(--brass)] underline-offset-4"
-                href={mode === "signup" ? "/login" : "/signup"}
+                href={mode === "signup" ? "/auth/signin" : "/signup"}
               >
                 {mode === "signup" ? "Sign in" : "Create one"}
               </Link>

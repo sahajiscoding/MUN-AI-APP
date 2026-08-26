@@ -12,7 +12,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      router.replace(`/auth/signin?next=${encodeURIComponent(pathname)}`);
     }
   }, [loading, pathname, router, user]);
 

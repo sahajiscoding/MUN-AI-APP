@@ -26,6 +26,8 @@ export function EntitlementBanner() {
 
     async function load() {
       if (!user) {
+        setData(null);
+        setLoading(false);
         return;
       }
 
@@ -62,7 +64,7 @@ export function EntitlementBanner() {
 
   if (loading) {
     return (
-      <div className="surface flex items-center gap-3 rounded-panel px-4 py-3 text-sm text-[var(--muted)]">
+      <div className="surface flex items-center gap-3 rounded-panel px-4 py-3 text-sm text-[var(--muted)]" role="status" aria-live="polite">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Checking access
       </div>

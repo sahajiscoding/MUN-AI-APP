@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -20,6 +21,7 @@ import {
 } from "next/navigation";
 
 import { ProtectedAppShell } from "@/components/protected-app-shell";
+import { useAuth } from "@/components/auth-provider";
 
 type PaymentStatus =
   | "checking"
@@ -45,6 +47,7 @@ export default function CheckoutSuccessPage() {
 
   const router =
     useRouter();
+  const { getIdToken } = useAuth();
 
   const orderRef =
     searchParams.get(
@@ -65,193 +68,86 @@ export default function CheckoutSuccessPage() {
   ] =
     useState("");
 
-  const [
-    attempts,
-    setAttempts,
-  ] =
-    useState(0);
+  const attemptsRef = useRef(0);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
 
   useEffect(() => {
     if (!orderRef) {
-      setPaymentStatus(
-        "error"
-      );
-
-      setErrorMessage(
-        "We could not identify this payment. Please contact support if you were charged."
-      );
-
+      setPaymentStatus("error");
+      setErrorMessage("We could not identify this payment. Please contact support if you were charged.");
       return;
     }
 
-    let cancelled =
-      false;
-
-    let timer:
-      ReturnType<
-        typeof setTimeout
-      > | null = null;
-
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const MAX_ATTEMPTS = 40;
+    attemptsRef.current = 0;
+    setPollTimedOut(false);
 
-    const checkPayment =
-      async () => {
-        if (cancelled) {
+    const checkPayment = async () => {
+      if (cancelled) return;
+
+      try {
+        const token = await getIdToken();
+        const response = await fetch(
+          `/api/payments/status?orderRef=${encodeURIComponent(orderRef)}`,
+          {
+            method: "GET",
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const data = (await response.json()) as PaymentResponse;
+
+        if (cancelled) return;
+
+        if (response.status === 404) {
+          setPaymentStatus("error");
+          setErrorMessage("We could not find this payment. If you were charged, please contact support.");
           return;
         }
 
-        try {
-          const response =
-            await fetch(
-              `/api/payments/status?orderRef=${encodeURIComponent(
-                orderRef
-              )}`,
-              {
-                method: "GET",
-                cache: "no-store",
-              }
-            );
-
-          const data =
-            (await response.json()) as PaymentResponse;
-
-          if (cancelled) {
-            return;
-          }
-
-          if (
-            response.status ===
-            404
-          ) {
-            setPaymentStatus(
-              "error"
-            );
-
-            setErrorMessage(
-              "We could not find this payment. If you were charged, please contact support."
-            );
-
-            return;
-          }
-
-          if (
-            !response.ok ||
-            !data.ok
-          ) {
-            throw new Error(
-              data.error ||
-                "Unable to check payment status."
-            );
-          }
-
-          // --------------------------------------------
-          // PAYMENT SUCCESS
-          // --------------------------------------------
-
-          if (
-            data.status ===
-            "paid"
-          ) {
-            setPaymentStatus(
-              "paid"
-            );
-
-            return;
-          }
-
-          // --------------------------------------------
-          // PAYMENT FAILED
-          // --------------------------------------------
-
-          if (
-            data.status ===
-            "failed"
-          ) {
-            setPaymentStatus(
-              "failed"
-            );
-
-            return;
-          }
-
-          // --------------------------------------------
-          // PAYMENT EXPIRED
-          // --------------------------------------------
-
-          if (
-            data.status ===
-            "expired"
-          ) {
-            setPaymentStatus(
-              "expired"
-            );
-
-            return;
-          }
-
-          // --------------------------------------------
-          // PAYMENT STILL PROCESSING
-          // --------------------------------------------
-
-          setPaymentStatus(
-            "pending"
-          );
-
-          const nextAttempt =
-            attempts + 1;
-
-          setAttempts(
-            nextAttempt
-          );
-
-          if (
-            nextAttempt >=
-            MAX_ATTEMPTS
-          ) {
-            return;
-          }
-
-          timer =
-            setTimeout(
-              checkPayment,
-              3000
-            );
-        } catch (error) {
-          if (cancelled) {
-            return;
-          }
-
-          console.error(
-            "Payment status check failed:",
-            error
-          );
-
-          setPaymentStatus(
-            "error"
-          );
-
-          setErrorMessage(
-            "We could not check the payment status right now. Please try again."
-          );
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Unable to check payment status.");
         }
-      };
 
-    checkPayment();
+        if (data.status === "paid") {
+          setPaymentStatus("paid");
+          return;
+        }
+        if (data.status === "failed") {
+          setPaymentStatus("failed");
+          return;
+        }
+        if (data.status === "expired") {
+          setPaymentStatus("expired");
+          return;
+        }
 
-    return () => {
-      cancelled =
-        true;
+        setPaymentStatus("pending");
+        attemptsRef.current += 1;
+        if (attemptsRef.current >= MAX_ATTEMPTS) {
+          setPollTimedOut(true);
+          return;
+        }
 
-      if (timer) {
-        clearTimeout(
-          timer
-        );
+        const delay = Math.min(3000 * 1.5 ** (attemptsRef.current - 1), 15000);
+        timer = setTimeout(checkPayment, delay);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Payment status check failed:", error instanceof Error ? error.message : "unknown error");
+        setPaymentStatus("error");
+        setErrorMessage("We could not check the payment status right now. Please try again.");
       }
     };
-  }, [
-    orderRef,
-    attempts,
-  ]);
+
+    void checkPayment();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [getIdToken, orderRef]);
 
   // --------------------------------------------------
   // SUCCESS
@@ -493,8 +389,7 @@ export default function CheckoutSuccessPage() {
           </span>
         </p>
 
-        {attempts >=
-          40 && (
+        {pollTimedOut && (
           <div className="mt-6 rounded-lg border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
             Your payment is taking
             longer than usual to

@@ -12,7 +12,7 @@ import {
   UserPlus,
   XCircle,
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type AdminUser = {
@@ -33,17 +33,15 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [actionBusy, setActionBusy] = useState("");
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiOutput, setAiOutput] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiMode, setAiMode] = useState<"quick" | "thorough" | "max">("thorough");
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/c8f2x9/users");
       if (res.status === 401) {
@@ -51,30 +49,39 @@ export default function AdminDashboardPage() {
         return;
       }
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load users.");
       setUsers(data.users || []);
-    } catch {
-      // ignore
+    } catch (error) {
+      setUsers([]);
+      setStatusMessage(error instanceof Error ? error.message : "Could not load users.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
 
-  async function approveUser(uid: string) {
-    await fetch("/api/c8f2x9/approve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid }),
-    });
-    fetchUsers();
-  }
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
 
-  async function revokeUser(uid: string) {
-    await fetch("/api/c8f2x9/revoke", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid }),
-    });
-    fetchUsers();
+  async function mutateAdmin(uid: string, action: "approve" | "revoke") {
+    if (actionBusy) return;
+    setActionBusy(`${action}:${uid}`);
+    setStatusMessage("");
+    try {
+      const response = await fetch(`/api/c8f2x9/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Could not ${action} user.`);
+      setStatusMessage(data.message || `User ${action}d.`);
+      await fetchUsers();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : `Could not ${action} user.`);
+    } finally {
+      setActionBusy("");
+    }
   }
 
   async function handleLogout() {
@@ -143,11 +150,12 @@ export default function AdminDashboardPage() {
           }
         }
       } else {
-        const data = await res.json();
-        setAiOutput(data.content || data.error?.message || "No response");
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "The AI request failed.");
+        setAiOutput(data.content || "No response");
       }
-    } catch {
-      setAiOutput("Request failed.");
+    } catch (error) {
+      setAiOutput(error instanceof Error ? error.message : "Request failed.");
     } finally {
       setAiStreaming(false);
     }
@@ -179,6 +187,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-8">
+        {statusMessage ? <p className="rounded-xl border border-[var(--brass)]/30 bg-[var(--brass)]/10 px-4 py-3 text-sm text-[var(--paper)]" role="status">{statusMessage}</p> : null}
         {/* AI Testing */}
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -329,7 +338,8 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center justify-end gap-1">
                           {!user.isAdmin ? (
                             <button
-                              onClick={() => approveUser(user.uid)}
+                              onClick={() => mutateAdmin(user.uid, "approve")}
+                              disabled={Boolean(actionBusy)}
                               className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-[var(--patina)] hover:bg-[var(--patina)]/10 transition"
                               title="Approve"
                             >
@@ -338,7 +348,8 @@ export default function AdminDashboardPage() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => revokeUser(user.uid)}
+                              onClick={() => mutateAdmin(user.uid, "revoke")}
+                              disabled={Boolean(actionBusy)}
                               className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-400/10 transition"
                               title="Revoke"
                             >

@@ -1,4 +1,5 @@
 import { ProtectedAppShell } from "@/components/protected-app-shell";
+import { SettingsPanel } from "@/components/settings-panel";
 
 export const metadata = {
   title: "Settings",
@@ -15,6 +16,7 @@ export default function SettingsPage() {
             Manage your account and preferences.
           </p>
         </header>
+        <SettingsPanel />
       </div>
     </ProtectedAppShell>
   );

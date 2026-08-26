@@ -22,6 +22,15 @@ const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: numbe
   max: { label: "Max", maxTokens: 6000, temperature: 1.0 },
 };
 
+function isSafeExternalUrl(value: string) {
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
   research: "Build a complete research brief.",
   "country-profile": "Prioritize foreign policy, voting patterns, blocs, and red lines.",
@@ -404,6 +413,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                     animated={streaming}
                     parseIncompleteMarkdown
                     lineNumbers={false}
+                    linkSafety={{ enabled: true, onLinkCheck: isSafeExternalUrl }}
                   >
                     {output}
                   </Streamdown>

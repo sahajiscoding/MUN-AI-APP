@@ -45,6 +45,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   const pathname = usePathname();
   const [chatId, setChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [submittedPrompt, setSubmittedPrompt] = useState("");
   const [responseMode, setResponseMode] = useState<ResponseMode>("quick");
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -147,12 +148,14 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
         if (!cancelled) {
           setInput(data.chat.prompt);
+          setSubmittedPrompt(data.chat.prompt);
           setOutput(data.chat.output);
           setStatus(`${data.chat.model} · saved chat`);
         }
       } catch (error) {
         if (!cancelled) {
           setInput("");
+          setSubmittedPrompt("");
           setOutput("");
           setStatus(error instanceof Error ? error.message : "That saved chat could not be opened.");
         }
@@ -194,6 +197,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
     setInput("");
+    setSubmittedPrompt("");
     setOutput("");
     setStatus("");
     setLoading(false);
@@ -216,7 +220,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!input.trim() || loading) return;
+    const prompt = input.trim();
+    if (!prompt || loading) return;
 
     // Check entitlement before sending
     if (hasAccess === false) {
@@ -226,6 +231,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
     shouldAutoScrollRef.current = true;
     setShowJumpToLatest(false);
+    setSubmittedPrompt(prompt);
     setLoading(true);
     setLoadingSavedChat(false);
     setStreaming(true);
@@ -250,7 +256,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           signal: controller.signal,
           body: JSON.stringify({
             committee: "General",
-            agenda: `${input}\n\nTool focus: ${toolInstructions[mode]}`,
+            agenda: `${prompt}\n\nTool focus: ${toolInstructions[mode]}`,
             tool: mode,
           country: "Any",
           experienceLevel: "intermediate",
@@ -391,7 +397,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
             {/* User message */}
             <div className="flex justify-end">
               <div className="max-w-[80%] rounded-2xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
-                <p className="text-sm leading-6">{input}</p>
+                <p className="whitespace-pre-wrap text-sm leading-6">{submittedPrompt}</p>
               </div>
             </div>
 

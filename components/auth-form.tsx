@@ -15,6 +15,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = getSafeNext(searchParams.get("next"));
+  const callbackFailed = searchParams.get("error") === "oauth_callback_failed";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,7 +53,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     setError("");
 
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(next);
       // redirect happens via OAuth flow
     } catch (caught) {
       setError(formatAuthError(caught));
@@ -170,9 +171,9 @@ export function AuthForm({ mode }: AuthFormProps) {
                 </p>
               ) : null}
 
-              {error ? (
+              {(error || callbackFailed) ? (
                 <p className="rounded-panel border border-red-900/20 bg-red-900/5 px-3 py-2 text-sm text-red-900" role="alert">
-                  {error}
+                  {error || "Google sign-in could not be completed. Please try again."}
                 </p>
               ) : null}
 

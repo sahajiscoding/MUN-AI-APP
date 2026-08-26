@@ -110,3 +110,12 @@ The resulting referral URL is `https://mun-ai-app.vercel.app/MUNTEST01`. Active 
 A commission is created only after the UroPay webhook verifies the order, payment status, amount, and event idempotency, marks the payment successful, and grants Premium. The server converts verified paise to rupees and calculates the commission from the partner’s stored rate. Failed, pending, duplicate, or browser success-page requests do not create commissions. The administrator referral dashboard can mark an unpaid record as paid; this changes only the ledger status and `paid_at`, and performs no bank or automatic payout.
 
 Before live use, test an active referral URL, first-touch behavior with two codes, a suspended partner, a self-referral, a successful weekly payment, a successful monthly payment, a failed/pending payment, duplicate webhook delivery, a non-referred purchase, and manual settlement. Referral tables must be present before testing; if they are absent, normal homepage and payment flows continue without referral attribution, while the server logs the unavailable referral lookup.
+
+
+## Google OAuth callback
+
+Google sign-in uses the existing Supabase browser client to start OAuth and the server-side Supabase SSR client at `/auth/callback` to exchange the authorization code and write the normal Supabase session cookies. The callback accepts only a same-origin `next` destination, handles provider errors generically, and never logs authorization codes, access tokens, refresh tokens, client secrets, or service keys.
+
+For production, Supabase Authentication → URL Configuration must use `https://mun-ai-app.vercel.app` as the site URL and include `https://mun-ai-app.vercel.app/auth/callback` as a redirect URL. The Google Cloud OAuth client used by Supabase must authorize the Supabase callback URL `https://<actual-project-ref>.supabase.co/auth/v1/callback`; do not substitute the Vercel callback URL in Google Cloud. The exact project reference must be taken from the production Supabase project rather than guessed.
+
+Supabase Authentication → Providers → Google must be enabled with the matching Google client ID and secret. Vercel must provide the variables actually referenced by this repository, `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, plus the server-only `SUPABASE_SECRET_KEY`. Never add the service key or Google client secret to a `NEXT_PUBLIC_*` variable.

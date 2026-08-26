@@ -51,7 +51,7 @@ function parseRSS(xml: string, category: string): NewsItem[] {
 
     if (title && link) {
       items.push({
-        title: decodeHTMLEntities(title),
+        title: cleanText(title),
         link,
         source,
         pubDate,
@@ -81,8 +81,14 @@ function decodeHTMLEntities(str: string): string {
 }
 
 function cleanDescription(html: string): string {
-  const text = html.replace(/<[^>]+>/g, "").trim();
-  return decodeHTMLEntities(text).slice(0, 280);
+  return cleanText(html).slice(0, 280);
+}
+
+function cleanText(value: string): string {
+  return decodeHTMLEntities(value)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export async function GET(request: Request) {

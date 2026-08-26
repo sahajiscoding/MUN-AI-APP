@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   Bookmark,
   Clock,
   Compass,
@@ -12,7 +13,9 @@ import {
   Share2,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { NewsItem } from "@/app/api/news/route";
 
@@ -48,6 +51,8 @@ export default function DiscoverPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [showIndicators, setShowIndicators] = useState(true);
+  const [showWhoToFollow, setShowWhoToFollow] = useState(true);
 
   function fetchNews(category?: string) {
     setLoading(true);
@@ -115,10 +120,19 @@ export default function DiscoverPage() {
       <div className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--paper)]/80 backdrop-blur-md">
         <div className="mx-auto max-w-[1400px] px-6">
           <div className="flex items-center justify-between h-14">
-            {/* Left: Logo */}
-            <div className="flex items-center gap-3">
-              <Compass className="h-5 w-5 text-[var(--patina)]" />
-              <span className="display-type text-lg text-[var(--ink)]">Discover</span>
+            {/* Left: Navigation and logo */}
+            <div className="flex min-w-0 items-center gap-3">
+              <Link
+                href="/app/research"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-[var(--muted)] transition hover:bg-black/5 hover:text-[var(--ink)]"
+                aria-label="Back to workspace"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden lg:inline">Back</span>
+              </Link>
+              <span className="h-5 w-px bg-[var(--line)]" aria-hidden="true" />
+              <Compass className="h-5 w-5 shrink-0 text-[var(--patina)]" aria-hidden="true" />
+              <span className="display-type truncate text-lg text-[var(--ink)]">Discover</span>
             </div>
 
             {/* Center: Tabs */}
@@ -227,11 +241,23 @@ export default function DiscoverPage() {
           {/* Right sidebar */}
           <aside className="hidden lg:block w-80 shrink-0 space-y-5">
             {/* Indicators */}
-            <div className="surface rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="h-4 w-4 text-[var(--brass)]" />
-                <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">Indicators</h3>
-              </div>
+            {showIndicators && (
+              <div className="surface rounded-xl p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-[var(--brass)]" aria-hidden="true" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--ink)]">Indicators</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowIndicators(false)}
+                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-black/5"
+                    aria-label="Remove Indicators panel"
+                    title="Remove Indicators"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
               <div className="flex items-end gap-2 mb-1">
                 <span className="text-4xl font-bold text-[var(--ink)]">16</span>
                 <span className="flex items-center gap-1 text-xs text-[var(--oxblood)] mb-1">
@@ -249,12 +275,25 @@ export default function DiscoverPage() {
                     style={{ height: `${(v / 20) * 100}%` }}
                   />
                 ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Who to Follow */}
-            <div className="surface rounded-xl p-5">
-              <h3 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider mb-4">Who to Follow</h3>
+            {showWhoToFollow && (
+              <div className="surface rounded-xl p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--ink)]">Who to Follow</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowWhoToFollow(false)}
+                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-black/5"
+                    aria-label="Remove Who to Follow panel"
+                    title="Remove Who to Follow"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
               <div className="space-y-3">
                 {TOPICS_TO_FOLLOW.map((topic) => (
                   <div key={topic.name} className="flex items-center justify-between">
@@ -276,10 +315,24 @@ export default function DiscoverPage() {
                   </div>
                 ))}
               </div>
-              <button className="mt-4 text-sm text-[var(--brass)] hover:underline">
-                Manage all follows
+                <button className="mt-4 text-sm text-[var(--brass)] hover:underline">
+                  Manage all follows
+                </button>
+              </div>
+            )}
+
+            {!showIndicators || !showWhoToFollow ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIndicators(true);
+                  setShowWhoToFollow(true);
+                }}
+                className="w-full rounded-lg border border-dashed border-[var(--line)] px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--brass)] hover:text-[var(--ink)]"
+              >
+                Restore sidebar panels
               </button>
-            </div>
+            ) : null}
 
             {/* Footer */}
             <div className="text-xs text-[var(--muted)] px-1">

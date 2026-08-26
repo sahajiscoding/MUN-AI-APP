@@ -26,7 +26,7 @@ The authenticated `GET /api/me/ai-usage` endpoint exposes a private, no-store us
 | Focused source scan for browser bypasses and provider-secret exposure | Passed; provider keys remain server-only references |
 | Deterministic unit tests | Passed; usage normalization, fallback safety, reservation bounds, prior-context accounting, UTC migration contract, RLS denial, UUID reservations, and terminal-state protection covered |
 
-The repository is clean after commit `c22d7f69cf4675b1172d02c90de915ecdca8735f` (`Enforce daily AI token usage limits`), pushed to `main` with author email `sahajgangwani@gmail.com`.
+The implementation was introduced in commit `c22d7f69cf4675b1172d02c90de915ecdca8735f` (`Enforce daily AI token usage limits`). The final repository head is commit `cc35a2487cfeaa813307dab3d44dcd20ba75f1c6` (`Document daily AI usage rollout`), pushed to `main` with author email `sahajgangwani@gmail.com`; the working tree is clean.
 
 ## Deployment and smoke tests
 
@@ -35,8 +35,8 @@ The Git-linked Vercel production deployment is READY:
 | Item | Value |
 |---|---|
 | Vercel project | `mun-ai-app` |
-| Deployment | `dpl_85t6WmfzRMyPB2KQWZVzxR1meRed` |
-| Commit | `c22d7f69cf4675b1172d02c90de915ecdca8735f` |
+| Deployment | `dpl_DnJEtuzthRPBhTNyWHfYvDuxgDU9` |
+| Commit | `cc35a2487cfeaa813307dab3d44dcd20ba75f1c6` |
 | Production alias | [mun-ai-app.vercel.app](https://mun-ai-app.vercel.app) |
 | Deployment state | `READY` |
 

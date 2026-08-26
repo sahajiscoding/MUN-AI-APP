@@ -2,7 +2,9 @@
 
 import {
   Bot,
+  Check,
   CheckCircle2,
+  Copy,
   Crown,
   Loader2,
   LogOut,
@@ -27,6 +29,11 @@ type AdminUser = {
     plan_id?: string;
     expires_at?: string;
   };
+  referral: {
+    code: string;
+    status: string;
+    link: string | null;
+  } | null;
 };
 
 export default function AdminDashboardPage() {
@@ -40,6 +47,7 @@ export default function AdminDashboardPage() {
   const [aiOutput, setAiOutput] = useState("");
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiMode, setAiMode] = useState<"quick" | "thorough" | "max">("thorough");
+  const [copiedReferralUid, setCopiedReferralUid] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -87,6 +95,19 @@ export default function AdminDashboardPage() {
   async function handleLogout() {
     await fetch("/api/c8f2x9/login", { method: "DELETE" });
     router.push("/c8f2x9");
+  }
+
+  async function copyReferralLink(user: AdminUser) {
+    const link = user.referral?.link;
+    if (!link) return;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedReferralUid(user.uid);
+      window.setTimeout(() => setCopiedReferralUid((current) => current === user.uid ? null : current), 1800);
+    } catch {
+      setStatusMessage("Could not copy the referral link. Please open it and copy the URL manually.");
+    }
   }
 
   async function handleAiTest(e: FormEvent) {
@@ -318,13 +339,14 @@ export default function AdminDashboardPage() {
               <p className="py-16 text-center text-sm text-[var(--muted)]">No users found.</p>
             ) : (
               <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--line)]">
-                <table className="w-full min-w-[720px] border-collapse text-sm">
+                <table className="w-full min-w-[940px] border-collapse text-sm">
                   <caption className="sr-only">MUN Prep user access registry</caption>
                   <thead className="bg-[var(--brass)]/10">
                     <tr className="border-b border-[var(--line)]">
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">User</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">UID</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Referral link</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Last seen</th>
                       <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Actions</th>
                     </tr>
@@ -354,6 +376,35 @@ export default function AdminDashboardPage() {
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ink)]/6 px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
                               <XCircle className="h-3 w-3" aria-hidden="true" />
                               Free
+                            </span>
+                          )}
+                        </td>
+                        <td className="max-w-[280px] px-4 py-4">
+                          {user.referral?.link ? (
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={user.referral.link}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="min-w-0 truncate text-xs font-semibold text-[var(--patina)] underline decoration-[var(--patina)]/30 underline-offset-2 hover:text-[var(--oxblood)]"
+                                title={user.referral.link}
+                              >
+                                /{user.referral.code}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => void copyReferralLink(user)}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--line)] px-2 py-1.5 text-xs font-bold text-[var(--muted)] transition hover:border-[var(--patina)]/40 hover:text-[var(--patina)]"
+                                aria-label={`Copy referral link for ${user.display_name || user.email}`}
+                                title="Copy referral link"
+                              >
+                                {copiedReferralUid === user.uid ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                                <span className="sr-only">{copiedReferralUid === user.uid ? "Copied" : "Copy"}</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--muted)]">
+                              {user.referral?.status ? `Partner ${user.referral.status}` : "Not a partner"}
                             </span>
                           )}
                         </td>

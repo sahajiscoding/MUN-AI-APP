@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Loader2, Plus, Send } from "lucide-react";
+import { ArrowDown, Bot, Loader2, Plus, Send } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -47,13 +47,32 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const outputRef = useRef<HTMLDivElement>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
-  // Auto-scroll as content streams in
+  // Follow the stream only while the user is already near the latest content.
+  // Once they scroll up, leave their reading position alone.
   useEffect(() => {
-    if (outputRef.current && streaming) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    if (outputRef.current && streaming && shouldAutoScrollRef.current) {
+      outputRef.current.scrollTo({ top: outputRef.current.scrollHeight, behavior: "auto" });
     }
   }, [output, streaming]);
+
+  function handleOutputScroll() {
+    const element = outputRef.current;
+    if (!element) return;
+
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const atLatest = distanceFromBottom < 80;
+    shouldAutoScrollRef.current = atLatest;
+    setShowJumpToLatest(streaming && !atLatest);
+  }
+
+  function jumpToLatest() {
+    shouldAutoScrollRef.current = true;
+    setShowJumpToLatest(false);
+    outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight, behavior: "smooth" });
+  }
 
   // Keep the user informed while the model is waiting for its first token.
   useEffect(() => {
@@ -196,6 +215,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       return;
     }
 
+    shouldAutoScrollRef.current = true;
+    setShowJumpToLatest(false);
     setLoading(true);
     setLoadingSavedChat(false);
     setStreaming(true);
@@ -327,7 +348,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Messages area */}
-      <div ref={outputRef} className="flex-1 overflow-y-auto">
+      <div ref={outputRef} onScroll={handleOutputScroll} className="relative flex-1 overflow-y-auto">
         {loading && !output ? (
           <div className="flex h-full items-center justify-center px-5 text-center" aria-live="polite">
             <div className="w-full max-w-md">
@@ -406,6 +427,17 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               <p className="text-sm leading-6 text-[var(--muted)]">{description}</p>
             </div>
           </div>
+        )}
+
+        {showJumpToLatest && (
+          <button
+            type="button"
+            onClick={jumpToLatest}
+            className="sticky bottom-4 left-full ml-auto mr-5 flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-black/5"
+          >
+            <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+            Jump to latest
+          </button>
         )}
       </div>
 

@@ -20,6 +20,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const courseQuiz = quizzes[slug] || [];
   const totalLessons = course?.lessons.length || 0;
@@ -51,9 +52,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   async function saveProgress(lessons: number[], score?: number, total?: number) {
     if (!user) return;
     setSaving(true);
+    setSaveError("");
     try {
       const token = await getIdToken();
-      await fetch("/api/progress", {
+      const response = await fetch("/api/progress", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -67,6 +69,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
           completed_at: lessons.length === totalLessons ? new Date().toISOString() : undefined,
         }),
       });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Could not save progress.");
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save progress. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -104,6 +112,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   return (
     <ProtectedAppShell>
       <div className="max-w-4xl mx-auto px-5 py-8">
+        {saveError ? <p className="mb-4 rounded-lg border border-red-900/20 bg-red-900/5 px-3 py-2 text-sm text-red-900" role="alert">{saveError}</p> : null}
         <Link
           href="/app/courses"
           className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--ink)] transition mb-6"

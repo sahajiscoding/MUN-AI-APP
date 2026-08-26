@@ -1,20 +1,21 @@
 import { z } from "zod";
-import { jsonError, parseJson } from "@/lib/api";
+import { ApiError, jsonError, parseJson } from "@/lib/api";
+import { getCourseBySlug } from "@/lib/courses";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/server/auth";
 
 export const runtime = "nodejs";
 
 const getSchema = z.object({
-  course_slug: z.string().min(1),
+  course_slug: z.string().trim().min(1).max(120),
 });
 
 const upsertSchema = z.object({
-  course_slug: z.string().min(1),
-  completed_lessons: z.array(z.number()),
-  quiz_score: z.number().optional(),
-  quiz_total: z.number().optional(),
-  completed_at: z.string().optional(),
+  course_slug: z.string().trim().min(1).max(120),
+  completed_lessons: z.array(z.number().int().min(0)).max(200),
+  quiz_score: z.number().int().min(0).optional(),
+  quiz_total: z.number().int().min(0).optional(),
+  completed_at: z.string().datetime().optional(),
 });
 
 export async function GET(request: Request) {
@@ -24,10 +25,15 @@ export async function GET(request: Request) {
     const course_slug = searchParams.get("course_slug");
 
     if (course_slug) {
+      const parsedCourse = getSchema.safeParse({ course_slug });
+      if (!parsedCourse.success || !getCourseBySlug(course_slug)) {
+        throw new ApiError(400, "invalid_course", "That course does not exist.");
+      }
+
       // Get progress for one course
       const { data } = await supabaseAdmin()
         .from("course_progress")
-        .select("*")
+        .select("course_slug, completed_lessons, quiz_score, quiz_total, completed_at, updated_at")
         .eq("uid", user.uid)
         .eq("course_slug", course_slug)
         .single();
@@ -54,10 +60,30 @@ export async function POST(request: Request) {
     const parsed = upsertSchema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError(new Error("Invalid progress data."));
+      throw new ApiError(400, "invalid_progress", "Invalid progress data.");
     }
 
     const { course_slug, completed_lessons, quiz_score, quiz_total, completed_at } = parsed.data;
+    const course = getCourseBySlug(course_slug);
+    if (!course) {
+      throw new ApiError(400, "invalid_course", "That course does not exist.");
+    }
+
+    const uniqueLessons = new Set(completed_lessons);
+    if (
+      uniqueLessons.size !== completed_lessons.length ||
+      completed_lessons.some((index) => index >= course.lessons.length)
+    ) {
+      throw new ApiError(400, "invalid_lessons", "One or more lesson indexes are invalid.");
+    }
+
+    const quizLength = course.quiz?.length ?? 0;
+    if (
+      (quiz_total ?? 0) > quizLength ||
+      (quiz_score ?? 0) > (quiz_total ?? 0)
+    ) {
+      throw new ApiError(400, "invalid_quiz_score", "The quiz score is invalid.");
+    }
 
     const { error } = await supabaseAdmin().from("course_progress").upsert(
       {

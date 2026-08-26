@@ -18,7 +18,7 @@ type AuthContextValue = {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<{ sessionCreated: boolean }>;
   logout: () => Promise<void>;
   getIdToken: () => Promise<string>;
 };
@@ -32,7 +32,7 @@ const stubValue: AuthContextValue = {
   loading: true,
   signInWithGoogle: noopAsync,
   signInWithEmail: noopAsync,
-  signUpWithEmail: noopAsync,
+  signUpWithEmail: async () => ({ sessionCreated: false }),
   logout: noopAsync,
   getIdToken: () => Promise.reject(new Error("Not hydrated yet")),
 };
@@ -42,6 +42,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SupaUser | null>(null);
   const [loading, setLoading] = useState(true);
   const clientRef = useRef<ReturnType<typeof getSupabase> | null>(null);
+
+  const syncUserRecord = useCallback(async (supaUser: SupaUser) => {
+    try {
+      const client = clientRef.current;
+      if (!client) return;
+      const { data } = await client.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+
+      const response = await fetch("/api/me", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          displayName: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? "",
+        }),
+      });
+      if (!response.ok) {
+        console.warn("Could not sync Supabase user profile yet.");
+      }
+    } catch (err) {
+      console.warn("Could not sync Supabase user profile yet.", err);
+    }
+  }, []);
 
   // Only initialize Supabase client after hydration (client-side only)
   useEffect(() => {
@@ -69,29 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const syncUserRecord = useCallback(async (supaUser: SupaUser) => {
-    try {
-      const client = clientRef.current;
-      if (!client) return;
-      const { error } = await client.from("users").upsert(
-        {
-          uid: supaUser.id,
-          display_name: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? "",
-          email: supaUser.email ?? "",
-          last_seen_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "uid" }
-      );
-      if (error) {
-        console.warn("Could not sync Supabase user profile yet.", error.message);
-      }
-    } catch (err) {
-      console.warn("Could not sync Supabase user profile yet.", err);
-    }
-  }, []);
+  }, [syncUserRecord]);
 
   const value = useMemo<AuthContextValue>(() => {
     if (!hydrated) return stubValue;
@@ -116,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async signUpWithEmail(name, email, password) {
-        const { error } = await client.auth.signUp({
+        const { data, error } = await client.auth.signUp({
           email,
           password,
           options: {
@@ -124,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         });
         if (error) throw error;
+        return { sessionCreated: Boolean(data.session) };
       },
       async logout() {
         const { error } = await client.auth.signOut();

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { XMLParser } from "fast-xml-parser";
+
 export const runtime = "nodejs";
 
 export type NewsItem = {
@@ -35,35 +37,47 @@ const FEEDS: Record<string, { url: string; label: string }> = {
   },
 };
 
-function parseRSS(xml: string, category: string): NewsItem[] {
-  const items: NewsItem[] = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-  let match;
+const rssParser = new XMLParser({
+  ignoreAttributes: false,
+  cdataPropName: "__cdata",
+  trimValues: true,
+});
 
-  while ((match = itemRegex.exec(xml)) !== null && items.length < 8) {
-    const block = match[1];
-
-    const rawTitle = extractTag(block, "title");
-    const link = extractTag(block, "link");
-    const rawSource = extractTag(block, "source") || extractTag(block, "dc:creator") || "Google News";
-    const pubDate = extractTag(block, "pubDate") || "";
-    const rawDescription = extractTag(block, "description") || "";
-    const normalizedTitle = cleanText(rawTitle);
-    const normalizedSource = cleanText(rawSource);
-
-    if (normalizedTitle && link) {
-      items.push({
-        title: normalizedTitle,
-        link,
-        source: normalizedSource,
-        pubDate,
-        category,
-        description: cleanDescription(rawDescription, normalizedTitle, normalizedSource),
-      });
-    }
+function asText(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.__cdata === "string") return record.__cdata;
+    if (typeof record["#text"] === "string") return record["#text"];
+    if (typeof record["@_href"] === "string") return record["@_href"];
   }
+  return "";
+}
 
-  return items;
+function parseRSS(xml: string, category: string): NewsItem[] {
+  const parsed = rssParser.parse(xml) as Record<string, unknown>;
+  const rss = parsed.rss as Record<string, unknown> | undefined;
+  const channel = rss?.channel as Record<string, unknown> | undefined;
+  const rawItems = channel?.item ?? (parsed.feed as Record<string, unknown> | undefined)?.entry ?? [];
+  const items = Array.isArray(rawItems) ? rawItems : [rawItems];
+
+  return items.slice(0, 8).flatMap((raw) => {
+    if (!raw || typeof raw !== "object") return [];
+    const item = raw as Record<string, unknown>;
+    const title = cleanText(asText(item.title));
+    const link = asText(item.link).trim();
+    const source = cleanText(asText(item.source) || asText(item["dc:creator"]) || "Google News");
+    const description = cleanDescription(asText(item.description) || asText(item.summary) || "", title, source);
+    if (!title || !/^https?:\/\//i.test(link)) return [];
+    return [{
+      title,
+      link,
+      source,
+      pubDate: asText(item.pubDate) || asText(item.published) || "",
+      category,
+      description,
+    }];
+  });
 }
 
 function extractTag(block: string, tag: string): string {
@@ -138,6 +152,7 @@ export async function GET(request: Request) {
         const res = await fetch(feed.url, {
           headers: { "User-Agent": "MUNPrepApp/1.0" },
           next: { revalidate: 900 },
+          signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) throw new Error(`Feed ${cat} returned ${res.status}`);
         const xml = await res.text();
@@ -151,7 +166,12 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ news: allItems });
+    const failedFeeds = results.filter((result) => result.status === "rejected").length;
+    return NextResponse.json({
+      news: allItems,
+      partial: failedFeeds > 0,
+      message: allItems.length === 0 ? "News is temporarily unavailable. Please try again." : undefined,
+    });
   } catch (error) {
     console.error("News fetch error:", error);
     return NextResponse.json({ news: [], error: "Failed to fetch news" }, { status: 500 });

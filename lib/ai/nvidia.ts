@@ -29,7 +29,8 @@ export async function callNvidiaMiniMax(
       top_p: 0.95,
       max_tokens: input.maxTokens ?? 2400,
       stream: true
-    })
+    }),
+    signal: AbortSignal.timeout(90_000)
   });
 
   if (!response.ok) {

@@ -13,31 +13,28 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const supabase = getSupabase();
 
-    supabase.auth
-      .exchangeCodeForSession(window.location.search)
-      .then(() => {
-        router.replace("/dashboard");
-      })
-      .catch((err) => {
-        console.error("Auth callback error:", err);
-        // Fallback: try to extract session from URL hash (implicit flow)
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) {
-            router.replace("/dashboard");
-          } else {
-            setError("Sign-in failed. Please try again.");
-          }
-        });
-      });
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (!code) {
+      setError("The sign-in link is missing its authorization code. Please try again.");
+      return;
+    }
+
+    supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
+      if (exchangeError) throw exchangeError;
+      router.replace("/dashboard");
+    }).catch((err) => {
+      console.error("Auth callback error:", err instanceof Error ? err.message : "unknown error");
+      setError("Sign-in could not be completed. Please return to sign in and try again.");
+    });
   }, [router]);
 
   if (error) {
     return (
       <main className="grid min-h-screen place-items-center px-6">
         <div className="surface flex flex-col items-center gap-4 rounded-panel px-8 py-8 text-center">
-          <p className="text-sm text-red-900">{error}</p>
+          <p className="text-sm text-red-900" role="alert">{error}</p>
           <Link
-            href="/login"
+            href="/auth/signin"
             className="button-primary inline-flex items-center justify-center px-5 font-semibold"
           >
             Back to sign in

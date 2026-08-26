@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { ApiError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { jwtVerify, SignJWT } from "jose";
@@ -46,7 +47,9 @@ function getSessionSecret() {
  * endpoint never creates a default account or uses a fallback password.
  */
 export async function adminLogin(password: string): Promise<AdminSession> {
-  if (password !== getAdminPassword()) {
+  const configuredPassword = Buffer.from(getAdminPassword());
+  const suppliedPassword = Buffer.from(password);
+  if (configuredPassword.length !== suppliedPassword.length || !timingSafeEqual(configuredPassword, suppliedPassword)) {
     throw new ApiError(401, "invalid_password", "Incorrect admin password.");
   }
 

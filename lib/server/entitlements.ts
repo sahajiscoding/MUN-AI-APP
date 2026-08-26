@@ -1,6 +1,6 @@
 import { ApiError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getPlan } from "@/lib/plans";
+import { canonicalPlanId, getPlan } from "@/lib/plans";
 import { isUserAdmin } from "@/lib/server/admin-auth";
 
 export type EntitlementStatus =
@@ -30,7 +30,7 @@ export async function getEntitlement(
   const { data, error } =
     await supabaseAdmin()
       .from("entitlements")
-      .select("*")
+      .select("uid, status, plan_id, source, starts_at, expires_at, latest_payment_id, latest_order_id, updated_at")
       .eq("uid", uid)
       .maybeSingle();
 
@@ -45,20 +45,11 @@ export async function getEntitlement(
       ? new Date(data.expires_at)
       : null;
 
-  // No valid expiry means the entitlement cannot
-  // be considered active.
-  if (
-    !expiresAtDate ||
-    !Number.isFinite(
-      expiresAtDate.getTime()
-    )
-  ) {
+  // No valid expiry means the entitlement cannot be considered active.
+  if (!expiresAtDate || !Number.isFinite(expiresAtDate.getTime())) {
     return {
-      status:
-        data.status === "active"
-          ? "active"
-          : "inactive",
-      planId: data.plan_id,
+      status: data.status === "expired" ? "expired" : "inactive",
+      planId: canonicalPlanId(data.plan_id) ?? data.plan_id ?? undefined,
       source: data.source,
     };
   }
@@ -70,7 +61,7 @@ export async function getEntitlement(
   ) {
     return {
       status: "expired",
-      planId: data.plan_id,
+      planId: canonicalPlanId(data.plan_id) ?? data.plan_id ?? undefined,
       expiresAt:
         expiresAtDate.toISOString(),
       source: data.source,
@@ -212,7 +203,7 @@ export async function grantEntitlement(
         {
           uid: input.uid,
           status: "active",
-          plan_id: input.planId,
+          plan_id: plan.id,
           source: input.source,
           latest_payment_id:
             input.paymentId ??

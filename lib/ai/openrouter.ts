@@ -37,7 +37,8 @@ export async function callOpenRouter(
           temperature: input.temperature ?? 0.7,
           max_tokens: input.maxTokens ?? 2400,
           stream: true
-        })
+        }),
+        signal: AbortSignal.timeout(90_000)
       });
 
       if (!response.ok) {

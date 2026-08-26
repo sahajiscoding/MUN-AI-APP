@@ -3,10 +3,8 @@ import { z } from "zod";
 import { jsonError, ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import {
-  getEntitlement,
-  grantEntitlement,
-} from "@/lib/server/entitlements";
+import { getEntitlement, grantEntitlement } from "@/lib/server/entitlements";
+import { canonicalPlanId } from "@/lib/plans";
 import { getOrderStatus } from "@/lib/payments/uropay";
 
 export const runtime = "nodejs";
@@ -202,7 +200,7 @@ export async function GET(request: Request) {
             status: "pending",
             reason: "payment_status_check_retry",
             orderRef: payment.order_ref,
-            planId: payment.plan_id,
+            planId: canonicalPlanId(payment.plan_id) ?? payment.plan_id,
           });
         }
       }
@@ -215,13 +213,13 @@ export async function GET(request: Request) {
 
       const entitlementMatchesPayment =
         entitlement.status === "active" &&
-        entitlement.planId === payment.plan_id;
+        canonicalPlanId(entitlement.planId) === canonicalPlanId(payment.plan_id);
 
       if (!entitlementMatchesPayment) {
         try {
           entitlement = await grantEntitlement({
             uid: payment.uid,
-            planId: payment.plan_id,
+            planId: canonicalPlanId(payment.plan_id) ?? payment.plan_id,
             source: "uropay-recovery",
             paymentId: payment.id,
             orderId: payment.uropay_order_id ?? payment.order_ref,
@@ -237,14 +235,14 @@ export async function GET(request: Request) {
             status: "pending",
             reason: "payment_confirmed_access_processing",
             orderRef: payment.order_ref,
-            planId: payment.plan_id,
+            planId: canonicalPlanId(payment.plan_id) ?? payment.plan_id,
           });
         }
       }
 
       const accessConfirmed =
         entitlement.status === "active" &&
-        entitlement.planId === payment.plan_id;
+        canonicalPlanId(entitlement.planId) === canonicalPlanId(payment.plan_id);
 
       if (!accessConfirmed) {
         return Response.json({

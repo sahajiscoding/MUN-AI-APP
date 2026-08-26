@@ -3,7 +3,6 @@
 import { Save } from "lucide-react";
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { getSupabase } from "@/lib/supabase/client";
 
 type ProfileState = {
   school: string;
@@ -28,7 +27,7 @@ const initialProfile: ProfileState = {
 };
 
 export function ProfileForm() {
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const [profile, setProfile] = useState(initialProfile);
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
@@ -41,32 +40,28 @@ export function ProfileForm() {
         return;
       }
 
-      const { data } = await getSupabase()
-        .from("delegate_profiles")
-        .select("*")
-        .eq("uid", user.id)
-        .single();
+      const token = await getIdToken();
+      const response = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load profile.");
 
-      if (!cancelled && data) {
-        setProfile({
-          school: data.school ?? "",
-          grade: data.grade ?? "",
-          experienceLevel: data.experience_level ?? "intermediate",
-          country: data.country ?? "",
-          committee: data.committee ?? "",
-          agenda: data.agenda ?? "",
-          conferenceDate: data.conference_date ?? "",
-          goals: data.goals ?? "",
-        });
+      if (!cancelled && result.profile) {
+        setProfile(result.profile);
       }
     }
 
-    loadProfile();
+    void loadProfile().catch((caught) => {
+      if (!cancelled) {
+        setStatus(caught instanceof Error ? caught.message : "Could not load profile. Please try again.");
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [getIdToken, user]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,29 +74,21 @@ export function ProfileForm() {
     setStatus("");
 
     try {
-      const { error } = await getSupabase().from("delegate_profiles").upsert(
-        {
-          uid: user.id,
-          school: profile.school,
-          grade: profile.grade,
-          experience_level: profile.experienceLevel,
-          country: profile.country,
-          committee: profile.committee,
-          agenda: profile.agenda,
-          conference_date: profile.conferenceDate,
-          goals: profile.goals,
-          updated_at: new Date().toISOString(),
+      const token = await getIdToken();
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        { onConflict: "uid" }
-      );
-
-      if (error) {
-        throw error;
-      }
+        body: JSON.stringify(profile),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not save profile.");
 
       setStatus("Profile saved.");
-    } catch {
-      setStatus("Could not save profile. Check Supabase setup or RLS policies.");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Could not save profile. Please try again.");
     } finally {
       setSaving(false);
     }

@@ -109,6 +109,7 @@ export async function createUropayOrder(
     headers,
     body: rawBody,
     cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
 
   let json: any = null;
@@ -287,6 +288,7 @@ export async function getOrderStatus(
       method: "GET",
       headers,
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     }
   );
 

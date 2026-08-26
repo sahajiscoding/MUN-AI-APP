@@ -4,20 +4,21 @@ import { runMunResearch } from "@/lib/ai/router";
 import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 import { saveChatTranscript } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
-  committee: z.string().min(2),
-  agenda: z.string().min(5),
-  country: z.string().min(2),
-  experienceLevel: z.string().min(2),
+  committee: z.string().trim().min(2).max(160),
+  agenda: z.string().trim().min(5).max(6000),
+  country: z.string().trim().min(2).max(120),
+  experienceLevel: z.string().trim().min(2).max(40),
   tool: z.enum(["research", "country-profile", "position-paper", "speech", "poi", "resolution"]).optional(),
   provider: z.enum(["openrouter", "nvidia"]).optional(),
-  maxTokens: z.number().optional(),
-  temperature: z.number().optional(),
+  maxTokens: z.number().int().min(256).max(8000).optional(),
+  temperature: z.number().min(0).max(1.5).optional(),
 });
 
 type GenerationDetails = {
@@ -46,6 +47,11 @@ export async function POST(request: Request) {
       }
       const admin = await requireAdmin();
       uid = admin.uid;
+    }
+
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (!checkRateLimit(`ai-user:${uid}`, 12, 60_000) || !checkRateLimit(`ai-ip:${ip}`, 30, 60_000)) {
+      throw new ApiError(429, "rate_limited", "Too many AI requests. Please wait a minute and try again.");
     }
 
     const body = schema.safeParse(await parseJson<unknown>(request));

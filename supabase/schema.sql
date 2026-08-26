@@ -36,36 +36,9 @@ CREATE TABLE IF NOT EXISTS public.entitlements (
   source             TEXT,
   latest_payment_id  TEXT,
   latest_order_id    TEXT,
+  starts_at          TIMESTAMPTZ,
   expires_at         TIMESTAMPTZ,
   updated_at         TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Payment orders
-CREATE TABLE IF NOT EXISTS public.payment_orders (
-  order_id           TEXT PRIMARY KEY,
-  uid                UUID REFERENCES public.users(uid) ON DELETE CASCADE,
-  email              TEXT,
-  plan_id            TEXT,
-  amount             INTEGER,
-  currency           TEXT DEFAULT 'INR',
-  razorpay_order_id  TEXT,
-  status             TEXT DEFAULT 'created',
-  created_at         TIMESTAMPTZ DEFAULT NOW(),
-  updated_at         TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Payments
-CREATE TABLE IF NOT EXISTS public.payments (
-  payment_id           TEXT PRIMARY KEY,
-  uid                  UUID REFERENCES public.users(uid) ON DELETE CASCADE,
-  plan_id              TEXT,
-  order_id             TEXT,
-  razorpay_order_id    TEXT,
-  razorpay_payment_id  TEXT,
-  verified             BOOLEAN DEFAULT FALSE,
-  source               TEXT,
-  raw_event            TEXT,
-  created_at           TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- AI generations
@@ -75,8 +48,8 @@ CREATE TABLE IF NOT EXISTS public.ai_generations (
   tool          TEXT,
   provider      TEXT,
   model         TEXT,
-  input_summary JSONB,
-  output        TEXT,
+  input_summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+  output        TEXT NOT NULL DEFAULT '',
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -101,12 +74,13 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
   approved_by TEXT DEFAULT 'system'
 );
 
--- Webhook events (idempotency tracking for Razorpay)
+-- Webhook events (idempotency tracking for UroPay)
 CREATE TABLE IF NOT EXISTS public.webhook_events (
   event_id            TEXT PRIMARY KEY,
   event               TEXT,
-  status              TEXT,
-  razorpay_order_id   TEXT,
+  status              TEXT NOT NULL DEFAULT 'received',
+  order_ref           TEXT,
+  uropay_order_id     TEXT,
   received_at         TIMESTAMPTZ DEFAULT NOW(),
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
@@ -118,7 +92,6 @@ CREATE TABLE IF NOT EXISTS public.webhook_events (
 ALTER TABLE public.users              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.delegate_profiles  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entitlements       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payment_orders     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_generations     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.research_notes     ENABLE ROW LEVEL SECURITY;
@@ -137,9 +110,6 @@ CREATE POLICY "delegate_profiles_update_own" ON public.delegate_profiles FOR UPD
 
 -- Entitlements: owner can read only (writes are server-side via service role)
 CREATE POLICY "entitlements_select_own" ON public.entitlements FOR SELECT USING (auth.uid() = uid);
-
--- Payment orders: owner can read only
-CREATE POLICY "payment_orders_select_own" ON public.payment_orders FOR SELECT USING (auth.uid() = uid);
 
 -- Payments: owner can read only
 CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.uid() = uid);
@@ -204,25 +174,7 @@ CREATE POLICY "course_progress_insert_own" ON public.course_progress FOR INSERT 
 CREATE POLICY "course_progress_update_own" ON public.course_progress FOR UPDATE USING (auth.uid() = uid);
 
 -- ============================================================
-CREATE TABLE IF NOT EXISTS public.payments (
-  id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  uid             UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  order_ref       TEXT UNIQUE NOT NULL,
-  uropay_order_id TEXT,
-  plan_id         TEXT NOT NULL,
-  amount          INTEGER NOT NULL,
-  status          TEXT NOT NULL DEFAULT 'pending',
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "payments_insert_own" ON public.payments FOR INSERT WITH CHECK (auth.uid() = uid);
-CREATE POLICY "payments_update_service" ON public.payments FOR UPDATE USING (true);
-
--- ============================================================
--- PAYMENTS TABLE (UROpay integration)
+-- PAYMENTS TABLE (UroPay integration)
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS public.payments (
@@ -231,20 +183,22 @@ CREATE TABLE IF NOT EXISTS public.payments (
   order_ref       TEXT UNIQUE NOT NULL,
   uropay_order_id TEXT,
   plan_id         TEXT NOT NULL,
-  amount          INTEGER NOT NULL,
+  amount          INTEGER NOT NULL CHECK (amount > 0),
   status          TEXT NOT NULL DEFAULT 'pending',
   amount_captured NUMERIC,
   commission      NUMERIC,
   transaction_fee NUMERIC,
   tax             NUMERIC,
   net_amount      NUMERIC,
-  environment     TEXT,
+  currency        TEXT NOT NULL DEFAULT 'INR',
+  environment     TEXT NOT NULL DEFAULT 'production',
   event_id        TEXT,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "payments_select_own" ON public.payments;
+DROP POLICY IF EXISTS "payments_insert_own" ON public.payments;
+DROP POLICY IF EXISTS "payments_update_service" ON public.payments;
 CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "payments_insert_own" ON public.payments FOR INSERT WITH CHECK (auth.uid() = uid);
-CREATE POLICY "payments_update_service" ON public.payments FOR UPDATE USING (true);

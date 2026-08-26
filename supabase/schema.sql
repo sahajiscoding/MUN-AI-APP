@@ -265,3 +265,42 @@ CREATE INDEX IF NOT EXISTS referrals_status_idx ON public.referrals (status);
 CREATE INDEX IF NOT EXISTS referral_commissions_partner_idx ON public.referral_commissions (partner_id);
 CREATE INDEX IF NOT EXISTS referral_commissions_status_idx ON public.referral_commissions (status);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_commissions_payment_uidx ON public.referral_commissions (payment_id) WHERE payment_id IS NOT NULL;
+
+-- ============================================================
+-- DAILY AI TOKEN USAGE
+-- ============================================================
+-- Usage is keyed by the UTC calendar date. The atomic reservation,
+-- reconciliation, and release RPCs live in the ai_usage_daily migration.
+CREATE TABLE IF NOT EXISTS public.ai_usage_daily (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uid             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  usage_date      DATE NOT NULL,
+  tokens_used     BIGINT NOT NULL DEFAULT 0 CHECK (tokens_used >= 0),
+  reserved_tokens BIGINT NOT NULL DEFAULT 0 CHECK (reserved_tokens >= 0),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(uid, usage_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.ai_usage_reservations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uid             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  usage_date      DATE NOT NULL,
+  reserved_tokens BIGINT NOT NULL CHECK (reserved_tokens > 0),
+  actual_tokens   BIGINT CHECK (actual_tokens IS NULL OR actual_tokens >= 0),
+  status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'settled', 'released')),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  settled_at      TIMESTAMPTZ
+);
+
+ALTER TABLE public.ai_usage_daily ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_usage_reservations ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.ai_usage_daily FROM anon, authenticated;
+REVOKE ALL ON TABLE public.ai_usage_reservations FROM anon, authenticated;
+CREATE INDEX IF NOT EXISTS ai_usage_daily_uid_date_idx
+  ON public.ai_usage_daily(uid, usage_date);
+CREATE INDEX IF NOT EXISTS ai_usage_reservations_uid_date_idx
+  ON public.ai_usage_reservations(uid, usage_date);
+CREATE INDEX IF NOT EXISTS ai_usage_reservations_pending_idx
+  ON public.ai_usage_reservations(status, created_at)
+  WHERE status = 'pending';

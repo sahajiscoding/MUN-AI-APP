@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/api";
-import type { AICompletionInput, AICompletionResult } from "@/lib/ai/types";
+import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 export async function callOpenRouter(
   input: AICompletionInput
@@ -83,12 +83,19 @@ export async function callOpenRouter(
                     continue;
                   }
                   try {
-                    const parsed = JSON.parse(data);
+                    const parsed = JSON.parse(data) as {
+                      choices?: Array<{ delta?: { content?: string } }>;
+                      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+                    };
                     const content = parsed?.choices?.[0]?.delta?.content;
                     if (content) {
                       controller.enqueue(
                         new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
                       );
+                    }
+                    const usage = normalizeAIUsage(parsed.usage);
+                    if (usage) {
+                      controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ usage })}\n\n`));
                     }
                   } catch {
                     // skip malformed chunks

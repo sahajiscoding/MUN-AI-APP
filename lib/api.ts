@@ -1,18 +1,20 @@
 export class ApiError extends Error {
   status: number;
   code: string;
+  details?: Record<string, unknown>;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
 export function jsonError(error: unknown) {
   if (error instanceof ApiError) {
     return Response.json(
-      { error: error.message, code: error.code },
+      { error: error.message, code: error.code, ...(error.details ? { details: error.details } : {}) },
       { status: error.status }
     );
   }

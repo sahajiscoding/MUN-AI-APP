@@ -2,6 +2,7 @@
 
 import { Bot, Loader2, Plus, Send } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { PaywallModal } from "@/components/paywall-modal";
 
@@ -31,12 +32,15 @@ const toolInstructions: Record<ToolWorkspaceProps["mode"], string> = {
 
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
+  const pathname = usePathname();
+  const [chatId, setChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [responseMode, setResponseMode] = useState<ResponseMode>("quick");
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingSavedChat, setLoadingSavedChat] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -65,6 +69,79 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     return () => window.clearInterval(timer);
   }, [loading]);
 
+  // Keep the selected chat synchronized for deep links, sidebar clicks, and browser back/forward.
+  useEffect(() => {
+    const syncFromUrl = () => {
+      setChatId(new URLSearchParams(window.location.search).get("chat"));
+    };
+    const handleChatOpen = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) setChatId(id);
+    };
+
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    window.addEventListener("mun:open-chat", handleChatOpen);
+
+    return () => {
+      window.removeEventListener("popstate", syncFromUrl);
+      window.removeEventListener("mun:open-chat", handleChatOpen);
+    };
+  }, [pathname]);
+
+  // Load a saved conversation when the sidebar opens one.
+  useEffect(() => {
+    if (!chatId || !user) return;
+
+    const selectedChatId = chatId;
+    let cancelled = false;
+    setLoading(true);
+    setLoadingSavedChat(true);
+    setStreaming(false);
+    setStatus("Loading saved chat…");
+    setOutput("");
+
+    async function loadChat() {
+      try {
+        const token = await getIdToken();
+        const response = await fetch(`/api/chats/${encodeURIComponent(selectedChatId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await response.json()) as {
+          chat?: { prompt: string; output: string; model: string };
+          error?: string;
+        };
+
+        if (!response.ok || !data.chat) {
+          throw new Error(data.error || "That saved chat could not be opened.");
+        }
+
+        if (!cancelled) {
+          setInput(data.chat.prompt);
+          setOutput(data.chat.output);
+          setStatus(`${data.chat.model} · saved chat`);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setInput("");
+          setOutput("");
+          setStatus(error instanceof Error ? error.message : "That saved chat could not be opened.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingSavedChat(false);
+          setStreaming(false);
+        }
+      }
+    }
+
+    void loadChat();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatId, getIdToken, user]);
+
   // Check entitlement on mount
   useEffect(() => {
     if (!user) return;
@@ -91,7 +168,12 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setOutput("");
     setStatus("");
     setLoading(false);
+    setLoadingSavedChat(false);
     setStreaming(false);
+    if (chatId) {
+      window.history.replaceState(null, "", pathname);
+      setChatId(null);
+    }
   }
 
   function handleCancel() {
@@ -99,6 +181,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     requestControllerRef.current = null;
     setStatus("Generation cancelled.");
     setLoading(false);
+    setLoadingSavedChat(false);
     setStreaming(false);
   }
 
@@ -113,6 +196,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     }
 
     setLoading(true);
+    setLoadingSavedChat(false);
     setStreaming(true);
     setElapsedSeconds(0);
     setStatus("Preparing your request…");
@@ -135,7 +219,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           signal: controller.signal,
           body: JSON.stringify({
             committee: "General",
-          agenda: `${input}\n\nTool focus: ${toolInstructions[mode]}`,
+            agenda: `${input}\n\nTool focus: ${toolInstructions[mode]}`,
+            tool: mode,
           country: "Any",
           experienceLevel: "intermediate",
           provider: "nvidia",
@@ -157,6 +242,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       }
 
       const contentType = response.headers.get("Content-Type") || "";
+      let savedChatId = response.headers.get("X-Chat-Id");
 
       if (contentType.includes("text/event-stream") && response.body) {
         // Streaming response
@@ -198,7 +284,14 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         // Non-streaming fallback
         const data = await response.json();
         setOutput(data.content);
+        savedChatId = data.chatId || savedChatId;
         setStatus(`MiniMax M3 · ${responseMode}`);
+      }
+
+      if (savedChatId) {
+        window.history.replaceState(null, "", `${pathname}?chat=${encodeURIComponent(savedChatId)}`);
+        setChatId(savedChatId);
+        window.dispatchEvent(new Event("mun:chat-created"));
       }
     } catch (caught) {
       if (caught instanceof Error && caught.name === "AbortError") {
@@ -240,7 +333,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-sm">
                 <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
               </div>
-              <h2 className="display-type mb-2 text-2xl">Generating your response</h2>
+              <h2 className="display-type mb-2 text-2xl">
+                {loadingSavedChat ? "Loading saved chat" : "Generating your response"}
+              </h2>
               <p className="text-sm leading-6 text-[var(--muted)]">
                 {status || "The model is preparing your answer…"}
               </p>

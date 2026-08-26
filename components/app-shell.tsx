@@ -15,7 +15,6 @@ import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { cn } from "@/lib/utils";
-import { getSupabase } from "@/lib/supabase/client";
 
 type ChatHistoryItem = {
   id: string;
@@ -30,6 +29,7 @@ type ChatHistoryItem = {
 
 const toolIcons: Record<string, typeof MessageSquare> = {
   "mun-research": MessageSquare,
+  research: MessageSquare,
   "country-profile": ShieldCheck,
   "position-paper": PenLine,
   speech: MessageSquare,
@@ -39,8 +39,18 @@ const toolIcons: Record<string, typeof MessageSquare> = {
 
 const SIDEBAR_COLLAPSED_KEY = "mun-prep-sidebar-collapsed";
 
+const toolRoutes: Record<string, string> = {
+  "mun-research": "/app/research",
+  research: "/app/research",
+  "country-profile": "/app/country-profile",
+  "position-paper": "/app/position-paper",
+  speech: "/app/speech-builder",
+  poi: "/app/poi-trainer",
+  resolution: "/app/resolution-builder",
+};
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, getIdToken } = useAuth();
   const [chats, setChats] = useState<ChatHistoryItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
@@ -57,33 +67,67 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [collapsed]);
 
   useEffect(() => {
-    if (!user) {
-      setChats([]);
-      setLoadingChats(false);
-      return;
+    let cancelled = false;
+
+    async function loadChats() {
+      if (!user) {
+        if (!cancelled) {
+          setChats([]);
+          setLoadingChats(false);
+        }
+        return;
+      }
+
+      setLoadingChats(true);
+      try {
+        const token = await getIdToken();
+        const response = await fetch("/api/chats?limit=50", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await response.json()) as { chats?: ChatHistoryItem[] };
+
+        if (!cancelled) {
+          setChats(response.ok ? data.chats ?? [] : []);
+        }
+      } catch {
+        if (!cancelled) setChats([]);
+      } finally {
+        if (!cancelled) setLoadingChats(false);
+      }
     }
 
-    setLoadingChats(true);
-    const supabase = getSupabase();
+    void loadChats();
 
-    supabase
-      .from("ai_generations")
-      .select("id, tool, input_summary, created_at")
-      .eq("uid", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => {
-        if (data) setChats(data as ChatHistoryItem[]);
-        setLoadingChats(false);
-      });
-  }, [user]);
+    const refreshChats = () => {
+      void loadChats();
+      window.setTimeout(() => void loadChats(), 700);
+    };
+    window.addEventListener("mun:chat-created", refreshChats);
+    window.addEventListener("mun:chat-history-refresh", refreshChats);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("mun:chat-created", refreshChats);
+      window.removeEventListener("mun:chat-history-refresh", refreshChats);
+    };
+  }, [getIdToken, user]);
 
   function getChatTitle(chat: ChatHistoryItem) {
     const summary = chat.input_summary;
+    const agenda = summary?.agenda?.replace(/\s+/g, " ").trim();
+    if (agenda) {
+      const title = agenda.split("Tool focus:")[0]?.trim();
+      if (title) return title.length > 56 ? `${title.slice(0, 56)}…` : title;
+    }
     if (summary?.committee && summary?.country) {
       return `${summary.committee} / ${summary.country}`;
     }
     return chat.tool.replace(/-/g, " ");
+  }
+
+  function getChatHref(chat: ChatHistoryItem) {
+    const route = toolRoutes[chat.tool] || "/app/research";
+    return `${route}?chat=${encodeURIComponent(chat.id)}`;
   }
 
   return (
@@ -161,54 +205,59 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </div>
 
-          <SidebarNav collapsed={collapsed} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SidebarNav collapsed={collapsed} />
 
-          <div className="border-t border-[var(--line)] p-2">
-            {!collapsed && (
-              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-                Recent chats
-              </p>
-            )}
-
-            {loadingChats ? (
-              <div
-                className={cn(
-                  "flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]",
-                  collapsed && "justify-center"
-                )}
-              >
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                {!collapsed && <span>Loading...</span>}
-              </div>
-            ) : chats.length === 0 ? (
-              !collapsed && (
-                <p className="px-2 py-3 text-xs text-[var(--muted)]">
-                  No chats yet. Start a new one!
+            <div className="border-t border-[var(--line)] p-2">
+              {!collapsed && (
+                <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  Recent chats
                 </p>
-              )
-            ) : (
-              <nav className="space-y-0.5" aria-label="Recent chats">
-                {chats.map((chat) => {
-                  const Icon = toolIcons[chat.tool] || MessageSquare;
-                  return (
-                    <Link
-                      key={chat.id}
-                      href="/app/research"
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] transition hover:bg-black/5",
-                        collapsed && "justify-center px-0"
-                      )}
-                      title={getChatTitle(chat)}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                      {!collapsed && (
-                        <span className="truncate">{getChatTitle(chat)}</span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
-            )}
+              )}
+
+              {loadingChats ? (
+                <div
+                  className={cn(
+                    "flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]",
+                    collapsed && "justify-center"
+                  )}
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  {!collapsed && <span>Loading chats...</span>}
+                </div>
+              ) : chats.length === 0 ? (
+                !collapsed && (
+                  <p className="px-2 py-3 text-xs text-[var(--muted)]">
+                    No chats yet. Start a new one!
+                  </p>
+                )
+              ) : (
+                <nav className="space-y-0.5" aria-label="Recent chats">
+                  {chats.map((chat) => {
+                    const Icon = toolIcons[chat.tool] || MessageSquare;
+                    return (
+                      <Link
+                        key={chat.id}
+                        href={getChatHref(chat)}
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent("mun:open-chat", { detail: { id: chat.id } }));
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] transition hover:bg-black/5",
+                          collapsed && "justify-center px-0"
+                        )}
+                        title={getChatTitle(chat)}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {!collapsed && (
+                          <span className="truncate">{getChatTitle(chat)}</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              )}
+            </div>
           </div>
 
           <div className="border-t border-[var(--line)] p-3">

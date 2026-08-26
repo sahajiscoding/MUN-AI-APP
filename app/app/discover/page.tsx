@@ -11,9 +11,7 @@ import {
   RefreshCw,
   Search,
   Share2,
-  TrendingUp,
   Users,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -39,11 +37,27 @@ const CATEGORY_META: Record<string, { color: string; label: string }> = {
   sports: { color: "var(--brass)", label: "SPORTS" },
 };
 
-const TOPICS_TO_FOLLOW = [
-  { name: "Economy", abbr: "EC", color: "var(--patina)" },
-  { name: "Security", abbr: "SE", color: "var(--oxblood)" },
-  { name: "Diplomacy", abbr: "DR", color: "var(--brass)" },
-];
+function getDistinctDescription(item: NewsItem) {
+  let description = (item.description || "")
+    .replace(/&amp;nbsp;|&nbsp;|&amp;#160;|&#160;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const title = item.title.replace(/\s+/g, " ").trim();
+  const source = item.source.replace(/\s+/g, " ").trim();
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+  if (!description || normalize(description) === normalize(title)) return "";
+
+  if (normalize(description).startsWith(normalize(title))) {
+    description = description.slice(title.length).replace(/^[\s|•·:;,–—-]+/, "").trim();
+  }
+
+  if (source && normalize(description).endsWith(normalize(source))) {
+    description = description.slice(0, -source.length).replace(/[\s|•·:;,–—-]+$/, "").trim();
+  }
+
+  return !description || normalize(description) === normalize(title) ? "" : description;
+}
 
 export default function DiscoverPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -51,8 +65,6 @@ export default function DiscoverPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [showIndicators, setShowIndicators] = useState(true);
-  const [showWhoToFollow, setShowWhoToFollow] = useState(true);
 
   function fetchNews(category?: string) {
     setLoading(true);
@@ -194,7 +206,7 @@ export default function DiscoverPage() {
 
       {/* Content */}
       <div className="mx-auto max-w-[1400px] px-6 py-6">
-        <div className="flex gap-6">
+        <div>
           {/* Main feed */}
           <div className="flex-1 min-w-0 space-y-6">
             {loading ? (
@@ -238,108 +250,7 @@ export default function DiscoverPage() {
             )}
           </div>
 
-          {/* Right sidebar */}
-          <aside className="hidden lg:block w-80 shrink-0 space-y-5">
-            {/* Indicators */}
-            {showIndicators && (
-              <div className="surface rounded-xl p-5">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-[var(--brass)]" aria-hidden="true" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--ink)]">Indicators</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowIndicators(false)}
-                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-black/5"
-                    aria-label="Remove Indicators panel"
-                    title="Remove Indicators"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              <div className="flex items-end gap-2 mb-1">
-                <span className="text-4xl font-bold text-[var(--ink)]">16</span>
-                <span className="flex items-center gap-1 text-xs text-[var(--oxblood)] mb-1">
-                  <TrendingUp className="h-3 w-3" />
-                  +1
-                </span>
-              </div>
-              <p className="text-xs text-[var(--muted)] mb-4">Global Tension Index · 7-day</p>
-              {/* Mini sparkline */}
-              <div className="flex items-end gap-1 h-10">
-                {[8, 10, 9, 12, 11, 14, 13, 15, 14, 16].map((v, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-sm bg-[var(--brass)]/30"
-                    style={{ height: `${(v / 20) * 100}%` }}
-                  />
-                ))}
-                </div>
-              </div>
-            )}
 
-            {/* Who to Follow */}
-            {showWhoToFollow && (
-              <div className="surface rounded-xl p-5">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--ink)]">Who to Follow</h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowWhoToFollow(false)}
-                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-black/5"
-                    aria-label="Remove Who to Follow panel"
-                    title="Remove Who to Follow"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              <div className="space-y-3">
-                {TOPICS_TO_FOLLOW.map((topic) => (
-                  <div key={topic.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ background: topic.color }}
-                      >
-                        {topic.abbr}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--ink)]">{topic.name}</p>
-                        <p className="text-xs text-[var(--muted)]">TOPIC</p>
-                      </div>
-                    </div>
-                    <button className="px-3 py-1 rounded-full border border-[var(--brass)] text-[var(--brass)] text-xs font-semibold hover:bg-[var(--brass)] hover:text-[var(--ink)] transition">
-                      Follow
-                    </button>
-                  </div>
-                ))}
-              </div>
-                <button className="mt-4 text-sm text-[var(--brass)] hover:underline">
-                  Manage all follows
-                </button>
-              </div>
-            )}
-
-            {!showIndicators || !showWhoToFollow ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowIndicators(true);
-                  setShowWhoToFollow(true);
-                }}
-                className="w-full rounded-lg border border-dashed border-[var(--line)] px-3 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--brass)] hover:text-[var(--ink)]"
-              >
-                Restore sidebar panels
-              </button>
-            ) : null}
-
-            {/* Footer */}
-            <div className="text-xs text-[var(--muted)] px-1">
-              <p>Model Diplomat · Discover</p>
-              <p>The reading room&apos;s front page.</p>
-            </div>
-          </aside>
         </div>
       </div>
     </div>
@@ -359,6 +270,7 @@ function FeaturedCard({
   getRelativeTime: (d: string) => string;
 }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.global;
+  const description = getDistinctDescription(item);
 
   return (
     <a
@@ -387,8 +299,8 @@ function FeaturedCard({
             <h2 className="display-type text-2xl font-bold text-[var(--ink)] leading-tight mb-3 group-hover:text-[var(--patina)] transition line-clamp-3">
               {item.title}
             </h2>
-            {item.description && (
-              <p className="text-sm text-[var(--muted)] line-clamp-3 mb-4">{item.description}</p>
+            {description && (
+              <p className="text-sm text-[var(--muted)] line-clamp-3 mb-4">{description}</p>
             )}
           </div>
 
@@ -442,6 +354,7 @@ function ArticleCard({
   getRelativeTime: (d: string) => string;
 }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.global;
+  const description = getDistinctDescription(item);
 
   return (
     <a
@@ -461,8 +374,8 @@ function ArticleCard({
         <h3 className="display-type text-lg font-bold text-[var(--ink)] leading-snug mt-1 mb-2 group-hover:text-[var(--patina)] transition line-clamp-2">
           {item.title}
         </h3>
-        {item.description && (
-          <p className="text-sm text-[var(--muted)] line-clamp-2 mb-3">{item.description}</p>
+        {description && (
+          <p className="text-sm text-[var(--muted)] line-clamp-2 mb-3">{description}</p>
         )}
         <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
           <span>{item.source}</span>

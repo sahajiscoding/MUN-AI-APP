@@ -42,6 +42,14 @@ function nextUtcMidnight() {
   return next.toISOString();
 }
 
+function usageServiceUnavailable() {
+  return new ApiError(
+    503,
+    "ai_usage_unavailable",
+    "AI usage accounting is temporarily unavailable. Please try again shortly.",
+  );
+}
+
 function asSafeInteger(value: unknown) {
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isSafeInteger(number) || number < 0) {
@@ -70,7 +78,7 @@ export async function getDailyAiUsage(uid: string): Promise<AiUsageSnapshot> {
     .eq("usage_date", utcDate())
     .maybeSingle();
 
-  if (error) throw new Error("Could not read daily AI usage.");
+  if (error) throw usageServiceUnavailable();
   return snapshot(data as UsageRow | null);
 }
 
@@ -82,7 +90,7 @@ export async function reserveAiTokens(uid: string, amount: number) {
     p_limit: AI_DAILY_TOKEN_LIMIT,
   });
 
-  if (error) throw new Error("Could not reserve daily AI usage.");
+  if (error) throw usageServiceUnavailable();
   const row = (Array.isArray(data) ? data[0] : data) as UsageRow | null;
   if (!row) throw new Error("Could not reserve daily AI usage.");
 
@@ -123,7 +131,7 @@ export async function reconcileAiTokens(uid: string, reservationId: string, actu
     p_actual: safeActual,
     p_limit: AI_DAILY_TOKEN_LIMIT,
   });
-  if (error) throw new Error("Could not reconcile daily AI usage.");
+  if (error) throw usageServiceUnavailable();
   const row = (Array.isArray(data) ? data[0] : data) as UsageRow | null;
   return snapshot(row);
 }
@@ -134,7 +142,7 @@ export async function releaseAiTokens(uid: string, reservationId: string) {
     p_reservation_id: reservationId,
     p_limit: AI_DAILY_TOKEN_LIMIT,
   });
-  if (error) throw new Error("Could not release daily AI usage.");
+  if (error) throw usageServiceUnavailable();
   const row = (Array.isArray(data) ? data[0] : data) as UsageRow | null;
   return snapshot(row);
 }

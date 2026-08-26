@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, Loader2, Plus, Send } from "lucide-react";
+import { Streamdown } from "streamdown";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
@@ -375,12 +376,23 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 {status && (
                   <p className="mb-3 text-xs text-[var(--muted)]">{status}</p>
                 )}
-                <article className="prose prose-neutral max-w-none whitespace-pre-wrap leading-7 text-sm">
-                  {output}
+                <div className="chat-markdown text-sm leading-7">
+                  <Streamdown
+                    mode={streaming ? "streaming" : "static"}
+                    isAnimating={streaming}
+                    animated={streaming}
+                    parseIncompleteMarkdown
+                    lineNumbers={false}
+                  >
+                    {output}
+                  </Streamdown>
                   {streaming && (
-                    <span className="inline-block w-2 h-4 bg-[var(--ink)] animate-pulse ml-0.5 align-middle" />
+                    <span
+                      className="inline-block h-4 w-2 animate-pulse bg-[var(--ink)] ml-0.5 align-middle"
+                      aria-label="Response is still being generated"
+                    />
                   )}
-                </article>
+                </div>
               </div>
             </div>
           </div>

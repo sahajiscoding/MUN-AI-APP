@@ -19,6 +19,7 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "streamdown": "^2.6.0",
     "tailwind-merge": "latest",
     "zod": "latest"
   },

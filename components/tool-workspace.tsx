@@ -329,7 +329,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex h-full min-h-0 flex-col">
       <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} />
 
       {/* Header */}
@@ -348,7 +348,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Messages area */}
-      <div ref={outputRef} onScroll={handleOutputScroll} className="relative flex-1 overflow-y-auto">
+      <div ref={outputRef} onScroll={handleOutputScroll} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {loading && !output ? (
           <div className="flex h-full items-center justify-center px-5 text-center" aria-live="polite">
             <div className="w-full max-w-md">
@@ -442,11 +442,11 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Input area */}
-      <div className="border-t border-[var(--line)] px-5 py-4 shrink-0">
+      <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 backdrop-blur-sm sm:px-5 sm:py-4">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
           <div className="flex items-end gap-2 surface rounded-2xl border border-[var(--line)] px-4 py-3">
             <textarea
-              className="flex-1 resize-none bg-transparent outline-none text-sm leading-6 max-h-32 min-h-[2.5rem]"
+              className="min-h-[2.5rem] max-h-32 flex-1 resize-none bg-transparent px-1 outline-none text-sm leading-6"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Ask about ${title.toLowerCase()}...`}

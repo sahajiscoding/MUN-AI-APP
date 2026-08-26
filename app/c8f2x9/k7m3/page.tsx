@@ -98,7 +98,6 @@ export default function AdminDashboardPage() {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer admin-bypass",
         },
         body: JSON.stringify({
           committee: "General",

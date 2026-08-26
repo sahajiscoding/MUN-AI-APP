@@ -3,7 +3,7 @@
 import { Check, Crown, Loader2, LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { formatPlanPrice, plans } from "@/lib/plans";
+import { canonicalPlanId, formatPlanPrice, getPlan, plans } from "@/lib/plans";
 
 type EntitlementData = {
   status: "inactive" | "active" | "expired";
@@ -75,23 +75,29 @@ export function PricingClient() {
 
   const hasActiveAccess = entitlement?.status === "active";
   const hasAdminAccess = hasActiveAccess && entitlement?.planId === "admin";
-  const currentPlan = hasActiveAccess
-    ? plans.find((plan) => plan.id === entitlement?.planId)
-    : undefined;
+  const currentPlan = hasActiveAccess ? getPlan(entitlement?.planId) : undefined;
 
   async function handleBuy(planId: string) {
     setLoading(planId);
     try {
+      const token = await getIdToken();
       const res = await fetch("/api/payments/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ planId })
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error?.message || "Failed to create order");
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : data.error?.message || "Failed to create order"
+        );
       }
 
       if (!data.openUrl) {
@@ -143,7 +149,7 @@ export function PricingClient() {
       {!entitlementLoading && !hasActiveAccess ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {plans.map((plan) => {
-          const isCurrentPlan = hasActiveAccess && entitlement?.planId === plan.id;
+          const isCurrentPlan = hasActiveAccess && canonicalPlanId(entitlement?.planId) === plan.id;
           const disabled =
             loading !== null || entitlementLoading || entitlementError || isCurrentPlan || hasAdminAccess;
 

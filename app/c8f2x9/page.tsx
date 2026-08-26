@@ -24,10 +24,10 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ password }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error?.message || "Login failed.");
+        setError(data.error || "Login failed.");
         return;
       }
 
@@ -53,8 +53,11 @@ export default function AdminLoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <label htmlFor="admin-password" className="sr-only">Administrator password</label>
             <input
+              id="admin-password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
@@ -64,7 +67,7 @@ export default function AdminLoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 text-center">{error}</p>
+            <p className="text-sm text-red-400 text-center" role="alert">{error}</p>
           )}
 
           <button

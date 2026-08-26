@@ -7,11 +7,9 @@ import {
   Compass,
   ExternalLink,
   Globe,
-  HelpCircle,
   RefreshCw,
   Search,
   Share2,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -62,23 +60,47 @@ function getDistinctDescription(item: NewsItem) {
 export default function DiscoverPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newsError, setNewsError] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [savedReady, setSavedReady] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
 
   function fetchNews(category?: string) {
     setLoading(true);
+    setNewsError("");
     const url = category && category !== "all" && category !== "saved"
       ? `/api/news?category=${category}`
       : "/api/news";
     fetch(url)
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "News is temporarily unavailable.");
+        return data;
+      })
       .then((data) => {
         setNews(data.news || []);
-        setLoading(false);
+        setNewsError(data.message || "");
       })
-      .catch(() => setLoading(false));
+      .catch((error) => setNewsError(error instanceof Error ? error.message : "News is temporarily unavailable."))
+      .finally(() => setLoading(false));
   }
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem("mun-prep:saved-news") || "[]");
+      if (Array.isArray(stored)) setSaved(new Set(stored.filter((value): value is string => typeof value === "string")));
+    } catch {
+      // Ignore unavailable or malformed local storage.
+    } finally {
+      setSavedReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (savedReady) window.localStorage.setItem("mun-prep:saved-news", JSON.stringify([...saved]));
+  }, [saved, savedReady]);
 
   useEffect(() => {
     fetchNews(activeTab === "all" || activeTab === "saved" ? undefined : activeTab);
@@ -104,6 +126,22 @@ export default function DiscoverPage() {
       else next.add(link);
       return next;
     });
+  }
+
+  async function shareItem(item: NewsItem) {
+    const shareData = { title: item.title, text: item.description || item.title, url: item.link };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(item.link);
+        setShareStatus("Article link copied.");
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setShareStatus("We could not share this article. Copy its URL from the address bar.");
+    }
+    window.setTimeout(() => setShareStatus(""), 3000);
   }
 
   function getRelativeTime(dateStr: string): string {
@@ -176,12 +214,7 @@ export default function DiscoverPage() {
                   className="pl-9 pr-4 py-1.5 w-52 rounded-lg bg-black/5 border border-[var(--line)] text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--patina)]/50"
                 />
               </div>
-              <button className="p-2 rounded-lg hover:bg-black/5 text-[var(--muted)] transition">
-                <HelpCircle className="h-4 w-4" />
-              </button>
-              <button className="p-2 rounded-lg hover:bg-black/5 text-[var(--muted)] transition">
-                <Users className="h-4 w-4" />
-              </button>
+
             </div>
           </div>
 
@@ -206,6 +239,7 @@ export default function DiscoverPage() {
 
       {/* Content */}
       <div className="mx-auto max-w-[1400px] px-6 py-6">
+        {shareStatus ? <p className="mb-4 text-sm text-[var(--patina)]" role="status" aria-live="polite">{shareStatus}</p> : null}
         <div>
           {/* Main feed */}
           <div className="flex-1 min-w-0 space-y-6">
@@ -214,13 +248,17 @@ export default function DiscoverPage() {
                 <RefreshCw className="h-6 w-6 text-[var(--muted)] animate-spin" />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-[var(--muted)]">
+              <div className="text-center py-20 text-[var(--muted)]" role={newsError ? "alert" : undefined}>
                 <Compass className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">
-                  {activeTab === "saved"
-                    ? "No saved articles yet. Bookmark articles to read later."
-                    : "No articles found."}
+                  {newsError || (activeTab === "saved" ? "No saved articles yet. Bookmark articles to read later." : "No articles found.")}
                 </p>
+                {newsError ? (
+                  <button type="button" onClick={() => fetchNews(activeTab === "all" || activeTab === "saved" ? undefined : activeTab)} className="button-secondary mt-5 inline-flex items-center gap-2 px-4 text-sm font-semibold">
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                    Try again
+                  </button>
+                ) : null}
               </div>
             ) : (
               <>
@@ -230,6 +268,7 @@ export default function DiscoverPage() {
                     item={featured}
                     isSaved={saved.has(featured.link)}
                     onToggleSave={() => toggleSave(featured.link)}
+                    onShare={() => void shareItem(featured)}
                     getRelativeTime={getRelativeTime}
                   />
                 )}
@@ -242,6 +281,7 @@ export default function DiscoverPage() {
                       item={item}
                       isSaved={saved.has(item.link)}
                       onToggleSave={() => toggleSave(item.link)}
+                      onShare={() => void shareItem(item)}
                       getRelativeTime={getRelativeTime}
                     />
                   ))}
@@ -262,11 +302,13 @@ function FeaturedCard({
   item,
   isSaved,
   onToggleSave,
+  onShare,
   getRelativeTime,
 }: {
   item: NewsItem;
   isSaved: boolean;
   onToggleSave: () => void;
+  onShare: () => void;
   getRelativeTime: (d: string) => string;
 }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.global;
@@ -321,6 +363,8 @@ function FeaturedCard({
                   e.preventDefault();
                   onToggleSave();
                 }}
+                type="button"
+                aria-label={isSaved ? "Remove article bookmark" : "Save article"}
                 className="p-1.5 rounded-lg hover:bg-black/5 transition"
               >
                 <Bookmark
@@ -328,7 +372,12 @@ function FeaturedCard({
                 />
               </button>
               <button
-                onClick={(e) => e.preventDefault()}
+                type="button"
+                aria-label="Share article"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onShare();
+                }}
                 className="p-1.5 rounded-lg hover:bg-black/5 transition"
               >
                 <Share2 className="h-4 w-4 text-[var(--muted)]" />
@@ -346,11 +395,13 @@ function ArticleCard({
   item,
   isSaved,
   onToggleSave,
+  onShare,
   getRelativeTime,
 }: {
   item: NewsItem;
   isSaved: boolean;
   onToggleSave: () => void;
+  onShare: () => void;
   getRelativeTime: (d: string) => string;
 }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.global;
@@ -391,14 +442,21 @@ function ArticleCard({
                 e.preventDefault();
                 onToggleSave();
               }}
-              className="p-1 rounded hover:bg-black/5 transition"
-            >
-              <Bookmark
+                type="button"
+                aria-label={isSaved ? "Remove article bookmark" : "Save article"}
+                className="p-1 rounded hover:bg-black/5 transition"
+              >
+                <Bookmark
                 className={`h-3.5 w-3.5 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-[var(--muted)]"}`}
               />
             </button>
             <button
-              onClick={(e) => e.preventDefault()}
+              type="button"
+              aria-label="Share article"
+              onClick={(e) => {
+                e.preventDefault();
+                onShare();
+              }}
               className="p-1 rounded hover:bg-black/5 transition"
             >
               <Share2 className="h-3.5 w-3.5 text-[var(--muted)]" />

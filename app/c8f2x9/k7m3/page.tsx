@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
           experienceLevel: "intermediate",
           provider: "nvidia",
           maxTokens,
-          temperature
+          temperature,
         }),
       });
 
@@ -144,7 +144,7 @@ export default function AdminDashboardPage() {
                   setAiOutput(fullContent);
                 }
               } catch {
-                // skip
+                // Ignore malformed provider chunks.
               }
             }
           }
@@ -169,43 +169,72 @@ export default function AdminDashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[var(--ink)]">
-      <div className="border-b border-white/10 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--patina)] text-white">
-            <Crown className="h-4 w-4" />
+    <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--paper)]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--ink)] text-[var(--paper-strong)] shadow-sm">
+              <Crown className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="label-text">MUN Prep · private control room</p>
+              <h1 className="display-type truncate text-xl sm:text-2xl">Administrator dashboard</h1>
+            </div>
           </div>
-          <h1 className="text-lg font-bold text-[var(--paper)]">Dashboard</h1>
+          <nav className="flex shrink-0 items-center gap-2" aria-label="Administrator navigation">
+            <Link href="/admin/referrals" className="button-secondary inline-flex items-center px-3 py-2 text-sm font-semibold sm:px-4">
+              Referrals
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="button-primary inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold sm:px-4"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </nav>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/admin/referrals" className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/75 hover:bg-white/10 transition">
-            Referrals
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-white/60 hover:bg-white/10 transition"
-          >
-          <LogOut className="h-4 w-4" />
-            Logout
-          </button>
-        </div>
-      </div>
+      </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-6 space-y-8">
-        {statusMessage ? <p className="rounded-xl border border-[var(--brass)]/30 bg-[var(--brass)]/10 px-4 py-3 text-sm text-[var(--paper)]" role="status">{statusMessage}</p> : null}
-        {/* AI Testing */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Bot className="h-5 w-5 text-[var(--brass)]" />
-            <h2 className="text-lg font-bold text-[var(--paper)]">Free AI Testing</h2>
-            <span className="ml-2 px-2 py-0.5 rounded-full bg-[var(--patina)]/20 text-[var(--patina)] text-xs font-semibold">
-              Internal
-            </span>
-          </div>
+      <main className="diplomatic-grid min-h-[calc(100vh-65px)]">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <section className="relative overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--paper-strong)] px-5 py-7 shadow-[0_20px_70px_rgba(23,20,18,0.08)] sm:px-8 sm:py-9">
+            <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-[var(--brass)]/25" aria-hidden="true" />
+            <div className="pointer-events-none absolute -right-4 -top-12 h-44 w-44 rounded-full border border-[var(--patina)]/20" aria-hidden="true" />
+            <div className="relative max-w-2xl">
+              <p className="label-text">Operations brief</p>
+              <h2 className="display-type mt-2 text-3xl leading-tight sm:text-4xl">Keep the room ready.</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)] sm:text-base">
+                Manage delegate access and test the debate assistant from one secure, server-backed workspace.
+              </p>
+            </div>
+          </section>
 
-          <form onSubmit={handleAiTest} className="space-y-3">
-            <div className="flex gap-2">
-              <div className="flex rounded-lg border border-white/10 overflow-hidden">
+          {statusMessage ? (
+            <p className="rounded-xl border border-[var(--brass)]/40 bg-[var(--brass)]/10 px-4 py-3 text-sm font-medium text-[var(--ink)]" role="status">
+              {statusMessage}
+            </p>
+          ) : null}
+
+          <section className="surface rounded-2xl p-5 sm:p-7" aria-labelledby="ai-testing-heading">
+            <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--patina)]/12 text-[var(--patina)]">
+                  <Bot className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="label-text">Provider check</p>
+                  <h2 id="ai-testing-heading" className="display-type mt-1 text-2xl">Test the debate assistant</h2>
+                  <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Internal testing uses the protected MiniMax M3 route.</p>
+                </div>
+              </div>
+              <span className="inline-flex w-fit items-center rounded-full border border-[var(--patina)]/25 bg-[var(--patina)]/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--patina)]">
+                Internal only
+              </span>
+            </div>
+
+            <form onSubmit={handleAiTest} className="mt-5 space-y-4">
+              <div className="flex flex-wrap gap-2" aria-label="Response mode">
                 {(["quick", "thorough", "max"] as const).map((m) => (
                   <button
                     key={m}
@@ -213,165 +242,158 @@ export default function AdminDashboardPage() {
                     onClick={() => setAiMode(m)}
                     className={
                       aiMode === m
-                        ? "bg-[var(--paper)] text-[var(--ink)] px-3 py-1.5 text-xs font-semibold"
-                        : "px-3 py-1.5 text-xs font-semibold text-white/50 hover:bg-white/10"
+                        ? "rounded-lg bg-[var(--ink)] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--paper-strong)] shadow-sm"
+                        : "rounded-lg border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--ink)]/30 hover:text-[var(--ink)]"
                     }
                   >
                     {m === "quick" ? "Quick" : m === "thorough" ? "Thorough" : "Max"}
                   </button>
                 ))}
               </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <label htmlFor="admin-ai-prompt" className="sr-only">AI test prompt</label>
+                <input
+                  id="admin-ai-prompt"
+                  type="text"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Ask a concise MUN research question..."
+                  className="input-field flex-1"
+                />
+                <button
+                  type="submit"
+                  disabled={aiStreaming || !aiPrompt.trim()}
+                  className="button-primary inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {aiStreaming ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                  {aiStreaming ? "Testing" : "Run test"}
+                </button>
+              </div>
+            </form>
+
+            {aiOutput ? (
+              <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4 sm:p-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="label-text">Assistant response</p>
+                  {aiStreaming ? <span className="text-xs font-semibold text-[var(--patina)]">Streaming</span> : null}
+                </div>
+                <article className="max-h-96 overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-[var(--ink)]">
+                  {aiOutput}
+                  {aiStreaming ? <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-[var(--brass)] align-middle" aria-label="Response is still being generated" /> : null}
+                </article>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="surface rounded-2xl p-5 sm:p-7" aria-labelledby="users-heading">
+            <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="label-text">Access registry</p>
+                <div className="mt-1 flex items-center gap-3">
+                  <h2 id="users-heading" className="display-type text-2xl">Users</h2>
+                  <span className="rounded-full bg-[var(--ink)] px-2.5 py-1 text-xs font-bold text-[var(--paper-strong)]">{users.length}</span>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">Approve or revoke administrator access deliberately.</p>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" aria-hidden="true" />
+                <label htmlFor="user-search" className="sr-only">Search users</label>
+                <input
+                  id="user-search"
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search users..."
+                  className="input-field pl-9"
+                />
+              </div>
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Type anything to test..."
-                className="flex-1 px-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-sm text-[var(--paper)] placeholder:text-white/40 focus:outline-none focus:border-[var(--brass)]/50"
-              />
-              <button
-                type="submit"
-                disabled={aiStreaming || !aiPrompt.trim()}
-                className="px-4 py-2.5 rounded-xl bg-[var(--brass)] text-[var(--ink)] font-semibold text-sm hover:brightness-110 transition disabled:opacity-40"
-              >
-                {aiStreaming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Send"
-                )}
-              </button>
-            </div>
-          </form>
-
-          {aiOutput && (
-            <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
-              <article className="text-sm text-[var(--paper)]/80 whitespace-pre-wrap leading-6 max-h-96 overflow-y-auto">
-                {aiOutput}
-                {aiStreaming && (
-                  <span className="inline-block w-2 h-4 bg-[var(--brass)] animate-pulse ml-0.5 align-middle" />
-                )}
-              </article>
-            </div>
-          )}
-        </section>
-
-        {/* User Management */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-[var(--patina)]" />
-              <h2 className="text-lg font-bold text-[var(--paper)]">Users</h2>
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-white/10 text-white/50 text-xs">
-                {users.length}
-              </span>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
-                className="pl-9 pr-4 py-1.5 w-52 rounded-lg bg-white/10 border border-white/10 text-sm text-[var(--paper)] placeholder:text-white/40 focus:outline-none focus:border-[var(--brass)]/50"
-              />
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 text-white/40 animate-spin" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <p className="text-center py-12 text-white/40 text-sm">No users found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-3 px-3 text-white/50 font-semibold">User</th>
-                    <th className="text-left py-3 px-3 text-white/50 font-semibold">UID</th>
-                    <th className="text-left py-3 px-3 text-white/50 font-semibold">Status</th>
-                    <th className="text-left py-3 px-3 text-white/50 font-semibold">Last Seen</th>
-                    <th className="text-right py-3 px-3 text-white/50 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((user) => (
-                    <tr
-                      key={user.uid}
-                      className="border-b border-white/5 hover:bg-white/5 transition"
-                    >
-                      <td className="py-3 px-3">
-                        <div>
-                          <p className="text-[var(--paper)] font-semibold">
-                            {user.display_name || "Unnamed"}
-                          </p>
-                          <p className="text-white/40 text-xs">{user.email}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3">
-                        <code className="text-xs text-white/40 font-mono">
-                          {user.uid.slice(0, 12)}...
-                        </code>
-                      </td>
-                      <td className="py-3 px-3">
-                        {user.isAdmin ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--brass)]/20 text-[var(--brass)] text-xs font-semibold">
-                            <Crown className="h-3 w-3" />
-                            Admin
-                          </span>
-                        ) : user.entitlement.status === "active" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--patina)]/20 text-[var(--patina)] text-xs font-semibold">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/40 text-xs">
-                            <XCircle className="h-3 w-3" />
-                            Free
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-white/40 text-xs">
-                        {user.last_seen_at
-                          ? new Date(user.last_seen_at).toLocaleDateString()
-                          : "Never"}
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="flex items-center justify-end gap-1">
-                          {!user.isAdmin ? (
-                            <button
-                              onClick={() => mutateAdmin(user.uid, "approve")}
-                              disabled={Boolean(actionBusy)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-[var(--patina)] hover:bg-[var(--patina)]/10 transition"
-                              title="Approve"
-                            >
-                              <UserPlus className="h-3 w-3" />
-                              Approve
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => mutateAdmin(user.uid, "revoke")}
-                              disabled={Boolean(actionBusy)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-400/10 transition"
-                              title="Revoke"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                              Revoke
-                            </button>
-                          )}
-                        </div>
-                      </td>
+            {loading ? (
+              <div className="flex items-center justify-center py-16" aria-live="polite">
+                <Loader2 className="h-7 w-7 animate-spin text-[var(--patina)]" aria-label="Loading users" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="py-16 text-center text-sm text-[var(--muted)]">No users found.</p>
+            ) : (
+              <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--line)]">
+                <table className="w-full min-w-[720px] border-collapse text-sm">
+                  <caption className="sr-only">MUN Prep user access registry</caption>
+                  <thead className="bg-[var(--brass)]/10">
+                    <tr className="border-b border-[var(--line)]">
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">User</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">UID</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Last seen</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.08em] text-[var(--muted)]">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
+                  </thead>
+                  <tbody>
+                    {filtered.map((user) => (
+                      <tr key={user.uid} className="border-b border-[var(--line)] last:border-b-0 transition hover:bg-[var(--patina)]/5">
+                        <td className="px-4 py-4">
+                          <p className="font-semibold text-[var(--ink)]">{user.display_name || "Unnamed"}</p>
+                          <p className="mt-0.5 text-xs text-[var(--muted)]">{user.email}</p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <code className="mono-type rounded bg-[var(--ink)]/5 px-2 py-1 text-xs text-[var(--muted)]">{user.uid.slice(0, 12)}...</code>
+                        </td>
+                        <td className="px-4 py-4">
+                          {user.isAdmin ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brass)]/15 px-2.5 py-1 text-xs font-bold text-[var(--oxblood)]">
+                              <Crown className="h-3 w-3" aria-hidden="true" />
+                              Admin
+                            </span>
+                          ) : user.entitlement.status === "active" ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--patina)]/12 px-2.5 py-1 text-xs font-bold text-[var(--patina)]">
+                              <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ink)]/6 px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
+                              <XCircle className="h-3 w-3" aria-hidden="true" />
+                              Free
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-xs text-[var(--muted)]">
+                          {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : "Never"}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            {!user.isAdmin ? (
+                              <button
+                                onClick={() => mutateAdmin(user.uid, "approve")}
+                                disabled={Boolean(actionBusy)}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--patina)] transition hover:bg-[var(--patina)]/10 disabled:opacity-40"
+                                title="Approve administrator access"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                                Approve
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => mutateAdmin(user.uid, "revoke")}
+                                disabled={Boolean(actionBusy)}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--oxblood)] transition hover:bg-[var(--oxblood)]/10 disabled:opacity-40"
+                                title="Revoke administrator access"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                Revoke
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

@@ -43,20 +43,22 @@ function parseRSS(xml: string, category: string): NewsItem[] {
   while ((match = itemRegex.exec(xml)) !== null && items.length < 8) {
     const block = match[1];
 
-    const title = extractTag(block, "title");
+    const rawTitle = extractTag(block, "title");
     const link = extractTag(block, "link");
-    const source = extractTag(block, "source") || extractTag(block, "dc:creator") || "Google News";
+    const rawSource = extractTag(block, "source") || extractTag(block, "dc:creator") || "Google News";
     const pubDate = extractTag(block, "pubDate") || "";
-    const description = extractTag(block, "description") || "";
+    const rawDescription = extractTag(block, "description") || "";
+    const normalizedTitle = cleanText(rawTitle);
+    const normalizedSource = cleanText(rawSource);
 
-    if (title && link) {
+    if (normalizedTitle && link) {
       items.push({
-        title: cleanText(title),
+        title: normalizedTitle,
         link,
-        source,
+        source: normalizedSource,
         pubDate,
         category,
-        description: cleanDescription(description),
+        description: cleanDescription(rawDescription, normalizedTitle, normalizedSource),
       });
     }
   }
@@ -71,17 +73,48 @@ function extractTag(block: string, tag: string): string {
 }
 
 function decodeHTMLEntities(str: string): string {
-  return str
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'");
+  let decoded = str;
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = decoded
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;|&#39;|&#x27;/gi, "'")
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, decimal: string) => String.fromCharCode(Number(decimal)));
+
+    if (next === decoded) break;
+    decoded = next;
+  }
+
+  return decoded;
 }
 
-function cleanDescription(html: string): string {
-  return cleanText(html).slice(0, 280);
+function cleanDescription(html: string, title: string, source: string): string {
+  let description = cleanText(html);
+  const titleKey = normalizeForComparison(title);
+  const sourceKey = normalizeForComparison(source);
+  const descriptionKey = normalizeForComparison(description);
+
+  if (!description || descriptionKey === titleKey) return "";
+
+  if (descriptionKey.startsWith(titleKey)) {
+    description = description.slice(title.length).replace(/^[\s|•·:;,–—-]+/, "").trim();
+  }
+
+  if (sourceKey && normalizeForComparison(description).endsWith(sourceKey)) {
+    description = description.slice(0, -source.length).replace(/[\s|•·:;,–—-]+$/, "").trim();
+  }
+
+  if (!description || normalizeForComparison(description) === titleKey) return "";
+  return description.slice(0, 280);
+}
+
+function normalizeForComparison(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
 }
 
 function cleanText(value: string): string {

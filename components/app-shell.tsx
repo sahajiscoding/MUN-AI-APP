@@ -2,23 +2,18 @@
 
 import {
   Landmark,
+  Loader2,
   LogOut,
-  Plus,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShieldCheck,
   MessageSquare,
   PenLine,
-  ReceiptText,
-  Loader2,
-  Newspaper,
-  BookOpen,
-  BookMarked,
+  Plus,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
+import { SidebarToggle } from "@/components/sidebar-toggle";
 import { cn } from "@/lib/utils";
 import { getSupabase } from "@/lib/supabase/client";
 
@@ -39,19 +34,36 @@ const toolIcons: Record<string, typeof MessageSquare> = {
   "position-paper": PenLine,
   speech: MessageSquare,
   poi: MessageSquare,
-  resolution: PenLine,
+  resolution: PenLine
 };
 
+const SIDEBAR_COLLAPSED_KEY = "mun-prep-sidebar-collapsed";
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const { user, logout } = useAuth();
   const [chats, setChats] = useState<ChatHistoryItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    const storedPreference = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    if (storedPreference === "true" || storedPreference === "false") {
+      setCollapsed(storedPreference === "true");
+    }
+  }, []);
 
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (!user) {
+      setChats([]);
+      setLoadingChats(false);
+      return;
+    }
+
+    setLoadingChats(true);
     const supabase = getSupabase();
 
     supabase
@@ -75,211 +87,157 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "shrink-0 border-r border-[var(--line)] bg-[var(--surface)] flex flex-col h-screen transition-all duration-300 z-20",
-          collapsed ? "w-[68px]" : "w-64"
-        )}
-      >
-        {/* Logo + New Chat + Toggle */}
-        <div className="p-3 border-b border-[var(--line)]">
-          <div className="flex items-center justify-between mb-3">
-            <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--ink)] text-[var(--paper)] shrink-0">
-                <Landmark className="h-4 w-4" aria-hidden="true" />
-              </span>
-              {!collapsed && (
-                <span className="display-type text-lg truncate">MUN Prep</span>
-              )}
-            </Link>
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="p-1.5 rounded-lg hover:bg-black/5 transition text-[var(--muted)] shrink-0"
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? (
-                <PanelLeftOpen className="h-4 w-4" />
-              ) : (
-                <PanelLeftClose className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-          <Link
-            href="/app/research"
-            className={cn(
-              "flex items-center gap-2 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5 transition",
-              collapsed && "justify-center px-0"
-            )}
-            title="New chat"
-          >
-            <Plus className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>New chat</span>}
+    <div className="min-h-screen">
+      <div className="flex min-h-screen flex-col lg:flex-row">
+        <header className="flex items-center justify-between border-b border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:hidden">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--ink)] text-[var(--paper)]">
+              <Landmark className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span className="display-type text-lg">MUN Prep</span>
           </Link>
-        </div>
-
-        {/* Discover link */}
-        <div className="px-2 pt-2">
-          <Link
-            href="/app/discover"
-            className={cn(
-              "flex items-center gap-2 w-full rounded-lg px-2 py-2 text-sm font-semibold transition",
-              collapsed && "justify-center px-0",
-              pathname === "/app/discover"
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-            title="Discover"
-          >
-            <Newspaper className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Discover</span>}
-          </Link>
-        </div>
-
-        {/* Chat History */}
-        <div className="flex-1 overflow-y-auto p-2">
-          {!collapsed && (
-            <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-              Recent chats
-            </p>
-          )}
-
-          {loadingChats ? (
-            <div
-              className={cn(
-                "flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]",
-                collapsed && "justify-center"
-              )}
-            >
-              <Loader2 className="h-3 w-3 animate-spin" />
-              {!collapsed && <span>Loading...</span>}
-            </div>
-          ) : chats.length === 0 ? (
-            !collapsed && (
-              <p className="px-2 py-3 text-xs text-[var(--muted)]">
-                No chats yet. Start a new one!
-              </p>
-            )
-          ) : (
-            <nav className="space-y-0.5">
-              {chats.map((chat) => {
-                const Icon = toolIcons[chat.tool] || MessageSquare;
-                return (
-                  <Link
-                    key={chat.id}
-                    href="/app/research"
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] hover:bg-black/5 transition truncate",
-                      collapsed && "justify-center px-0"
-                    )}
-                    title={getChatTitle(chat)}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && (
-                      <span className="truncate">{getChatTitle(chat)}</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
-        </div>
-
-        {/* Learn section */}
-        <div className="px-2 pt-2">
-          {!collapsed && (
-            <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-              Learn
-            </p>
-          )}
-          <Link
-            href="/app/courses"
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
-              collapsed && "justify-center px-0",
-              pathname.startsWith("/app/courses")
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-            title="Courses"
-          >
-            <BookOpen className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Courses</span>}
-          </Link>
-          <Link
-            href="/app/glossary"
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
-              collapsed && "justify-center px-0",
-              pathname === "/app/glossary"
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-            title="Glossary"
-          >
-            <BookMarked className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Glossary</span>}
-          </Link>
-        </div>
-
-        {/* Bottom nav */}
-        <div className="border-t border-[var(--line)] p-2 space-y-0.5">
           <Link
             href="/profile"
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
-              collapsed && "justify-center px-0",
-              pathname === "/profile"
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-            title="Profile"
+            className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5"
+            aria-label="Open profile"
           >
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Profile</span>}
+            <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </Link>
-          <Link
-            href="/pricing"
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
-              collapsed && "justify-center px-0",
-              pathname === "/pricing"
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "text-[var(--muted)] hover:bg-black/5"
-            )}
-            title="Pricing"
-          >
-            <ReceiptText className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Pricing</span>}
-          </Link>
-        </div>
+        </header>
 
-        {/* User info + logout */}
-        <div className="border-t border-[var(--line)] p-3">
-          <div className={cn("flex items-center justify-between", collapsed && "justify-center")}>
-            {!collapsed && (
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">
-                  {user?.user_metadata?.full_name || "Delegate"}
-                </p>
-                <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="shrink-0 p-2 rounded-lg hover:bg-black/5 transition text-[var(--muted)]"
-              title="Sign out"
+        <aside
+          aria-label="Desktop workspace navigation"
+          className={cn(
+            "hidden shrink-0 border-r border-[var(--line)] bg-[var(--surface)] lg:flex lg:h-screen lg:flex-col lg:transition-[width] lg:duration-300",
+            collapsed ? "lg:w-[68px]" : "lg:w-64"
+          )}
+        >
+          <div className="border-b border-[var(--line)] p-3">
+            <div
+              className={cn(
+                "flex",
+                collapsed ? "justify-center" : "items-center justify-between gap-2"
+              )}
             >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
+              <Link
+                href="/dashboard"
+                className={cn(
+                  "flex min-w-0 items-center gap-3",
+                  collapsed && "justify-center"
+                )}
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--ink)] text-[var(--paper)]">
+                  <Landmark className="h-4 w-4" aria-hidden="true" />
+                </span>
+                {!collapsed && <span className="display-type truncate text-lg">MUN Prep</span>}
+              </Link>
+              {!collapsed && (
+                <SidebarToggle
+                  collapsed={collapsed}
+                  onToggle={() => setCollapsed((value) => !value)}
+                />
+              )}
+            </div>
 
-      {/* Main content */}
-      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+            {collapsed ? (
+              <div className="mt-2 flex justify-center">
+                <SidebarToggle
+                  collapsed={collapsed}
+                  onToggle={() => setCollapsed((value) => !value)}
+                />
+              </div>
+            ) : null}
+
+            <Link
+              href="/app/research"
+              className={cn(
+                "mt-3 flex w-full items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold transition hover:bg-black/5",
+                collapsed && "justify-center px-0"
+              )}
+              title={collapsed ? "New chat" : undefined}
+            >
+              <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {!collapsed && <span>New chat</span>}
+            </Link>
+          </div>
+
+          <SidebarNav collapsed={collapsed} />
+
+          <div className="border-t border-[var(--line)] p-2">
+            {!collapsed && (
+              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                Recent chats
+              </p>
+            )}
+
+            {loadingChats ? (
+              <div
+                className={cn(
+                  "flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]",
+                  collapsed && "justify-center"
+                )}
+              >
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                {!collapsed && <span>Loading...</span>}
+              </div>
+            ) : chats.length === 0 ? (
+              !collapsed && (
+                <p className="px-2 py-3 text-xs text-[var(--muted)]">
+                  No chats yet. Start a new one!
+                </p>
+              )
+            ) : (
+              <nav className="space-y-0.5" aria-label="Recent chats">
+                {chats.map((chat) => {
+                  const Icon = toolIcons[chat.tool] || MessageSquare;
+                  return (
+                    <Link
+                      key={chat.id}
+                      href="/app/research"
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] transition hover:bg-black/5",
+                        collapsed && "justify-center px-0"
+                      )}
+                      title={getChatTitle(chat)}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      {!collapsed && (
+                        <span className="truncate">{getChatTitle(chat)}</span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
+
+          <div className="border-t border-[var(--line)] p-3">
+            <div className={cn("flex items-center justify-between", collapsed && "justify-center")}>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {user?.user_metadata?.full_name || "Delegate"}
+                  </p>
+                  <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5"
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 overflow-x-hidden pb-20 lg:pb-0">{children}</main>
+      </div>
+
+      <MobileNav />
     </div>
   );
 }

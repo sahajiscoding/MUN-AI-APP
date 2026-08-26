@@ -16,7 +16,7 @@ import { getSupabase } from "@/lib/supabase/client";
 type AuthContextValue = {
   user: SupaUser | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (next?: string) => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (name: string, email: string, password: string) => Promise<{ sessionCreated: boolean }>;
   logout: () => Promise<void>;
@@ -105,11 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       user,
       loading,
-      async signInWithGoogle() {
+      async signInWithGoogle(next = "/dashboard") {
         const { error } = await client.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
             skipBrowserRedirect: false,
           },
         });

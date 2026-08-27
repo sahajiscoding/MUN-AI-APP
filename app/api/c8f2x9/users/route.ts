@@ -53,7 +53,7 @@ export async function GET(request: Request) {
               code: partner.referral_code,
               status: partner.status,
               link: partner.status === "active"
-                ? `${siteUrl}/${encodeURIComponent(partner.referral_code)}`
+                ? `${siteUrl}/login/referral-${encodeURIComponent(partner.referral_code)}`
                 : null,
             }
           : null,

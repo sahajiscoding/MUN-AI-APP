@@ -8,13 +8,15 @@ import { useAuth } from "@/components/auth-provider";
 
 type AuthFormProps = {
   mode: "login" | "signup";
+  referralCode?: string;
 };
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = getSafeNext(searchParams.get("next"));
+  const referralCode = referralCodeProp || searchParams.get("referral") || undefined;
   const callbackFailed = searchParams.get("error") === "oauth_callback_failed";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,6 +32,8 @@ export function AuthForm({ mode }: AuthFormProps) {
     setConfirmationSent(false);
 
     try {
+      await captureReferral(referralCode);
+
       if (mode === "signup") {
         const result = await signUpWithEmail(name, email, password);
         if (!result.sessionCreated) {
@@ -53,6 +57,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     setError("");
 
     try {
+      await captureReferral(referralCode);
       await signInWithGoogle(next);
       // redirect happens via OAuth flow
     } catch (caught) {
@@ -190,7 +195,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               {mode === "signup" ? "Already have an account?" : "Need an account?"}{" "}
               <Link
                 className="font-semibold text-[var(--ink)] underline decoration-[var(--brass)] underline-offset-4"
-                href={mode === "signup" ? "/auth/signin" : "/signup"}
+                href={withReferral(mode === "signup" ? "/auth/signin" : "/signup", referralCode)}
               >
                 {mode === "signup" ? "Sign in" : "Create one"}
               </Link>
@@ -200,6 +205,25 @@ export function AuthForm({ mode }: AuthFormProps) {
       </main>
     </div>
   );
+}
+
+async function captureReferral(code?: string) {
+  if (!code) return;
+
+  const response = await fetch("/api/referrals/capture", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Referral attribution could not be prepared. Please try again.");
+  }
+}
+
+function withReferral(path: string, code?: string) {
+  return code ? `${path}?referral=${encodeURIComponent(code)}` : path;
 }
 
 function getSafeNext(value: string | null) {

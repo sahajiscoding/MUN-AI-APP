@@ -370,17 +370,13 @@ export async function POST(
       ) {
         const plan = getPlan(payment.plan_id);
         if (plan) {
-          try {
-            await processReferralCommission({
-              uid: payment.uid,
-              paymentId: payment.id,
-              orderId,
-              planId: plan.id,
-              paymentAmountPaise: Number(payment.amount),
-            });
-          } catch (referralError) {
-            console.error("Referral commission processing failed during duplicate recovery:", referralError instanceof Error ? referralError.message : "unknown error");
-          }
+          await processReferralCommission({
+            uid: payment.uid,
+            paymentId: payment.id,
+            orderId,
+            planId: plan.id,
+            paymentAmountPaise: Number(payment.amount),
+          });
         }
         await markWebhookEventProcessed(admin, eventId);
         claimedEventId = null;
@@ -409,17 +405,13 @@ export async function POST(
         paymentId: payment.id,
         orderId,
       });
-      try {
-        await processReferralCommission({
-          uid: payment.uid,
-          paymentId: payment.id,
-          orderId,
-          planId: plan.id,
-          paymentAmountPaise: Number(payment.amount),
-        });
-      } catch (referralError) {
-        console.error("Referral commission processing failed during recovery:", referralError instanceof Error ? referralError.message : "unknown error");
-      }
+      await processReferralCommission({
+        uid: payment.uid,
+        paymentId: payment.id,
+        orderId,
+        planId: plan.id,
+        paymentAmountPaise: Number(payment.amount),
+      });
       await markWebhookEventProcessed(admin, eventId);
       claimedEventId = null;
 
@@ -499,17 +491,13 @@ export async function POST(
       paymentId: payment.id,
       orderId,
     });
-    try {
-      await processReferralCommission({
-        uid: payment.uid,
-        paymentId: payment.id,
-        orderId,
-        planId: plan.id,
-        paymentAmountPaise: Number(payment.amount),
-      });
-    } catch (referralError) {
-      console.error("Referral commission processing failed:", referralError instanceof Error ? referralError.message : "unknown error");
-    }
+    await processReferralCommission({
+      uid: payment.uid,
+      paymentId: payment.id,
+      orderId,
+      planId: plan.id,
+      paymentAmountPaise: Number(payment.amount),
+    });
     await markWebhookEventProcessed(admin, eventId);
     claimedEventId = null;
 

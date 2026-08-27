@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { XMLParser } from "fast-xml-parser";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -138,12 +139,40 @@ function cleanText(value: string): string {
     .trim();
 }
 
+function getClientIp(request: Request) {
+  return request.headers.get("x-real-ip")
+    ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? "unknown";
+}
+
+function newsResponse(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "public, max-age=60, s-maxage=900, stale-while-revalidate=1800",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`news:${ip}`, 30, 60_000)) {
+    return newsResponse(
+      { news: [], error: "Too many news requests. Please try again later." },
+      429,
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
+    const requestedCategory = searchParams.get("category");
 
-    const categories = category && FEEDS[category] ? [category] : Object.keys(FEEDS);
+    if (requestedCategory && !FEEDS[requestedCategory]) {
+      return newsResponse({ news: [], error: "Unknown news category." }, 400);
+    }
+
+    const categories = requestedCategory ? [requestedCategory] : Object.keys(FEEDS);
     const allItems: NewsItem[] = [];
 
     const results = await Promise.allSettled(
@@ -157,7 +186,7 @@ export async function GET(request: Request) {
         if (!res.ok) throw new Error(`Feed ${cat} returned ${res.status}`);
         const xml = await res.text();
         return parseRSS(xml, cat);
-      })
+      }),
     );
 
     for (const result of results) {
@@ -167,13 +196,13 @@ export async function GET(request: Request) {
     }
 
     const failedFeeds = results.filter((result) => result.status === "rejected").length;
-    return NextResponse.json({
+    return newsResponse({
       news: allItems,
       partial: failedFeeds > 0,
       message: allItems.length === 0 ? "News is temporarily unavailable. Please try again." : undefined,
     });
   } catch (error) {
-    console.error("News fetch error:", error);
-    return NextResponse.json({ news: [], error: "Failed to fetch news" }, { status: 500 });
+    console.error("News fetch error:", error instanceof Error ? error.message : "unknown error");
+    return newsResponse({ news: [], error: "Failed to fetch news" }, 500);
   }
 }

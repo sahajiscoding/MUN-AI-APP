@@ -1,76 +1,53 @@
 import { NextResponse } from "next/server";
 
-import { timingSafeEqual } from "node:crypto";
+import { jsonError } from "@/lib/api";
+import { requireAdmin } from "@/lib/server/admin-auth";
 import { reconcilePaidPayments } from "@/lib/server/payment-reconciliation";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-function isAuthorized(
-  request: Request
-): boolean {
-  const configuredSecret =
-    process.env.PAYMENT_RECONCILIATION_SECRET;
-
-  if (!configuredSecret) {
-    console.error(
-      "PAYMENT_RECONCILIATION_SECRET is not configured."
-    );
-
-    return false;
-  }
-
-  const suppliedSecret =
-    request.headers.get(
-      "x-reconciliation-secret"
-    );
-
-  if (!suppliedSecret) {
-    return false;
-  }
-
-  const supplied = Buffer.from(suppliedSecret);
-  const configured = Buffer.from(configuredSecret);
-  return supplied.length === configured.length && timingSafeEqual(supplied, configured);
+function privateJson(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff",
+      ...extraHeaders,
+    },
+  });
 }
 
-export async function POST(
-  request: Request
-) {
+function getClientIp(request: Request) {
+  return request.headers.get("x-real-ip")
+    ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? "unknown";
+}
+
+export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`admin-reconcile:${ip}`, 5, 60_000)) {
+    return privateJson(
+      { ok: false, error: "Too many reconciliation requests. Try again later." },
+      429,
+      { "Retry-After": "60" },
+    );
+  }
+
   try {
-    if (!isAuthorized(request)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "unauthorized",
-        },
-        {
-          status: 401,
-        }
-      );
-    }
+    await requireAdmin();
 
     const results = await reconcilePaidPayments(50);
-
-    return NextResponse.json({
+    return privateJson({
       ok: true,
       processed: results.length,
       failed: results.filter((result) => !result.repaired && !result.reason.startsWith("Entitlement already")).length,
     });
   } catch (error) {
-    console.error(
-      "Payment reconciliation failed:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "reconciliation_failed",
-      },
-      {
-        status: 500,
-      }
-    );
+    const response = jsonError(error);
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    return response;
   }
 }

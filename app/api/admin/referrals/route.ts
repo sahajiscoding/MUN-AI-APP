@@ -64,7 +64,7 @@ export async function GET(request: Request) {
         unpaid_commission: sum(partnerCommissions.filter((commission) => commission.status === "unpaid").map((commission) => Number(commission.commission_amount))),
         paid_commission: sum(partnerCommissions.filter((commission) => commission.status === "paid").map((commission) => Number(commission.commission_amount))),
         referral_link: partner.status === "active"
-          ? `${siteUrl}/${encodeURIComponent(partner.referral_code)}`
+          ? `${siteUrl}/login/referral-${encodeURIComponent(partner.referral_code)}`
           : null,
       };
     });

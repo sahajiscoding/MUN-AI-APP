@@ -389,7 +389,7 @@ export default function AdminDashboardPage() {
                                 className="min-w-0 truncate text-xs font-semibold text-[var(--patina)] underline decoration-[var(--patina)]/30 underline-offset-2 hover:text-[var(--oxblood)]"
                                 title={user.referral.link}
                               >
-                                /{user.referral.code}
+                                /login/referral-{user.referral.code}
                               </a>
                               <button
                                 type="button"

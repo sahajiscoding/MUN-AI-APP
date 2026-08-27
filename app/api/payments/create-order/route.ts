@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/server/auth";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createUropayOrder } from "@/lib/payments/uropay";
 import { getPlan } from "@/lib/plans";
+import { attachReferralToUser } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -42,6 +43,10 @@ export async function POST(
 
     const user =
       await requireUser(request);
+
+    // Capture first-touch attribution again at the trusted checkout boundary
+    // in case the client profile sync has not completed yet.
+    await attachReferralToUser(user.uid);
 
     // --------------------------------------------------
     // 2. Validate request body.

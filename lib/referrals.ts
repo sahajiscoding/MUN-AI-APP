@@ -59,11 +59,22 @@ export async function setReferralCookie(code: string) {
   return true;
 }
 
+export type ReferralAttribution = {
+  id: string;
+  partner_id: string;
+  referred_uid: string;
+  referral_code: string;
+  status: "registered" | "converted" | "cancelled";
+};
+
 export async function attachReferralToUser(uid: string) {
   const code = await getReferralCodeFromCookie();
   if (!code) return null;
+  return applyReferralCodeToUser(uid, code);
+}
 
-  const partner = await getReferralPartner(code);
+export async function applyReferralCodeToUser(uid: string, referralCode: string, verifiedEmail?: string): Promise<ReferralAttribution | null> {
+  const partner = await getReferralPartner(referralCode);
   if (!partner) return null;
 
   const { data: existing, error: existingError } = await supabaseAdmin()
@@ -76,7 +87,7 @@ export async function attachReferralToUser(uid: string) {
     console.error("Existing referral lookup failed:", existingError.message);
     return null;
   }
-  if (existing) return existing;
+  if (existing) return existing as ReferralAttribution;
 
   const { data: userData, error: userError } = await supabaseAdmin()
     .from("users")
@@ -87,7 +98,8 @@ export async function attachReferralToUser(uid: string) {
     console.error("Referral self-check lookup failed:", userError.message);
     return null;
   }
-  if (userData?.email && userData.email.trim().toLowerCase() === partner.email.trim().toLowerCase()) return null;
+  const customerEmail = verifiedEmail?.trim() || userData?.email?.trim() || "";
+  if (customerEmail && customerEmail.toLowerCase() === partner.email.trim().toLowerCase()) return null;
 
   const { data, error } = await supabaseAdmin()
     .from("referrals")
@@ -107,13 +119,13 @@ export async function attachReferralToUser(uid: string) {
         .select("id, partner_id, referred_uid, referral_code, status")
         .eq("referred_uid", uid)
         .maybeSingle();
-      return firstTouch ?? null;
+      return (firstTouch as ReferralAttribution | null) ?? null;
     }
     console.error("Referral creation failed:", error.message);
     return null;
   }
 
-  return data;
+  return data as ReferralAttribution;
 }
 
 export async function processReferralCommission(input: {

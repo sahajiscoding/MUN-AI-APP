@@ -21,6 +21,10 @@ export function PricingClient() {
   const [entitlement, setEntitlement] = useState<EntitlementData | null>(null);
   const [entitlementLoading, setEntitlementLoading] = useState(true);
   const [entitlementError, setEntitlementError] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [appliedReferralCode, setAppliedReferralCode] = useState<string | null>(null);
+  const [referralMessage, setReferralMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [referralBusy, setReferralBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,13 +77,61 @@ export function PricingClient() {
     };
   }, [getIdToken, user]);
 
+  useEffect(() => {
+    const queryCode = new URLSearchParams(window.location.search).get("referral");
+    if (queryCode) setReferralCode(queryCode);
+  }, []);
+
   const hasActiveAccess = entitlement?.status === "active";
   const hasAdminAccess = hasActiveAccess && entitlement?.planId === "admin";
   const currentPlan = hasActiveAccess ? getPlan(entitlement?.planId) : undefined;
 
+  async function applyReferralCodeValue(code: string) {
+    if (!user) {
+      throw new Error("Sign in before applying a referral code.");
+    }
+
+    const token = await getIdToken();
+    const response = await fetch("/api/referrals/apply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ code }),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(typeof data.error === "string" ? data.error : "That referral code could not be applied.");
+    }
+
+    const appliedCode = data.referral?.code || code.trim().toUpperCase();
+    setReferralCode(appliedCode);
+    setAppliedReferralCode(appliedCode);
+    setReferralMessage({ type: "success", text: `Referral code ${appliedCode} is attached to this account.` });
+  }
+
+  async function handleApplyReferral() {
+    if (!referralCode.trim() || referralBusy) return;
+    setReferralBusy(true);
+    setReferralMessage(null);
+    try {
+      await applyReferralCodeValue(referralCode.trim());
+    } catch (err) {
+      setReferralMessage({ type: "error", text: err instanceof Error ? err.message : "That referral code could not be applied." });
+    } finally {
+      setReferralBusy(false);
+    }
+  }
+
   async function handleBuy(planId: string) {
     setLoading(planId);
     try {
+      if (referralCode.trim()) {
+        await applyReferralCodeValue(referralCode.trim());
+      }
+
       const token = await getIdToken();
       const res = await fetch("/api/payments/create-order", {
         method: "POST",
@@ -147,7 +199,39 @@ export function PricingClient() {
       ) : null}
 
       {!entitlementLoading && !hasActiveAccess ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <>
+          <section className="surface rounded-panel p-4 sm:p-5" aria-labelledby="referral-code-heading">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="label-text">Partner attribution</p>
+                <h2 id="referral-code-heading" className="display-type mt-2 text-2xl">Have a referral code?</h2>
+                <p className="mt-1 max-w-xl text-sm leading-6 text-[var(--muted)]">Enter it before checkout. Once verified, the first valid referral is attached to your account and remains linked to the purchase.</p>
+              </div>
+              <div className="flex w-full gap-2 sm:max-w-md">
+                <label htmlFor="pricing-referral-code" className="sr-only">Referral code</label>
+                <input
+                  id="pricing-referral-code"
+                  value={referralCode}
+                  onChange={(event) => {
+                    setReferralCode(event.target.value.toUpperCase());
+                    setAppliedReferralCode(null);
+                    setReferralMessage(null);
+                  }}
+                  placeholder="e.g. MUNRAHUL01"
+                  className="input-field"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button type="button" onClick={() => void handleApplyReferral()} disabled={referralBusy || !referralCode.trim() || !user} className="button-secondary shrink-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+                  {referralBusy ? "Checking…" : appliedReferralCode === referralCode.trim().toUpperCase() ? "Applied" : "Apply"}
+                </button>
+              </div>
+            </div>
+            {!user ? <p className="mt-3 text-xs text-[var(--muted)]">Sign in to apply a referral code before purchasing.</p> : null}
+            {referralMessage ? <p className={`mt-3 text-sm ${referralMessage.type === "success" ? "text-[var(--patina)]" : "text-[var(--oxblood)]"}`} role="status">{referralMessage.text}</p> : null}
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-2">
           {plans.map((plan) => {
           const isCurrentPlan = hasActiveAccess && canonicalPlanId(entitlement?.planId) === plan.id;
           const disabled =
@@ -202,7 +286,8 @@ export function PricingClient() {
             </article>
             );
           })}
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   );

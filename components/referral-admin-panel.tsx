@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
@@ -16,6 +17,7 @@ type Partner = {
   total_commission: number;
   unpaid_commission: number;
   paid_commission: number;
+  referral_link: string | null;
 };
 
 type Referral = {
@@ -74,6 +76,7 @@ export function ReferralAdminPanel() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState("");
+  const [copiedPartnerId, setCopiedPartnerId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,6 +138,18 @@ export function ReferralAdminPanel() {
       setError(caught instanceof Error ? caught.message : "Could not update partner.");
     } finally {
       setBusyId("");
+    }
+  }
+
+  async function copyReferralLink(partner: Partner) {
+    if (!partner.referral_link) return;
+
+    try {
+      await navigator.clipboard.writeText(partner.referral_link);
+      setCopiedPartnerId(partner.id);
+      window.setTimeout(() => setCopiedPartnerId((current) => current === partner.id ? null : current), 1800);
+    } catch {
+      setError("Could not copy the referral link. Please open the link and copy it manually.");
     }
   }
 
@@ -201,7 +216,7 @@ export function ReferralAdminPanel() {
               <section>
                 <h2 className="display-type text-2xl">Partners</h2>
                 <div className="mt-4 overflow-x-auto rounded-panel border border-[var(--line)]">
-                  <table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-black/[0.03] text-xs uppercase tracking-wider text-[var(--muted)]"><tr><th className="px-4 py-3">Partner</th><th className="px-4 py-3">Code</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Referrals</th><th className="px-4 py-3">Unpaid</th><th className="px-4 py-3">Actions</th></tr></thead><tbody>{data.partners.map((partner) => <tr key={partner.id} className="border-t border-[var(--line)]"><td className="px-4 py-3"><div className="font-semibold">{partner.name}</div><div className="text-xs text-[var(--muted)]">{partner.email}</div></td><td className="px-4 py-3 font-mono text-xs">{partner.referral_code}</td><td className="px-4 py-3 capitalize">{partner.status}</td><td className="px-4 py-3">{partner.successful_referrals}</td><td className="px-4 py-3">{money.format(partner.unpaid_commission)}</td><td className="px-4 py-3"><select aria-label={`Change status for ${partner.name}`} disabled={busyId === partner.id} value={partner.status} onChange={(event) => void changeStatus(partner, event.target.value as Partner["status"])} className="rounded border border-[var(--line)] bg-transparent px-2 py-1 text-xs"><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option></select></td></tr>)}</tbody></table>
+                  <table className="w-full min-w-[940px] text-left text-sm"><thead className="bg-black/[0.03] text-xs uppercase tracking-wider text-[var(--muted)]"><tr><th className="px-4 py-3">Partner</th><th className="px-4 py-3">Code</th><th className="px-4 py-3">Referral link</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Referrals</th><th className="px-4 py-3">Unpaid</th><th className="px-4 py-3">Actions</th></tr></thead><tbody>{data.partners.map((partner) => <tr key={partner.id} className="border-t border-[var(--line)]"><td className="px-4 py-3"><div className="font-semibold">{partner.name}</div><div className="text-xs text-[var(--muted)]">{partner.email}</div></td><td className="px-4 py-3 font-mono text-xs">{partner.referral_code}</td><td className="max-w-[270px] px-4 py-3">{partner.referral_link ? <div className="flex items-center gap-2"><a href={partner.referral_link} target="_blank" rel="noreferrer" className="min-w-0 truncate text-xs font-semibold text-[var(--patina)] underline decoration-[var(--patina)]/30 underline-offset-2 hover:text-[var(--oxblood)]" title={partner.referral_link}>/{partner.referral_code}</a><button type="button" onClick={() => void copyReferralLink(partner)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--line)] px-2 py-1.5 text-xs font-bold text-[var(--muted)] transition hover:border-[var(--patina)]/40 hover:text-[var(--patina)]" aria-label={`Copy referral link for ${partner.name}`} title="Copy referral link">{copiedPartnerId === partner.id ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}<span className="sr-only">{copiedPartnerId === partner.id ? "Copied" : "Copy"}</span></button></div> : <span className="text-xs text-[var(--muted)]">Available when active</span>}</td><td className="px-4 py-3 capitalize">{partner.status}</td><td className="px-4 py-3">{partner.successful_referrals}</td><td className="px-4 py-3">{money.format(partner.unpaid_commission)}</td><td className="px-4 py-3"><select aria-label={`Change status for ${partner.name}`} disabled={busyId === partner.id} value={partner.status} onChange={(event) => void changeStatus(partner, event.target.value as Partner["status"])} className="rounded border border-[var(--line)] bg-transparent px-2 py-1 text-xs"><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option></select></td></tr>)}</tbody></table>
                 </div>
               </section>
             </section>

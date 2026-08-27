@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireAdmin();
     const admin = supabaseAdmin();
@@ -53,6 +53,7 @@ export async function GET() {
     const partnerById = new Map((partnersResult.data ?? []).map((partner) => [partner.id, partner]));
     const referralById = new Map(referrals.map((referral) => [referral.id, referral]));
 
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "");
     const partnerRows = (partnersResult.data ?? []).map((partner) => {
       const partnerReferrals = referrals.filter((referral) => referral.partner_id === partner.id);
       const partnerCommissions = commissions.filter((commission) => commission.partner_id === partner.id);
@@ -62,6 +63,9 @@ export async function GET() {
         total_commission: sum(partnerCommissions.map((commission) => Number(commission.commission_amount))),
         unpaid_commission: sum(partnerCommissions.filter((commission) => commission.status === "unpaid").map((commission) => Number(commission.commission_amount))),
         paid_commission: sum(partnerCommissions.filter((commission) => commission.status === "paid").map((commission) => Number(commission.commission_amount))),
+        referral_link: partner.status === "active"
+          ? `${siteUrl}/${encodeURIComponent(partner.referral_code)}`
+          : null,
       };
     });
 

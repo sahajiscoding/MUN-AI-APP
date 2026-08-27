@@ -121,113 +121,17 @@ export async function grantEntitlement(
     );
   }
 
-  const admin =
-    supabaseAdmin();
-
-  // Find the user's current entitlement.
-  const {
-    data: existing,
-    error: existingError,
-  } = await admin
-    .from("entitlements")
-    .select(
-      "uid, status, expires_at"
-    )
-    .eq(
-      "uid",
-      input.uid
-    )
-    .maybeSingle();
-
-  if (existingError) {
-    console.error(
-      "Failed to read existing entitlement:",
-      existingError
-    );
-
-    throw new ApiError(
-      500,
-      "entitlement_lookup_failed",
-      "Could not determine the current Premium access."
-    );
-  }
-
-  const now =
-    new Date();
-
-  let startDate =
-    now;
-
-  let baseDate =
-    now;
-
-  // If the user already has valid Premium,
-  // extend from the existing expiry instead
-  // of throwing away their remaining time.
-  if (
-    existing?.status ===
-      "active" &&
-    existing.expires_at
-  ) {
-    const existingExpiry =
-      new Date(
-        existing.expires_at
-      );
-
-    if (
-      Number.isFinite(
-        existingExpiry.getTime()
-      ) &&
-      existingExpiry.getTime() >
-        now.getTime()
-    ) {
-      baseDate =
-        existingExpiry;
-    }
-  }
-
-  const expiresAt =
-    new Date(
-      baseDate.getTime() +
-        plan.accessDays *
-          24 *
-          60 *
-          60 *
-          1000
-    );
-
-  const { error } =
-    await admin
-      .from("entitlements")
-      .upsert(
-        {
-          uid: input.uid,
-          status: "active",
-          plan_id: plan.id,
-          source: input.source,
-          latest_payment_id:
-            input.paymentId ??
-            null,
-          latest_order_id:
-            input.orderId ??
-            null,
-          starts_at:
-            startDate.toISOString(),
-          expires_at:
-            expiresAt.toISOString(),
-          updated_at:
-            now.toISOString(),
-        },
-        {
-          onConflict: "uid",
-        }
-      );
+  const { error } = await supabaseAdmin().rpc("grant_entitlement_atomic", {
+    p_uid: input.uid,
+    p_plan_id: plan.id,
+    p_source: input.source,
+    p_access_days: plan.accessDays,
+    p_payment_id: input.paymentId ?? null,
+    p_order_id: input.orderId ?? null,
+  });
 
   if (error) {
-    console.error(
-      "Entitlement grant failed:",
-      error
-    );
+    console.error("Atomic entitlement grant failed:", error.message);
 
     throw new ApiError(
       500,
@@ -236,7 +140,5 @@ export async function grantEntitlement(
     );
   }
 
-  return getEntitlement(
-    input.uid
-  );
+  return getEntitlement(input.uid);
 }

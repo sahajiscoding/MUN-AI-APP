@@ -43,7 +43,6 @@ UROPAY_WEBHOOK_SECRET=
 UROPAY_ENVIRONMENT=test
 
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-PAYMENT_RECONCILIATION_SECRET=
 ```
 
 `ADMIN_SESSION_SECRET` should be a random value of at least 32 characters. If it is omitted, the server-only Supabase secret is used to sign administrator sessions, but a separate secret is preferred. Admin provisioning is deliberate: the application no longer creates a default administrator or accepts a fallback password.
@@ -71,7 +70,7 @@ Apply the canonical schema reference for a new project, then apply every migrati
 
 The server writes transcript objects under `<uid>/<chat-id>.json`. Browser users never receive direct Storage access to another user’s folder. The application retains a Storage-backed listing fallback, but the database index should still be applied and monitored because it supports efficient pagination and recovery.
 
-Run migrations through the Supabase SQL editor or the Supabase CLI connected to the correct project. Verify tables, columns, indexes, RLS policies, and the bucket before enabling real payments.
+Run migrations through the Supabase SQL editor or the Supabase CLI connected to the correct project. Verify tables, columns, indexes, RLS policies, and the bucket before enabling real payments. The newer `20260827_security_hardening.sql` migration is also required before deploying the payment webhook changes: it installs the service-role-only atomic entitlement and referral-commission functions. The existing unique payment constraint blocks duplicate delivery of one payment, while the locked referral status prevents a second first-purchase commission for the same customer. After running it, use Supabase’s schema-cache reload or wait for the cache to refresh before testing.
 
 ## UroPay
 
@@ -107,9 +106,11 @@ values
 
 The resulting referral URL is `https://mun-ai-app.vercel.app/MUNTEST01`. Active partner names are loaded from Supabase and displayed as “Referred by …”; the name is never trusted from the URL. The app stores only the normalized code in the secure, HttpOnly `mun_referral_code` cookie for 30 days. First-touch attribution is enforced by the unique customer UID constraint and is never overwritten by a later partner URL.
 
-A commission is created only after the UroPay webhook verifies the order, payment status, amount, and event idempotency, marks the payment successful, and grants Premium. The server converts verified paise to rupees and calculates the commission from the partner’s stored rate. Failed, pending, duplicate, or browser success-page requests do not create commissions. The administrator referral dashboard can mark an unpaid record as paid; this changes only the ledger status and `paid_at`, and performs no bank or automatic payout.
+A commission is created only after the UroPay webhook verifies the order, payment status, amount, and event idempotency, marks the payment successful, and grants Premium. The server-side database function verifies the paid payment belongs to the referred customer and calculates the amount from the stored partner rate. Each referred customer can produce one first-purchase commission for that partner; the partner can therefore earn commissions from many different referred customers. Repeated delivery of the same webhook or later payments from an already-converted customer do not create another first-purchase commission. Failed, pending, duplicate, or browser success-page requests do not create commissions. The administrator referral dashboard can mark an unpaid record as paid; this changes only the ledger status and `paid_at`, and performs no bank or automatic payout.
 
-Before live use, test an active referral URL, first-touch behavior with two codes, a suspended partner, a self-referral, a successful weekly payment, a successful monthly payment, a failed/pending payment, duplicate webhook delivery, a non-referred purchase, and manual settlement. Referral tables must be present before testing; if they are absent, normal homepage and payment flows continue without referral attribution, while the server logs the unavailable referral lookup.
+Before live use, test an active referral URL, first-touch behavior with two codes, a suspended partner, a self-referral, successful payments from two different referred customers, a second payment from an already-converted customer, a failed/pending payment, duplicate webhook delivery, a non-referred purchase, and manual settlement. Referral tables and the security-hardening migration must be present before testing; if they are absent, payment webhook entitlement/commission processing will fail closed and the provider event will remain retryable until the migration is applied.
+
+The payment-reconciliation endpoint is now protected by the existing verified administrator session at `/api/admin/reconcile-payments`; it no longer accepts a static `x-reconciliation-secret` header. Log in through the existing administrator flow before invoking it, and remove any old scheduler or Vercel environment variable that referenced `PAYMENT_RECONCILIATION_SECRET`.
 
 
 ## Google OAuth callback

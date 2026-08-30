@@ -14,6 +14,11 @@ export function PublicNav() {
     router.push(user ? "/dashboard" : "/login");
   }
 
+  function handleGetStarted() {
+    if (loading) return;
+    router.push(user ? "/dashboard" : "/signup");
+  }
+
   return (
     <nav className="flex items-center justify-between gap-4" aria-label="Public navigation">
       <Link href="/" className="flex items-center gap-3">
@@ -32,9 +37,15 @@ export function PublicNav() {
         >
           Sign in
         </button>
-        <Link className="rounded-full bg-[var(--ink)] px-5 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[var(--ink)]/80" href="/signup">
+        <button
+          type="button"
+          onClick={handleGetStarted}
+          disabled={loading}
+          aria-busy={loading}
+          className="rounded-full bg-[var(--ink)] px-5 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[var(--ink)]/80 disabled:cursor-wait disabled:opacity-60"
+        >
           Get started
-        </Link>
+        </button>
       </div>
     </nav>
   );

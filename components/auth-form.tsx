@@ -67,11 +67,11 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative hidden overflow-hidden bg-[var(--ink)] text-[var(--paper)] lg:block">
+    <div className="grid min-h-dvh min-w-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+      <section className="relative hidden min-w-0 overflow-hidden bg-[var(--ink)] text-[var(--paper)] lg:block">
         <div className="diplomatic-grid absolute inset-0 opacity-25" />
         <div className="briefing-map absolute right-[-9rem] top-12 h-[34rem] w-[34rem] rounded-full border border-white/10" />
-        <div className="relative flex h-full flex-col justify-between p-12">
+        <div className="relative grid min-h-dvh grid-rows-[auto_1fr_auto] p-8 lg:p-12">
           <Link href="/" className="flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-panel bg-[var(--paper)] text-[var(--ink)]">
               <Landmark className="h-5 w-5" aria-hidden="true" />
@@ -79,15 +79,17 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
             <span className="display-type text-2xl">MUN Prep</span>
           </Link>
 
-          <div className="max-w-2xl">
-            <p className="label-text text-[var(--brass)]">Delegate command center</p>
-            <h1 className="display-type mt-5 text-6xl leading-[0.96]">
+          <div className="flex items-center py-16 lg:py-20">
+            <div className="max-w-2xl">
+              <p className="label-text text-[var(--brass)]">Delegate command center</p>
+              <h1 className="display-type mt-5 text-5xl leading-[0.98] sm:text-6xl lg:text-7xl">
               Research, draft, and debate with a sharper brief.
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-white/72">
-              One account, one paid entitlement, one workspace for position papers,
-              speeches, POIs, and resolution strategy.
-            </p>
+              </h1>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-white/72">
+                One account, one paid entitlement, one workspace for position papers,
+                speeches, POIs, and resolution strategy.
+              </p>
+            </div>
           </div>
 
           <div className="grid max-w-xl grid-cols-3 gap-3 text-sm">
@@ -101,8 +103,8 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
         </div>
       </section>
 
-      <main className="grid place-items-center px-5 py-10">
-        <div className="w-full max-w-md">
+      <main className="grid min-w-0 min-h-dvh place-items-center px-5 py-10 sm:px-8">
+        <div className="w-full max-w-md min-w-0">
           <div className="mb-8 lg:hidden">
             <Link href="/" className="display-type text-3xl">MUN Prep</Link>
           </div>

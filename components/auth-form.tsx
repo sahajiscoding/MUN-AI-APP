@@ -70,7 +70,6 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
     <div className="grid min-h-dvh min-w-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
       <section className="relative hidden min-w-0 overflow-hidden bg-[var(--ink)] text-[var(--paper)] lg:block">
         <div className="diplomatic-grid absolute inset-0 opacity-25" />
-        <div className="briefing-map absolute right-[-9rem] top-12 h-[34rem] w-[34rem] rounded-full border border-white/10" />
         <div className="relative grid min-h-dvh grid-rows-[auto_1fr_auto] p-8 lg:p-12">
           <Link href="/" className="flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-panel bg-[var(--paper)] text-[var(--ink)]">

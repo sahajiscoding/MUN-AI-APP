@@ -32,16 +32,16 @@ export default function HomePage({ referralName }: { referralName?: string } = {
           ) : null}
           <PublicNav />
 
-          <div className="py-16 lg:py-20">
+          <div className="flex flex-1 flex-col justify-center py-16 text-center lg:py-20">
             <p className="label-text text-[var(--oxblood)]">Delegate command center</p>
-            <h1 className="display-type mt-5 max-w-4xl text-6xl leading-[0.94] sm:text-7xl lg:text-8xl">
+            <h1 className="display-type mx-auto mt-5 max-w-4xl text-6xl leading-[0.94] sm:text-7xl lg:text-8xl">
               Prepare like your committee starts tomorrow.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
               A focused Model UN workspace for research briefs, country policy, speeches,
               POIs, and draft resolution strategy. Sign in to get started.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link className="button-primary inline-flex items-center justify-center gap-2 px-5 font-semibold" href="/dashboard">
                 Open dashboard
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -69,7 +69,6 @@ export default function HomePage({ referralName }: { referralName?: string } = {
 
         <div className="relative min-h-[36rem] overflow-hidden bg-[var(--ink)] text-[var(--paper)] lg:min-h-screen">
           <div className="diplomatic-grid absolute inset-0 opacity-20" />
-          <div className="briefing-map absolute left-1/2 top-16 h-[42rem] w-[42rem] -translate-x-1/2 rounded-full border border-white/10" />
           <div className="relative flex h-full items-end p-5 sm:p-8 lg:p-12">
             <div className="w-full rounded-panel border border-white/12 bg-white/[0.06] p-5 backdrop-blur-xl">
               <div className="flex items-start justify-between border-b border-white/12 pb-5">

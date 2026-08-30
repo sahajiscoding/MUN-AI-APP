@@ -1,5 +1,6 @@
-import { ArrowRight, BookOpen, FileText, Landmark, MessageSquareQuote } from "lucide-react";
+import { ArrowRight, BookOpen, FileText, MessageSquareQuote } from "lucide-react";
 import Link from "next/link";
+import { PublicNav } from "@/components/public-nav";
 
 const workspaces = [
   {
@@ -29,22 +30,7 @@ export default function HomePage({ referralName }: { referralName?: string } = {
               <span aria-hidden="true">🎁 </span>Referred by {referralName}
             </div>
           ) : null}
-          <nav className="flex items-center justify-between gap-4" aria-label="Public navigation">
-            <Link href="/" className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-panel bg-[var(--ink)] text-[var(--paper)]">
-                <Landmark className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <span className="display-type text-2xl">MUN Prep</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <Link className="rounded-full border border-[var(--line)] px-5 py-2 text-sm font-semibold text-[var(--ink)] hover:bg-black/5 transition" href="/login">
-                Sign in
-              </Link>
-              <Link className="rounded-full bg-[var(--ink)] px-5 py-2 text-sm font-semibold text-[var(--paper)] hover:bg-[var(--ink)]/80 transition" href="/signup">
-                Get started
-              </Link>
-            </div>
-          </nav>
+          <PublicNav />
 
           <div className="py-16 lg:py-20">
             <p className="label-text text-[var(--oxblood)]">Delegate command center</p>

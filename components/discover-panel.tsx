@@ -1,7 +1,7 @@
 "use client";
 
 import { Globe, Newspaper, RefreshCw, Trophy, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type NewsItem = {
   title: string;
@@ -25,20 +25,31 @@ export function DiscoverPanel() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
-  function fetchNews() {
-    setLoading(true);
-    fetch("/api/news")
-      .then((res) => res.json())
-      .then((data) => {
-        setNews(data.news || []);
-        setLoading(false);
+  const fetchNews = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+
+    fetch("/api/news", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("News request failed");
+        return res.json();
       })
-      .catch(() => setLoading(false));
-  }
+      .then((data) => {
+        setNews(Array.isArray(data.news) ? data.news : []);
+      })
+      .catch(() => {
+        // Keep the current stories visible when a background refresh fails.
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     fetchNews();
-  }, []);
+    const dailyRefresh = window.setInterval(() => fetchNews(true), 24 * 60 * 60 * 1000);
+
+    return () => window.clearInterval(dailyRefresh);
+  }, [fetchNews]);
 
   const filtered =
     activeCategory === "all"
@@ -54,7 +65,7 @@ export function DiscoverPanel() {
           <h2 className="display-type text-xl">Discover</h2>
         </div>
         <button
-          onClick={fetchNews}
+          onClick={() => fetchNews()}
           className="p-2 rounded-lg hover:bg-black/5 transition text-[var(--muted)]"
           title="Refresh news"
         >

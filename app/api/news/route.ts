@@ -13,6 +13,7 @@ export type NewsItem = {
   category: string;
   description: string;
   imageUrl?: string;
+  imageKind?: "article" | "publisher";
 };
 
 const FEEDS: Record<string, { url: string; label: string }> = {
@@ -55,6 +56,75 @@ function asText(value: unknown): string {
   return "";
 }
 
+type NewsImage = {
+  url: string;
+  kind: "article" | "publisher";
+};
+
+function getHttpsUrl(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:" || url.username || url.password) return "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
+function getNestedUrl(value: unknown): string {
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const url = getNestedUrl(entry);
+      if (url) return url;
+    }
+    return "";
+  }
+
+  if (typeof value === "string") return getHttpsUrl(value);
+  if (!value || typeof value !== "object") return "";
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["@_url", "@_href", "url", "href"]) {
+    const url = getHttpsUrl(record[key]);
+    if (url) return url;
+  }
+
+  for (const key of ["media:content", "media:thumbnail", "enclosure", "image"]) {
+    const url = getNestedUrl(record[key]);
+    if (url) return url;
+  }
+
+  return "";
+}
+
+function getSourceUrl(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  return getHttpsUrl(record["@_url"] ?? record.url ?? record.href);
+}
+
+function extractImage(item: Record<string, unknown>): NewsImage | undefined {
+  for (const candidate of [item["media:content"], item["media:thumbnail"], item.enclosure, item.image]) {
+    const url = getNestedUrl(candidate);
+    if (url) return { url, kind: "article" };
+  }
+
+  const sourceUrl = getSourceUrl(item.source);
+  if (!sourceUrl) return undefined;
+
+  try {
+    const hostname = new URL(sourceUrl).hostname;
+    return {
+      url: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=128`,
+      kind: "publisher",
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function parseRSS(xml: string, category: string): NewsItem[] {
   const parsed = rssParser.parse(xml) as Record<string, unknown>;
   const rss = parsed.rss as Record<string, unknown> | undefined;
@@ -69,6 +139,7 @@ function parseRSS(xml: string, category: string): NewsItem[] {
     const link = asText(item.link).trim();
     const source = cleanText(asText(item.source) || asText(item["dc:creator"]) || "Google News");
     const description = cleanDescription(asText(item.description) || asText(item.summary) || "", title, source);
+    const image = extractImage(item);
     if (!title || !/^https?:\/\//i.test(link)) return [];
     return [{
       title,
@@ -77,6 +148,8 @@ function parseRSS(xml: string, category: string): NewsItem[] {
       pubDate: asText(item.pubDate) || asText(item.published) || "",
       category,
       description,
+      imageUrl: image?.url,
+      imageKind: image?.kind,
     }];
   });
 }

@@ -9,7 +9,7 @@ function buildContentSecurityPolicy(nonce: string) {
     "form-action 'self'",
     `script-src 'self' 'nonce-${nonce}' https://accounts.google.com`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.supabase.co",
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co https://accounts.google.com https://oauth2.googleapis.com",
     "frame-src 'self' https://accounts.google.com",

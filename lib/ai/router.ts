@@ -32,9 +32,15 @@ export async function runMunResearch(input: ResearchInput) {
 
   const mode = input.responseMode ?? "quick";
   const modeConfig = {
-    quick: { maxTokens: 1000, temperature: 0.7 },
-    thorough: { maxTokens: 2600, temperature: 0.85 },
-    max: { maxTokens: 6000, temperature: 1.0 },
+    // Keep Quick concise and low-latency, but leave enough room for a useful
+    // structured answer instead of truncating it during a table or checklist.
+    quick: { maxTokens: 1800, temperature: 0.45 },
+    // Thorough gets a materially larger completion budget and a steadier
+    // temperature for complete, source-conscious preparation briefs.
+    thorough: { maxTokens: 8000, temperature: 0.7 },
+    // Max is intentionally generous, while still bounded for paid-provider
+    // cost and provider context safety.
+    max: { maxTokens: 12000, temperature: 0.85 },
   }[mode];
   const aiInput = {
     messages,

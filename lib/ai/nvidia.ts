@@ -27,6 +27,8 @@ async function callNvidiaModel(
     );
   }
 
+  const maxTokens = input.maxTokens ?? 12_000;
+  const timeoutMs = maxTokens <= 2_000 ? 75_000 : 240_000;
   const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -39,11 +41,11 @@ async function callNvidiaModel(
       messages: input.messages,
       temperature: input.temperature ?? 0.8,
       top_p: 0.95,
-      max_tokens: input.maxTokens ?? 2400,
+      max_tokens: maxTokens,
       stream: true,
       stream_options: { include_usage: true },
     }),
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {
@@ -61,6 +63,41 @@ async function callNvidiaModel(
       const decoder = new TextDecoder();
       const encoder = new TextEncoder();
       let buffer = "";
+      let closed = false;
+      let finishReason: string | undefined;
+
+      const emit = (payload: Record<string, unknown>) => {
+        if (!closed) controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      };
+
+      const consumeLine = (line: string) => {
+        if (!line.startsWith("data: ")) return;
+        const data = line.slice(6).trim();
+        if (!data || data === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(data) as {
+            choices?: Array<{
+              delta?: { content?: string };
+              finish_reason?: string | null;
+            }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+          };
+          const choice = parsed.choices?.[0];
+          const content = choice?.delta?.content;
+          if (content) emit({ content });
+
+          const usage = normalizeAIUsage(parsed.usage);
+          if (usage) emit({ usage });
+
+          if (choice?.finish_reason) {
+            finishReason = choice.finish_reason;
+            emit({ finishReason });
+          }
+        } catch {
+          // Ignore malformed provider chunks while preserving the rest of the stream.
+        }
+      };
 
       try {
         while (true) {
@@ -70,35 +107,23 @@ async function callNvidiaModel(
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") {
-              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-              continue;
-            }
-
-            try {
-              const parsed = JSON.parse(data) as {
-                choices?: Array<{ delta?: { content?: string } }>;
-                usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-              };
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-
-              const usage = normalizeAIUsage(parsed.usage);
-              if (usage) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ usage })}\n\n`));
-            } catch {
-              // Ignore malformed provider chunks.
-            }
-          }
+          lines.forEach(consumeLine);
         }
+
+        buffer += decoder.decode();
+        if (buffer) consumeLine(buffer);
+        emit({ finishReason: finishReason || "stop" });
       } catch (error) {
-        controller.error(error);
+        if (!closed) controller.error(error);
+        closed = true;
+        return;
       } finally {
         reader.releaseLock();
-        controller.close();
+        if (!closed) {
+          closed = true;
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
       }
     },
   });

@@ -22,9 +22,9 @@ type ConversationTurn = {
 };
 
 const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: number; temperature: number }> = {
-  quick: { label: "Quick", maxTokens: 1000, temperature: 0.7 },
-  thorough: { label: "Thorough", maxTokens: 2600, temperature: 0.85 },
-  max: { label: "Max", maxTokens: 6000, temperature: 1.0 },
+  quick: { label: "Quick", maxTokens: 1800, temperature: 0.45 },
+  thorough: { label: "Thorough", maxTokens: 8000, temperature: 0.7 },
+  max: { label: "Max", maxTokens: 12000, temperature: 0.85 },
 };
 
 function isSafeExternalUrl(value: string) {
@@ -300,6 +300,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         const decoder = new TextDecoder();
         let buffer = "";
         let fullContent = "";
+        let finishReason: string | undefined;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -315,6 +316,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               if (data === "[DONE]") continue;
               try {
                 const parsed = JSON.parse(data);
+                if (typeof parsed.finishReason === "string") {
+                  finishReason = parsed.finishReason;
+                }
                 if (parsed.content) {
                   if (!fullContent) {
                     setStatus(`${activeModel} · ${responseMode} · writing`);
@@ -329,7 +333,12 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           }
         }
 
-        setStatus(`${activeModel} · ${responseMode}`);
+        const wasLengthLimited = finishReason === "length" || finishReason === "max_tokens";
+        setStatus(
+          wasLengthLimited
+            ? `${activeModel} · ${responseMode} · provider output limit reached`
+            : `${activeModel} · ${responseMode} · complete`
+        );
         if (fullContent) {
           setTurns((current) => [...current, { role: "assistant", content: fullContent }]);
           setOutput("");

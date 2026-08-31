@@ -1,5 +1,5 @@
-import { callNvidiaMiniMax } from "@/lib/ai/nvidia";
-import { callOpenRouter } from "@/lib/ai/openrouter";
+import { callGmiMiniMax } from "@/lib/ai/gmi";
+import { callNvidiaKimi } from "@/lib/ai/nvidia";
 import { munResearchSystemPrompt } from "@/lib/ai/prompts";
 import type { ChatMessage } from "@/lib/ai/types";
 
@@ -8,7 +8,7 @@ export type ResearchInput = {
   agenda: string;
   country: string;
   experienceLevel: string;
-  provider?: string;
+  responseMode?: "quick" | "thorough" | "max";
   maxTokens?: number;
   temperature?: number;
   tool?: string;
@@ -30,15 +30,21 @@ export async function runMunResearch(input: ResearchInput) {
     }
   ];
 
+  const mode = input.responseMode ?? "quick";
+  const modeConfig = {
+    quick: { maxTokens: 1000, temperature: 0.7 },
+    thorough: { maxTokens: 2600, temperature: 0.85 },
+    max: { maxTokens: 6000, temperature: 1.0 },
+  }[mode];
   const aiInput = {
     messages,
-    temperature: input.temperature ?? 0.85,
-    maxTokens: input.maxTokens ?? 2600
+    temperature: modeConfig.temperature,
+    maxTokens: modeConfig.maxTokens,
   };
 
-  // Use OpenRouter if explicitly requested, otherwise NVIDIA
-  if (input.provider === "openrouter") {
-    return callOpenRouter(aiInput);
+  if (mode === "max") {
+    return callNvidiaKimi(aiInput);
   }
-  return callNvidiaMiniMax(aiInput);
+
+  return callGmiMiniMax(aiInput);
 }

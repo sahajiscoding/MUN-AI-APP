@@ -254,7 +254,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
     try {
       const token = await getIdToken();
-      setStatus(`Connecting to MiniMax M3 · ${responseMode}…`);
+      const activeModel = responseMode === "max" ? "Kimi K3" : "MiniMax M3";
+      setStatus(`Connecting to ${activeModel} · ${responseMode}…`);
       const response = await fetch("/api/ai/research", {
         method: "POST",
         headers: {
@@ -270,7 +271,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
             tool: mode,
           country: "Any",
           experienceLevel: "intermediate",
-          provider: "nvidia",
+          responseMode,
           maxTokens,
           temperature
         })
@@ -316,7 +317,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 const parsed = JSON.parse(data);
                 if (parsed.content) {
                   if (!fullContent) {
-                    setStatus(`MiniMax M3 · ${responseMode} · writing`);
+                    setStatus(`${activeModel} · ${responseMode} · writing`);
                   }
                   fullContent += parsed.content;
                   setOutput(fullContent);
@@ -328,7 +329,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           }
         }
 
-        setStatus(`MiniMax M3 · ${responseMode}`);
+        setStatus(`${activeModel} · ${responseMode}`);
         if (fullContent) {
           setTurns((current) => [...current, { role: "assistant", content: fullContent }]);
           setOutput("");
@@ -346,7 +347,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         }
         setOutput("");
         savedChatId = data.chatId || savedChatId;
-        setStatus(`MiniMax M3 · ${responseMode}`);
+        setStatus(`${activeModel} · ${responseMode}`);
       }
 
       if (savedChatId) {

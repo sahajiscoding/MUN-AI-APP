@@ -13,6 +13,10 @@ export type AIUsage = {
   totalTokens?: number;
 };
 
+export type AIStreamMeta = {
+  finishReason?: string;
+};
+
 export function normalizeAIUsage(value: unknown): AIUsage | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as Record<string, unknown>;

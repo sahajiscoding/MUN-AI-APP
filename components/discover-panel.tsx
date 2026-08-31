@@ -9,6 +9,8 @@ type NewsItem = {
   source: string;
   pubDate: string;
   category: string;
+  imageUrl?: string;
+  imageKind?: "article" | "publisher";
 };
 
 const categoryConfig: Record<string, { label: string; icon: typeof Globe; color: string }> = {
@@ -21,6 +23,7 @@ export function DiscoverPanel() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   function fetchNews() {
     setLoading(true);
@@ -103,31 +106,56 @@ export function DiscoverPanel() {
               const config = categoryConfig[item.category] || categoryConfig.national;
               const Icon = config.icon;
               const timeAgo = getRelativeTime(item.pubDate);
+              const itemKey = `${item.category}-${item.link || i}`;
+              const showImage = Boolean(item.imageUrl) && !brokenImages[itemKey];
 
               return (
                 <a
-                  key={`${item.category}-${i}`}
+                  key={itemKey}
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block surface rounded-xl p-4 hover:-translate-y-0.5 transition group"
+                  className="block surface overflow-hidden rounded-xl transition hover:-translate-y-0.5 group"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`shrink-0 mt-0.5`}>
-                      <Icon className={`h-4 w-4 ${config.color}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold leading-5 group-hover:text-[var(--patina)] transition line-clamp-2">
-                        {item.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2 text-xs text-[var(--muted)]">
-                        <span>{item.source}</span>
-                        {timeAgo && (
-                          <>
-                            <span>·</span>
-                            <span>{timeAgo}</span>
-                          </>
-                        )}
+                  <div className={`relative h-36 overflow-hidden bg-gradient-to-br from-[var(--ink)] via-[var(--patina)] to-[var(--oxblood)] ${item.imageKind === "publisher" ? "p-8" : ""}`}>
+                    {showImage ? (
+                      <img
+                        src={item.imageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={() => setBrokenImages((current) => ({ ...current, [itemKey]: true }))}
+                        className={`h-full w-full ${item.imageKind === "publisher" ? "object-contain rounded-xl bg-white/90 p-6" : "object-cover"}`}
+                      />
+                    ) : (
+                      <div className="grid h-full place-items-center text-white/80">
+                        <Icon className="h-12 w-12 opacity-80" aria-hidden="true" />
+                      </div>
+                    )}
+                    <span className="absolute bottom-3 left-3 rounded-full bg-black/55 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
+                      {config.label}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0">
+                        <Icon className={`h-4 w-4 ${config.color}`} aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm font-semibold leading-5 transition group-hover:text-[var(--patina)]">
+                          {item.title}
+                        </p>
+                        <div className="mt-2 flex items-center gap-2 text-xs text-[var(--muted)]">
+                          <span>{item.source}</span>
+                          {timeAgo && (
+                            <>
+                              <span>·</span>
+                              <span>{timeAgo}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

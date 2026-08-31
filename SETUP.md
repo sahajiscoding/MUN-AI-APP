@@ -20,7 +20,7 @@ pnpm build
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and fill values locally. Never commit `.env.local`, service-role keys, provider keys, payment secrets, admin passwords, or webhook secrets.
+For local development, copy `.env.example` to `.env.local` only if you intentionally need local provider access; keep that file untracked and delete paid keys when finished. For production, add paid provider secrets manually in **Vercel → Project Settings → Environment Variables**. Never commit `.env.local`, service-role keys, provider keys, payment secrets, admin passwords, or webhook secrets. The repository and `.env.example` contain variable names only, never credential values.
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -88,7 +88,7 @@ The webhook verifies the provider signature, replay window, order identity, envi
 
 ## AI providers
 
-Set the provider keys only as server-side Vercel/environment variables. The application fails closed when a provider key is absent; it does not contain fallback credentials. AI requests are bounded by server-side input length, temperature, output-token, rate, and timeout limits.
+Set the provider keys only as server-side Vercel Environment Variables. Add `NVIDIA_API_KEY` for Max and `GMI_CLOUD_API_KEY` for Quick/Thorough; use the model and base-URL variables shown in `.env.example`. The application fails closed when a required provider key is absent and contains no fallback credentials. Do not paste paid keys into GitHub, source files, `.env.example`, Supabase, browser code, chat prompts, screenshots, or logs. AI requests are bounded by server-side input length, temperature, output-token, rate, and timeout limits.
 
 ## Pre-deployment checklist
 

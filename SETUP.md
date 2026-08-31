@@ -33,6 +33,10 @@ OPENROUTER_API_KEY=
 OPENROUTER_GLM_MODEL=
 NVIDIA_API_KEY=
 NVIDIA_MINIMAX_MODEL=minimaxai/minimax-m3
+NVIDIA_KIMI_MODEL=moonshotai/kimi-k3
+GMI_CLOUD_API_KEY=
+GMI_CLOUD_BASE_URL=https://api.gmi-serving.com
+GMI_MINIMAX_MODEL=MiniMaxAI/MiniMax-M3
 
 ADMIN_PASSWORD=
 ADMIN_SESSION_SECRET=
@@ -124,4 +128,4 @@ Supabase Authentication → Providers → Google must be enabled with the matchi
 
 ## AI provider configuration
 
-AI requests are authenticated server-side and continue to use the existing paid-access and request-rate controls. NVIDIA MiniMax M3 remains the default provider path when `provider` is set to `nvidia`; keep `NVIDIA_API_KEY` server-only and set `NVIDIA_MINIMAX_MODEL=minimaxai/minimax-m3` when an explicit model value is desired. Do not expose provider keys through any `NEXT_PUBLIC_*` variable.
+AI requests are authenticated server-side and continue to use the existing paid-access and request-rate controls. **Max** uses NVIDIA’s `moonshotai/kimi-k3` through the server-only `NVIDIA_API_KEY`. **Thorough** and **Quick** use GMI Cloud’s Anthropic-compatible `/v1/messages` endpoint with `MiniMaxAI/MiniMax-M3` through the server-only `GMI_CLOUD_API_KEY`; Quick uses the smaller output budget and Thorough uses the larger one. Set `GMI_CLOUD_BASE_URL=https://api.gmi-serving.com` unless your GMI Cloud account provides a different base URL. Do not expose provider keys through any `NEXT_PUBLIC_*` variable. The NVIDIA key previously pasted into chat must be rotated before use.

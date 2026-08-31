@@ -5,7 +5,7 @@ export type ChatMessage = {
   content: string;
 };
 
-export type AIProvider = "openrouter" | "nvidia";
+export type AIProvider = "openrouter" | "nvidia" | "gmi" | "nvidia-kimi";
 
 export type AIUsage = {
   promptTokens?: number;

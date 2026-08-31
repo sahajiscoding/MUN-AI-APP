@@ -1,17 +1,29 @@
 import { ApiError } from "@/lib/api";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
-export async function callNvidiaMiniMax(
-  input: AICompletionInput
+const DEFAULT_MINIMAX_MODEL = "minimaxai/minimax-m3";
+const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
+
+export function callNvidiaMiniMax(input: AICompletionInput) {
+  return callNvidiaModel(input, process.env.NVIDIA_MINIMAX_MODEL || DEFAULT_MINIMAX_MODEL, "nvidia");
+}
+
+export function callNvidiaKimi(input: AICompletionInput) {
+  return callNvidiaModel(input, process.env.NVIDIA_KIMI_MODEL || DEFAULT_KIMI_MODEL, "nvidia-kimi");
+}
+
+async function callNvidiaModel(
+  input: AICompletionInput,
+  model: string,
+  provider: "nvidia" | "nvidia-kimi",
 ): Promise<AICompletionResult> {
   const apiKey = process.env.NVIDIA_API_KEY;
-  const model = process.env.NVIDIA_MINIMAX_MODEL || "minimaxai/minimax-m3";
 
   if (!apiKey) {
     throw new ApiError(
       500,
       "nvidia_not_configured",
-      "NVIDIA MiniMax is not configured yet. Add NVIDIA_API_KEY."
+      "The NVIDIA AI provider is not configured yet. Add NVIDIA_API_KEY.",
     );
   }
 
@@ -20,7 +32,7 @@ export async function callNvidiaMiniMax(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       Accept: "text/event-stream",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       model,
@@ -29,17 +41,16 @@ export async function callNvidiaMiniMax(
       top_p: 0.95,
       max_tokens: input.maxTokens ?? 2400,
       stream: true,
-      stream_options: { include_usage: true }
+      stream_options: { include_usage: true },
     }),
-    signal: AbortSignal.timeout(90_000)
+    signal: AbortSignal.timeout(90_000),
   });
 
   if (!response.ok) {
-    throw new ApiError(502, "nvidia_failed", "NVIDIA MiniMax could not complete the request.");
+    throw new ApiError(502, "nvidia_failed", "The NVIDIA AI provider could not complete the request.");
   }
 
-  // Return a ReadableStream for the client to consume
-  const stream = new ReadableStream({
+  const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const reader = response.body?.getReader();
       if (!reader) {
@@ -48,6 +59,7 @@ export async function callNvidiaMiniMax(
       }
 
       const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
       let buffer = "";
 
       try {
@@ -60,44 +72,36 @@ export async function callNvidiaMiniMax(
           buffer = lines.pop() || "";
 
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") {
-                controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
-                continue;
-              }
-              try {
-                const parsed = JSON.parse(data) as {
-                  choices?: Array<{ delta?: { content?: string } }>;
-                  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-                };
-                const content = parsed?.choices?.[0]?.delta?.content;
-                if (content) {
-                  controller.enqueue(
-                    new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`)
-                  );
-                }
-                const usage = normalizeAIUsage(parsed.usage);
-                if (usage) {
-                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ usage })}\n\n`));
-                }
-              } catch {
-                // skip malformed chunks
-              }
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") {
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data) as {
+                choices?: Array<{ delta?: { content?: string } }>;
+                usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+              };
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+
+              const usage = normalizeAIUsage(parsed.usage);
+              if (usage) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ usage })}\n\n`));
+            } catch {
+              // Ignore malformed provider chunks.
             }
           }
         }
-      } catch (err) {
-        controller.error(err);
+      } catch (error) {
+        controller.error(error);
       } finally {
+        reader.releaseLock();
         controller.close();
       }
-    }
+    },
   });
 
-  return {
-    provider: "nvidia",
-    model,
-    stream
-  } as unknown as AICompletionResult;
+  return { provider, model, stream };
 }

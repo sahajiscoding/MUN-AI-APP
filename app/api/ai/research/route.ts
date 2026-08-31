@@ -16,7 +16,7 @@ const schema = z.object({
   country: z.string().trim().min(2).max(120),
   experienceLevel: z.string().trim().min(2).max(40),
   tool: z.enum(["research", "country-profile", "position-paper", "speech", "poi", "resolution"]).optional(),
-  provider: z.enum(["openrouter", "nvidia"]).optional(),
+  responseMode: z.enum(["quick", "thorough", "max"]).default("quick"),
   maxTokens: z.number().int().min(256).max(8000).optional(),
   temperature: z.number().min(0).max(1.5).optional(),
   chatId: z.string().uuid().optional(),

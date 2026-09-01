@@ -4,11 +4,13 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Award,
   BookOpen,
   Check,
   CheckCircle2,
   ChevronRight,
   CircleHelp,
+  Download,
   Lock,
   RotateCcw,
   Trophy,
@@ -64,6 +66,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   const [reviewLessonIndex, setReviewLessonIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [certificateError, setCertificateError] = useState("");
+  const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const lessonEndRef = useRef<HTMLDivElement>(null);
 
   const courseQuiz = useMemo(() => (course ? quizzes[slug] || [] : []), [course, slug]);
@@ -175,7 +179,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
 
     const nextLessons = [...new Set([...completedLessons, activeLessonIndex])].sort((a, b) => a - b);
     setCompletedLessons(nextLessons);
-    void saveProgress(nextLessons);
+    void saveProgress(nextLessons, undefined, undefined, nextLessons.length === totalLessons);
   }
 
   function resetCheckpoint() {
@@ -211,6 +215,35 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
       finalQuizQuestions.length,
       score / Math.max(finalQuizQuestions.length, 1) >= 0.7
     );
+  }
+
+  async function downloadCertificate() {
+    if (!user || !allLessonsComplete || downloadingCertificate) return;
+    setDownloadingCertificate(true);
+    setCertificateError("");
+    try {
+      const token = await getIdToken();
+      const response = await fetch(`/api/courses/${encodeURIComponent(slug)}/certificate`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Could not generate your certificate.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `mun-prep-${slug}-certificate.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setCertificateError(error instanceof Error ? error.message : "Could not generate your certificate.");
+    } finally {
+      setDownloadingCertificate(false);
+    }
   }
 
   function advanceFinalQuiz() {
@@ -516,6 +549,33 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                 </button>
               </div>
             ) : null}
+          </section>
+        ) : null}
+
+        {allLessonsComplete ? (
+          <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-6 shadow-[0_16px_40px_rgba(39,35,28,0.08)] sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+            <div className="flex items-start gap-4">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--brass)] text-white">
+                <Award className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="label-text text-[var(--brass)]">Course complete</p>
+                <h2 className="display-type mt-1 text-2xl">Your certificate is ready</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
+                  You reached 100% completion. Download your MUN Prep certificate with your name, course title, date, and certificate ID.
+                </p>
+                {certificateError ? <p className="mt-3 text-sm font-semibold text-[var(--oxblood)]" role="alert">{certificateError}</p> : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={downloadCertificate}
+              disabled={downloadingCertificate}
+              className="button-primary mt-5 inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold disabled:cursor-wait disabled:opacity-60 sm:mt-0 sm:w-auto sm:shrink-0"
+            >
+              <Download className="h-4 w-4" />
+              {downloadingCertificate ? "Preparing certificate…" : "Download certificate"}
+            </button>
           </section>
         ) : null}
 

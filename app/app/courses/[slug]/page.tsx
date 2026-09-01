@@ -13,6 +13,7 @@ import {
   Download,
   Lock,
   RotateCcw,
+  Share2,
   Trophy,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
@@ -68,6 +69,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   const [saveError, setSaveError] = useState("");
   const [certificateError, setCertificateError] = useState("");
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
+  const [certificateName, setCertificateName] = useState("");
+  const [certificateSignature, setCertificateSignature] = useState("MUN Prep Faculty");
   const lessonEndRef = useRef<HTMLDivElement>(null);
 
   const courseQuiz = useMemo(() => (course ? quizzes[slug] || [] : []), [course, slug]);
@@ -224,7 +227,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     try {
       const token = await getIdToken();
       const response = await fetch(`/api/courses/${encodeURIComponent(slug)}/certificate`, {
-        headers: { Authorization: `Bearer ${token}` },
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: certificateName.trim() || undefined,
+          signature: certificateSignature.trim() || undefined,
+        }),
       });
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
@@ -244,6 +255,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     } finally {
       setDownloadingCertificate(false);
     }
+  }
+
+  function shareCompletion(network: "linkedin" | "twitter") {
+    const shareUrl = `${window.location.origin}/app/courses/${encodeURIComponent(slug)}`;
+    const text = `I completed the ${course?.title || "MUN Prep"} course on MUN Prep.`;
+    const target = network === "linkedin"
+      ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`
+      : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(target, "_blank", "noopener,noreferrer,width=720,height=640");
   }
 
   function advanceFinalQuiz() {
@@ -567,15 +587,59 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                 {certificateError ? <p className="mt-3 text-sm font-semibold text-[var(--oxblood)]" role="alert">{certificateError}</p> : null}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={downloadCertificate}
-              disabled={downloadingCertificate}
-              className="button-primary mt-5 inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold disabled:cursor-wait disabled:opacity-60 sm:mt-0 sm:w-auto sm:shrink-0"
-            >
-              <Download className="h-4 w-4" />
-              {downloadingCertificate ? "Preparing certificate…" : "Download certificate"}
-            </button>
+            <div className="mt-5 w-full sm:mt-0 sm:w-[19rem] sm:shrink-0">
+              <div className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] p-3">
+                <label className="grid gap-1.5 text-xs font-bold text-[var(--ink)]">
+                  Student name on certificate
+                  <input
+                    value={certificateName}
+                    onChange={(event) => setCertificateName(event.target.value)}
+                    placeholder="Use your account name"
+                    maxLength={80}
+                    className="min-h-10 rounded-lg border border-[var(--line)] bg-white/70 px-3 text-sm font-normal outline-none transition focus:border-[var(--patina)] focus:ring-2 focus:ring-[var(--patina)]/20"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-bold text-[var(--ink)]">
+                  Signature text
+                  <input
+                    value={certificateSignature}
+                    onChange={(event) => setCertificateSignature(event.target.value)}
+                    placeholder="MUN Prep Faculty"
+                    maxLength={80}
+                    className="min-h-10 rounded-lg border border-[var(--line)] bg-white/70 px-3 text-sm font-normal outline-none transition focus:border-[var(--patina)] focus:ring-2 focus:ring-[var(--patina)]/20"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={downloadCertificate}
+                  disabled={downloadingCertificate}
+                  className="button-primary inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold disabled:cursor-wait disabled:opacity-60"
+                >
+                  <Download className="h-4 w-4" />
+                  {downloadingCertificate ? "Preparing certificate…" : "Download certificate"}
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-xs font-bold text-[var(--muted)]">Share completion:</span>
+                <button
+                  type="button"
+                  onClick={() => shareCompletion("linkedin")}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#0a66c2]/35 bg-[#0a66c2]/10 px-3 py-2 text-xs font-bold text-[#0a66c2] transition hover:bg-[#0a66c2]/20 active:scale-[0.98]"
+                  aria-label="Share course completion on LinkedIn"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> LinkedIn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => shareCompletion("twitter")}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-black/20 bg-black/5 px-3 py-2 text-xs font-bold text-[var(--ink)] transition hover:bg-black/10 active:scale-[0.98]"
+                  aria-label="Share course completion on Twitter"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Twitter
+                </button>
+              </div>
+              <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Social sharing opens a post composer with your completion message and course link. The customized PDF remains your downloadable certificate.</p>
+            </div>
           </section>
         ) : null}
 

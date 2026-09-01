@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/courses";
+import { quizzes } from "@/lib/quizzes";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/server/auth";
 
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
       throw new ApiError(400, "invalid_lessons", "One or more lesson indexes are invalid.");
     }
 
-    const quizLength = course.quiz?.length ?? 0;
+    const quizLength = Math.max(quizzes[course_slug]?.length ?? 0, course.lessons.length);
     if (
       (quiz_total ?? 0) > quizLength ||
       (quiz_score ?? 0) > (quiz_total ?? 0)

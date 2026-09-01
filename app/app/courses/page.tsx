@@ -90,22 +90,20 @@ export default function CoursesPage() {
                             </p>
 
                             {/* Progress bar */}
-                            {completedCount > 0 && (
-                              <div className="mt-3">
-                                <div className="flex items-center justify-between text-xs mb-1">
-                                  <span className="text-[var(--muted)]">
-                                    {completedCount}/{totalLessons} lessons
-                                  </span>
-                                  <span className="font-semibold text-[var(--patina)]">{percent}%</span>
-                                </div>
-                                <div className="h-1.5 bg-black/10 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-[var(--patina)] rounded-full transition-all"
-                                    style={{ width: `${percent}%` }}
-                                  />
-                                </div>
+                            <div className="mt-3">
+                              <div className="mb-1 flex items-center justify-between text-xs">
+                                <span className="text-[var(--muted)]">
+                                  {completedCount}/{totalLessons} lessons
+                                </span>
+                                <span className="font-bold text-[var(--patina)]">{percent}% done</span>
                               </div>
-                            )}
+                              <div className="h-2 overflow-hidden rounded-full bg-black/10">
+                                <div
+                                  className="h-full rounded-full bg-[var(--patina)] transition-all"
+                                  style={{ width: `${percent}%` }}
+                                />
+                              </div>
+                            </div>
 
                             {/* Quiz score */}
                             {hasQuiz && (
@@ -118,7 +116,7 @@ export default function CoursesPage() {
                             )}
 
                             <p className="mt-2 text-xs text-[var(--brass)] font-semibold">
-                              {course.lessons.length} lessons · Quiz available
+                              {course.lessons.length} lessons · Knowledge checks · Final review
                             </p>
                           </div>
                         </div>

@@ -76,6 +76,16 @@ async function generateCertificate(
   const date = formatDate(progress?.completed_at);
   const id = certificateId(user.uid, slug);
 
+  const { error: trackingError } = await supabaseAdmin().from("certificate_downloads").insert({
+    uid: user.uid,
+    course_slug: slug,
+  });
+  if (trackingError) {
+    // Certificate delivery should remain available if analytics storage is
+    // temporarily unavailable; the admin dashboard can still use completions.
+    console.error("Could not record certificate download analytics", trackingError);
+  }
+
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([792, 612]);
   const regular = await pdf.embedFont(StandardFonts.Helvetica);

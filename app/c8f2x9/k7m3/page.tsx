@@ -203,6 +203,9 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <nav className="flex shrink-0 items-center gap-2" aria-label="Administrator navigation">
+            <Link href="/admin/analytics" className="button-secondary inline-flex items-center px-3 py-2 text-sm font-semibold sm:px-4">
+              Analytics
+            </Link>
             <Link href="/admin/referrals" className="button-secondary inline-flex items-center px-3 py-2 text-sm font-semibold sm:px-4">
               Referrals
             </Link>

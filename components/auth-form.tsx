@@ -171,6 +171,8 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                 </div>
               </label>
 
+              {mode === "login" ? <div className="-mt-2 text-right"><Link href="/auth/forgot-password" className="text-xs font-semibold text-[var(--muted)] underline underline-offset-4 hover:text-[var(--ink)]">Forgot password?</Link></div> : null}
+
               {confirmationSent ? (
                 <p className="rounded-panel border border-[var(--patina)]/30 bg-[var(--patina)]/10 px-3 py-3 text-sm text-[var(--ink)]" role="status" aria-live="polite">
                   Account created. Check your email to confirm your address, then return here to sign in.

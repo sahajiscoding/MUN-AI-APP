@@ -4,10 +4,12 @@ import {
   Landmark,
   Loader2,
   LogOut,
+  Menu,
   MessageSquare,
   PenLine,
   Plus,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -55,6 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [loadingChats, setLoadingChats] = useState(true);
   const [chatError, setChatError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const storedPreference = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
@@ -147,14 +150,69 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span className="display-type text-lg">MUN Prep</span>
           </Link>
-          <Link
-            href="/profile"
-            className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5"
-            aria-label="Open profile"
-          >
-            <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-          </Link>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5"
+              aria-label="Open workspace menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <Link
+              href="/profile"
+              className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5"
+              aria-label="Open profile"
+            >
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          </div>
         </header>
+
+        {mobileMenuOpen ? (
+          <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Workspace menu">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/30"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close workspace menu"
+            />
+            <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,22rem)] flex-col border-r border-[var(--line)] bg-[var(--surface)] shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
+                <span className="text-sm font-bold">Workspace menu</span>
+                <button type="button" onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5" aria-label="Close workspace menu"><X className="h-5 w-5" aria-hidden="true" /></button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <Link href="/app/research" onClick={() => setMobileMenuOpen(false)} className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5"><Plus className="h-4 w-4" aria-hidden="true" /> New chat</Link>
+                <SidebarNav collapsed={false} />
+                <div className="border-t border-[var(--line)] p-3">
+                  <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Recent chats</p>
+                  {loadingChats ? (
+                    <div className="flex items-center gap-2 px-2 py-3 text-xs text-[var(--muted)]"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Loading chats…</div>
+                  ) : chatError ? (
+                    <div className="px-2 py-3"><p className="text-xs leading-5 text-[var(--muted)]">{chatError}</p><button type="button" onClick={() => window.dispatchEvent(new Event("mun:chat-history-refresh"))} className="mt-2 text-xs font-semibold text-[var(--patina)] hover:underline">Try again</button></div>
+                  ) : chats.length === 0 ? (
+                    <p className="px-2 py-3 text-xs text-[var(--muted)]">No chats yet. Start a new one!</p>
+                  ) : (
+                    <nav className="space-y-0.5" aria-label="Recent chats">
+                      {chats.map((chat) => {
+                        const Icon = toolIcons[chat.tool] || MessageSquare;
+                        return <Link key={chat.id} href={getChatHref(chat)} onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new CustomEvent("mun:open-chat", { detail: { id: chat.id } })); }} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--muted)] transition hover:bg-black/5"><Icon className="h-4 w-4 shrink-0" aria-hidden="true" /><span className="truncate">{getChatTitle(chat)}</span></Link>;
+                      })}
+                    </nav>
+                  )}
+                </div>
+              </div>
+              <div className="border-t border-[var(--line)] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0"><p className="truncate text-sm font-semibold">{user?.user_metadata?.full_name || "Delegate"}</p><p className="truncate text-xs text-[var(--muted)]">{user?.email}</p></div>
+                  <button type="button" onClick={() => { setMobileMenuOpen(false); void logout(); }} className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5" title="Sign out" aria-label="Sign out"><LogOut className="h-4 w-4" aria-hidden="true" /></button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        ) : null}
 
         <aside
           aria-label="Desktop workspace navigation"
@@ -303,7 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 h-[calc(100dvh-3.5rem)] overflow-hidden pb-20 lg:h-screen lg:overflow-x-hidden lg:overflow-y-visible lg:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 h-[calc(100dvh-3.5rem)] overflow-hidden pb-20 lg:h-screen lg:overflow-x-hidden lg:overflow-y-visible lg:pb-0 lg:pl-6">{children}</main>
       </div>
 
       <MobileNav />

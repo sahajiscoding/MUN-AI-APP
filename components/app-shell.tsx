@@ -171,14 +171,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {mobileMenuOpen ? (
-          <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Workspace menu">
+          <div className="fixed inset-0 z-[60] isolate lg:hidden" role="dialog" aria-modal="true" aria-label="Workspace menu">
             <button
               type="button"
-              className="absolute inset-0 bg-black/30"
+              className="absolute inset-0 bg-black/45"
               onClick={() => setMobileMenuOpen(false)}
               aria-label="Close workspace menu"
             />
-            <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,22rem)] flex-col border-r border-[var(--line)] bg-[var(--surface)] shadow-2xl">
+            <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,22rem)] flex-col overflow-hidden border-r border-[var(--line)] bg-[var(--paper-strong)] shadow-2xl">
               <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
                 <span className="text-sm font-bold">Workspace menu</span>
                 <button type="button" onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5" aria-label="Close workspace menu"><X className="h-5 w-5" aria-hidden="true" /></button>

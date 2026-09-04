@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, FileText, Landmark, LifeBuoy } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleHelp, FileText, Landmark, LifeBuoy, Scale } from "lucide-react";
 import type { ReactNode } from "react";
 import type { SitePage } from "@/lib/site-pages";
 
@@ -17,8 +17,12 @@ export function SiteHeader() {
   );
 }
 
+export function SiteFooter() {
+  return <footer className="border-t border-[var(--line)] px-5 py-10 sm:px-8"><div className="mx-auto max-w-5xl"><div className="grid gap-3 sm:grid-cols-3"><Link href="/help" className="group rounded-2xl border border-[var(--line)] bg-white/30 p-4 transition hover:-translate-y-0.5 hover:border-[var(--patina)] hover:bg-white/60"><CircleHelp className="h-5 w-5 text-[var(--patina)]" aria-hidden="true" /><span className="mt-3 block text-base font-bold text-[var(--ink)]">Help Center</span><span className="mt-1 block text-sm font-normal text-[var(--muted)]">Find answers and guides</span></Link><Link href="/support" className="group rounded-2xl border border-[var(--line)] bg-white/30 p-4 transition hover:-translate-y-0.5 hover:border-[var(--patina)] hover:bg-white/60"><LifeBuoy className="h-5 w-5 text-[var(--patina)]" aria-hidden="true" /><span className="mt-3 block text-base font-bold text-[var(--ink)]">Support</span><span className="mt-1 block text-sm font-normal text-[var(--muted)]">Get help from our team</span></Link><Link href="/legal" className="group rounded-2xl border border-[var(--line)] bg-white/30 p-4 transition hover:-translate-y-0.5 hover:border-[var(--patina)] hover:bg-white/60"><Scale className="h-5 w-5 text-[var(--patina)]" aria-hidden="true" /><span className="mt-3 block text-base font-bold text-[var(--ink)]">Legal</span><span className="mt-1 block text-sm font-normal text-[var(--muted)]">Policies and privacy</span></Link></div><div className="mt-8 flex flex-wrap items-center justify-between gap-4 text-xs font-semibold text-[var(--muted)]"><span>© MUN Prep</span><nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Footer navigation"><Link href="/login">Sign in</Link><Link href="/signup">Register</Link><Link href="/legal/cookie-preferences">Cookie Preferences</Link></nav></div></div></footer>;
+}
+
 export function PublicPage({ children }: { children: ReactNode }) {
-  return <main className="min-h-screen bg-[var(--paper)] text-[var(--ink)]"><SiteHeader />{children}<footer className="border-t border-[var(--line)] px-5 py-8 sm:px-8"><div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 text-xs font-semibold text-[var(--muted)]"><span>© MUN Prep</span><nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Footer navigation"><Link href="/legal">Legal</Link><Link href="/help">Help Center</Link><Link href="/support">Support</Link><Link href="/login">Sign in</Link></nav></div></footer></main>;
+  return <main className="min-h-screen bg-[var(--paper)] text-[var(--ink)]"><SiteHeader />{children}<SiteFooter /></main>;
 }
 
 export function PolicyPage({ page }: { page: SitePage }) {

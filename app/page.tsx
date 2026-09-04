@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, FileText, MessageSquareQuote } from "lucide-react";
 import Link from "next/link";
 import { PublicNav } from "@/components/public-nav";
+import { SiteFooter } from "@/components/site-pages";
 
 const workspaces = [
   {
@@ -67,6 +68,7 @@ export default function HomePage({ referralName }: { referralName?: string } = {
           </div>
         </div>
       </section>
+      <SiteFooter />
     </main>
   );
 }

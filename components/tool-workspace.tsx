@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowDown, Bot, Loader2, Plus, Send } from "lucide-react";
+import { ArrowDown, Bot, Loader2, MessageSquare, Plus, Send } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { PaywallModal } from "@/components/paywall-modal";
 
@@ -39,6 +39,8 @@ function isSafeExternalUrl(value: string) {
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlChatId = searchParams.get("chat");
   const [chatId, setChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
@@ -55,6 +57,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   const requestControllerRef = useRef<AbortController | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [chatLoadError, setChatLoadError] = useState("");
 
   // Follow the stream only while the user is already near the latest content.
   // Once they scroll up, leave their reading position alone.
@@ -98,7 +101,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   // Keep the selected chat synchronized for deep links, sidebar clicks, and browser back/forward.
   useEffect(() => {
     const syncFromUrl = () => {
-      setChatId(new URLSearchParams(window.location.search).get("chat"));
+      setChatId(urlChatId);
     };
     const handleChatOpen = (event: Event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail?.id;
@@ -113,7 +116,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       window.removeEventListener("popstate", syncFromUrl);
       window.removeEventListener("mun:open-chat", handleChatOpen);
     };
-  }, [pathname]);
+  }, [pathname, urlChatId]);
 
   // Load a saved conversation when the sidebar opens one.
   useEffect(() => {
@@ -125,8 +128,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setLoadingSavedChat(true);
     setStreaming(false);
     setStatus("Loading saved chat…");
-    setTurns([]);
-    setOutput("");
+    setChatLoadError("");
 
     async function loadChat() {
       try {
@@ -153,14 +155,14 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           setTurns(loadedTurns);
           setInput("");
           setOutput("");
+          setChatLoadError("");
           setStatus(`${data.chat.model} · saved chat`);
         }
       } catch (error) {
         if (!cancelled) {
-          setInput("");
-          setTurns([]);
-          setOutput("");
-          setStatus(error instanceof Error ? error.message : "That saved chat could not be opened.");
+          const message = error instanceof Error ? error.message : "That saved chat could not be opened.";
+          setChatLoadError(message);
+          setStatus(message);
         }
       } finally {
         if (!cancelled) {
@@ -203,6 +205,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setTurns([]);
     setOutput("");
     setStatus("");
+    setChatLoadError("");
     setLoading(false);
     setLoadingSavedChat(false);
     setStreaming(false);
@@ -498,6 +501,20 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 </div>
               </div>
             ) : null}
+          </div>
+        ) : chatLoadError ? (
+          <div className="flex h-full items-center justify-center px-5 text-center" role="alert">
+            <div className="max-w-md rounded-2xl border border-[var(--oxblood)]/25 bg-[var(--paper-strong)] p-6 shadow-sm">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--oxblood)] text-[var(--paper)]">
+                <MessageSquare className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <h2 className="display-type mt-4 text-2xl">Saved chat could not be opened</h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{chatLoadError}</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <button type="button" onClick={() => window.location.reload()} className="button-primary px-4 py-2 text-sm font-semibold">Try again</button>
+                <button type="button" onClick={handleNewChat} className="button-secondary px-4 py-2 text-sm font-semibold">Start new chat</button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-5">

@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEntitlement, grantEntitlement } from "@/lib/server/entitlements";
 import { canonicalPlanId } from "@/lib/plans";
 import { getOrderStatus } from "@/lib/payments/uropay";
+import { processReferralCommission } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -252,6 +253,25 @@ export async function GET(request: Request) {
           orderRef: payment.order_ref,
           planId: payment.plan_id,
         });
+      }
+
+      // The webhook is the primary commission trigger, but UroPay documents it
+      // as best-effort. When this poll confirms the payment first (or the
+      // webhook never arrives), create the commission here as well. The RPC is
+      // idempotent per payment, so a later webhook delivery cannot double-pay.
+      try {
+        await processReferralCommission({
+          uid: payment.uid,
+          paymentId: payment.id,
+          orderId: payment.uropay_order_id ?? payment.order_ref,
+          planId: canonicalPlanId(payment.plan_id) ?? payment.plan_id,
+          paymentAmountPaise: Number(payment.amount),
+        });
+      } catch (error) {
+        console.error(
+          "Referral commission after confirmed payment failed:",
+          error
+        );
       }
 
       return Response.json({

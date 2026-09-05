@@ -17,7 +17,7 @@ const schema = z.object({
   experienceLevel: z.string().trim().min(2).max(40),
   tool: z.enum(["research", "country-profile", "position-paper", "speech", "poi", "resolution"]).optional(),
   responseMode: z.enum(["quick", "thorough", "max"]).default("quick"),
-  maxTokens: z.number().int().min(256).max(8000).optional(),
+  maxTokens: z.number().int().min(256).max(12000).optional(),
   temperature: z.number().min(0).max(1.5).optional(),
   chatId: z.string().uuid().optional(),
   conversation: z.array(z.object({
@@ -68,7 +68,10 @@ export async function POST(request: Request) {
 
     const body = schema.safeParse(await parseJson<unknown>(request));
     if (!body.success) {
-      throw new ApiError(400, "invalid_research_request", "Add committee, agenda, and country.");
+      const detail = body.error.issues[0]
+        ? `${body.error.issues[0].path.join(".") || "request"}: ${body.error.issues[0].message}`
+        : "invalid request";
+      throw new ApiError(400, "invalid_research_request", `Your request could not be processed (${detail}). Please check your inputs and try again.`);
     }
 
     const existing = body.data.chatId ? await loadOwnedChat(uid, body.data.chatId) : null;

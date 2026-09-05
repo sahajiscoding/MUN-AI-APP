@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
 import { grantEntitlement } from "@/lib/server/entitlements";
+import { processReferralCommission } from "@/lib/referrals";
 
 type ReconciliationResult = {
   paymentId: string;
@@ -32,6 +33,7 @@ export async function reconcilePaidPayments(
         id,
         uid,
         plan_id,
+        amount,
         status,
         order_ref,
         uropay_order_id,
@@ -76,6 +78,29 @@ export async function reconcilePaidPayments(
         });
 
         continue;
+      }
+
+      // Ensure the referral commission exists for this paid payment. The
+      // webhook normally creates it; this is the owner-driven repair path for
+      // payments the webhook never reached. The RPC is idempotent per payment,
+      // and the ordering guard in processReferralCommission prevents
+      // retroactive commissions for payments made before the code was attached.
+      try {
+        await processReferralCommission({
+          uid: payment.uid,
+          paymentId: payment.id,
+          orderId: payment.uropay_order_id ?? payment.order_ref,
+          planId: plan.id,
+          paymentAmountPaise: Number(payment.amount),
+        });
+      } catch (error) {
+        console.error(
+          "Referral commission reconciliation failed:",
+          {
+            paymentId: payment.id,
+            error,
+          }
+        );
       }
 
       // Check whether the user already has an active entitlement.

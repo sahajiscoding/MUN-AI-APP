@@ -3,6 +3,7 @@ import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { createPartnerDashboardToken } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
         status: values.status,
         commission_rate: values.commissionRate,
         notes: values.notes ?? null,
+        dashboard_token: createPartnerDashboardToken(),
       })
       .select("id, name, email, whatsapp, referral_code, status, commission_rate, notes, created_at, updated_at")
       .single();

@@ -46,6 +46,15 @@ type Commission = {
   created_at: string;
 };
 
+type Application = {
+  id: string;
+  name: string;
+  email: string;
+  whatsapp: string | null;
+  note: string | null;
+  created_at: string;
+};
+
 type DashboardData = {
   summary: {
     total_partners: number;
@@ -77,6 +86,8 @@ export function ReferralAdminPanel() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [copiedPartnerId, setCopiedPartnerId] = useState<string | null>(null);
+  const [copiedDashboardId, setCopiedDashboardId] = useState<string | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,6 +106,7 @@ export function ReferralAdminPanel() {
 
   useEffect(() => {
     void load();
+    void loadApplications();
   }, [load]);
 
   async function addPartner(event: React.FormEvent<HTMLFormElement>) {
@@ -150,6 +162,69 @@ export function ReferralAdminPanel() {
       window.setTimeout(() => setCopiedPartnerId((current) => current === partner.id ? null : current), 1800);
     } catch {
       setError("Could not copy the referral link. Please open the link and copy it manually.");
+    }
+  }
+
+  async function copyDashboardLink(partner: Partner) {
+    setBusyId(partner.id);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/referrals/partners/${partner.id}/dashboard-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const body = (await response.json()) as { error?: string; link?: string };
+      if (!response.ok || !body.link) throw new Error(body.error || "Could not prepare the dashboard link.");
+      await navigator.clipboard.writeText(body.link);
+      setCopiedDashboardId(partner.id);
+      setMessage("Partner dashboard link copied. Send it privately — never post it publicly.");
+      window.setTimeout(() => setCopiedDashboardId((current) => current === partner.id ? null : current), 1800);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not copy the dashboard link.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function loadApplications() {
+    try {
+      const response = await fetch("/api/admin/referrals/applications", { cache: "no-store" });
+      const body = (await response.json()) as { applications?: Application[]; error?: string };
+      if (!response.ok) throw new Error(body.error || "Could not load applications.");
+      setApplications(body.applications ?? []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load applications.");
+    }
+  }
+
+  function loadIntoForm(application: Application) {
+    setForm({
+      name: application.name,
+      email: application.email,
+      whatsapp: application.whatsapp ?? "",
+      referralCode: "",
+      status: "pending",
+      commissionRate: "16.72",
+      notes: application.note ? `From application: ${application.note}` : "From partner application",
+    });
+    setMessage(`Application from ${application.name} loaded into the form above — pick a referral code and create the partner.`);
+  }
+
+  async function dismissApplication(application: Application) {
+    setBusyId(application.id);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/admin/referrals/applications/${application.id}`, { method: "DELETE" });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error || "Could not dismiss the application.");
+      setApplications((current) => current.filter((item) => item.id !== application.id));
+      setMessage(`Application from ${application.name} dismissed.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not dismiss the application.");
+    } finally {
+      setBusyId("");
     }
   }
 
@@ -216,9 +291,38 @@ export function ReferralAdminPanel() {
               <section>
                 <h2 className="display-type text-2xl">Partners</h2>
                 <div className="mt-4 overflow-x-auto rounded-panel border border-[var(--line)]">
-                  <table className="w-full min-w-[940px] text-left text-sm"><thead className="bg-black/[0.03] text-xs uppercase tracking-wider text-[var(--muted)]"><tr><th className="px-4 py-3">Partner</th><th className="px-4 py-3">Code</th><th className="px-4 py-3">Referral link</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Referrals</th><th className="px-4 py-3">Unpaid</th><th className="px-4 py-3">Actions</th></tr></thead><tbody>{data.partners.map((partner) => <tr key={partner.id} className="border-t border-[var(--line)]"><td className="px-4 py-3"><div className="font-semibold">{partner.name}</div><div className="text-xs text-[var(--muted)]">{partner.email}</div></td><td className="px-4 py-3 font-mono text-xs">{partner.referral_code}</td><td className="max-w-[270px] px-4 py-3">{partner.referral_link ? <div className="flex items-center gap-2"><a href={partner.referral_link} target="_blank" rel="noreferrer" className="min-w-0 truncate text-xs font-semibold text-[var(--patina)] underline decoration-[var(--patina)]/30 underline-offset-2 hover:text-[var(--oxblood)]" title={partner.referral_link}>/{partner.referral_code}</a><button type="button" onClick={() => void copyReferralLink(partner)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--line)] px-2 py-1.5 text-xs font-bold text-[var(--muted)] transition hover:border-[var(--patina)]/40 hover:text-[var(--patina)]" aria-label={`Copy referral link for ${partner.name}`} title="Copy referral link">{copiedPartnerId === partner.id ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}<span className="sr-only">{copiedPartnerId === partner.id ? "Copied" : "Copy"}</span></button></div> : <span className="text-xs text-[var(--muted)]">Available when active</span>}</td><td className="px-4 py-3 capitalize">{partner.status}</td><td className="px-4 py-3">{partner.successful_referrals}</td><td className="px-4 py-3">{money.format(partner.unpaid_commission)}</td><td className="px-4 py-3"><select aria-label={`Change status for ${partner.name}`} disabled={busyId === partner.id} value={partner.status} onChange={(event) => void changeStatus(partner, event.target.value as Partner["status"])} className="rounded border border-[var(--line)] bg-transparent px-2 py-1 text-xs"><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option></select></td></tr>)}</tbody></table>
+                  <table className="w-full min-w-[940px] text-left text-sm"><thead className="bg-black/[0.03] text-xs uppercase tracking-wider text-[var(--muted)]"><tr><th className="px-4 py-3">Partner</th><th className="px-4 py-3">Code</th><th className="px-4 py-3">Referral link</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Referrals</th><th className="px-4 py-3">Unpaid</th><th className="px-4 py-3">Actions</th></tr></thead><tbody>{data.partners.map((partner) => <tr key={partner.id} className="border-t border-[var(--line)]"><td className="px-4 py-3"><div className="font-semibold">{partner.name}</div><div className="text-xs text-[var(--muted)]">{partner.email}</div></td><td className="px-4 py-3 font-mono text-xs">{partner.referral_code}</td><td className="max-w-[270px] px-4 py-3">{partner.referral_link ? <div className="flex items-center gap-2"><a href={partner.referral_link} target="_blank" rel="noreferrer" className="min-w-0 truncate text-xs font-semibold text-[var(--patina)] underline decoration-[var(--patina)]/30 underline-offset-2 hover:text-[var(--oxblood)]" title={partner.referral_link}>/{partner.referral_code}</a><button type="button" onClick={() => void copyReferralLink(partner)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--line)] px-2 py-1.5 text-xs font-bold text-[var(--muted)] transition hover:border-[var(--patina)]/40 hover:text-[var(--patina)]" aria-label={`Copy referral link for ${partner.name}`} title="Copy referral link">{copiedPartnerId === partner.id ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}<span className="sr-only">{copiedPartnerId === partner.id ? "Copied" : "Copy"}</span></button></div> : <span className="text-xs text-[var(--muted)]">Available when active</span>}</td><td className="px-4 py-3 capitalize">{partner.status}</td><td className="px-4 py-3">{partner.successful_referrals}</td><td className="px-4 py-3">{money.format(partner.unpaid_commission)}</td><td className="px-4 py-3"><div className="flex items-center gap-2"><select aria-label={`Change status for ${partner.name}`} disabled={busyId === partner.id} value={partner.status} onChange={(event) => void changeStatus(partner, event.target.value as Partner["status"])} className="rounded border border-[var(--line)] bg-transparent px-2 py-1 text-xs"><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option></select><button type="button" disabled={busyId === partner.id} onClick={() => void copyDashboardLink(partner)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--line)] px-2 py-1 text-xs font-bold text-[var(--muted)] transition hover:border-[var(--patina)]/40 hover:text-[var(--patina)]" title="Copy this partner's private dashboard link" aria-label={`Copy private dashboard link for ${partner.name}`}>{busyId === partner.id ? "…" : copiedDashboardId === partner.id ? "Copied!" : "Dashboard"}</button></div></td></tr>)}</tbody></table>
                 </div>
               </section>
+            </section>
+
+            <section className="mt-10" aria-labelledby="applications-heading">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="label-text text-[var(--brass)]">Awaiting review</p>
+                  <h2 id="applications-heading" className="display-type text-2xl">Partner applications</h2>
+                </div>
+                <button type="button" onClick={() => void loadApplications()} className="button-secondary px-3 py-1.5 text-xs font-semibold">Refresh</button>
+              </div>
+              {applications.length === 0 ? (
+                <p className="mt-4 rounded-2xl border border-dashed border-[var(--line)] bg-white/30 px-4 py-6 text-center text-sm text-[var(--muted)]">No new applications. Submissions from the public Become a partner page appear here.</p>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {applications.map((application) => (
+                    <div key={application.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white/40 p-4">
+                      <div className="min-w-0">
+                        <p className="font-semibold">{application.name} <span className="font-normal text-[var(--muted)]">· {new Date(application.created_at).toLocaleDateString("en-IN")}</span></p>
+                        <p className="mt-0.5 text-sm text-[var(--muted)]">{application.email}{application.whatsapp ? ` · WhatsApp: ${application.whatsapp}` : ""}</p>
+                        {application.note ? <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{application.note}</p> : null}
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button type="button" disabled={busyId === application.id} onClick={() => void loadIntoForm(application)} className="button-secondary px-3 py-1.5 text-xs font-semibold">Load into form</button>
+                        <button type="button" disabled={busyId === application.id} onClick={() => void dismissApplication(application)} className="rounded-lg border border-[var(--oxblood)]/25 px-3 py-1.5 text-xs font-bold text-[var(--oxblood)] transition hover:bg-[var(--oxblood)]/5">Dismiss</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="mt-10">

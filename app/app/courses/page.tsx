@@ -6,36 +6,47 @@ import { useEffect, useState } from "react";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
 import { categories, courses } from "@/lib/courses";
 import { useAuth } from "@/components/auth-provider";
-import { getSupabase } from "@/lib/supabase/client";
 
 type ProgressMap = Record<string, { completed: number; total: number; quizScore: number; quizTotal: number }>;
 
 export default function CoursesPage() {
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const [progress, setProgress] = useState<ProgressMap>({});
 
   useEffect(() => {
     if (!user) return;
-    const supabase = getSupabase();
+    let cancelled = false;
 
-    supabase
-      .from("course_progress")
-      .select("course_slug, completed_lessons, quiz_score, quiz_total")
-      .eq("uid", user.id)
-      .then(({ data }) => {
-        if (!data) return;
+    async function loadProgress() {
+      try {
+        const token = await getIdToken();
+        const response = await fetch("/api/progress", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const result = (await response.json()) as { progress?: Array<{ course_slug: string; completed_lessons?: unknown; quiz_score?: number; quiz_total?: number }>; error?: string };
+        if (!response.ok) throw new Error(result.error || "Could not load course progress.");
+        if (cancelled) return;
         const map: ProgressMap = {};
-        for (const row of data) {
+        for (const row of result.progress || []) {
           map[row.course_slug] = {
-            completed: (row.completed_lessons as number[])?.length || 0,
+            completed: Array.isArray(row.completed_lessons) ? row.completed_lessons.length : 0,
             total: 0,
             quizScore: row.quiz_score || 0,
             quizTotal: row.quiz_total || 0,
           };
         }
         setProgress(map);
-      });
-  }, [user]);
+      } catch {
+        if (!cancelled) setProgress({});
+      }
+    }
+
+    void loadProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, [getIdToken, user]);
 
   return (
     <ProtectedAppShell>

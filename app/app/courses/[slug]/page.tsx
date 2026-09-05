@@ -21,7 +21,6 @@ import { ProtectedAppShell } from "@/components/protected-app-shell";
 import { getCourseBySlug, type Lesson, type QuizQuestion } from "@/lib/courses";
 import { quizzes } from "@/lib/quizzes";
 import { useAuth } from "@/components/auth-provider";
-import { getSupabase } from "@/lib/supabase/client";
 
 type CheckpointState = "idle" | "correct" | "incorrect";
 
@@ -99,25 +98,35 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
 
   useEffect(() => {
     if (!user || !slug) return;
-    const supabase = getSupabase();
+    let cancelled = false;
 
-    supabase
-      .from("course_progress")
-      .select("completed_lessons, quiz_score, quiz_total")
-      .eq("uid", user.id)
-      .eq("course_slug", slug)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        const savedLessons = Array.isArray(data.completed_lessons)
-          ? (data.completed_lessons as number[]).filter((index) => Number.isInteger(index))
+    async function loadProgress() {
+      try {
+        const token = await getIdToken();
+        const response = await fetch(`/api/progress?course_slug=${encodeURIComponent(slug)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const result = (await response.json()) as { progress?: { completed_lessons?: unknown; quiz_score?: number; quiz_total?: number } | null; error?: string };
+        if (!response.ok) throw new Error(result.error || "Could not load course progress.");
+        if (cancelled || !result.progress) return;
+        const savedLessons = Array.isArray(result.progress.completed_lessons)
+          ? result.progress.completed_lessons.filter((index): index is number => typeof index === "number" && Number.isInteger(index))
           : [];
         setCompletedLessons(savedLessons.sort((a, b) => a - b));
-        setQuizScore(data.quiz_score || 0);
-        setQuizTotal(data.quiz_total || 0);
-        setQuizSubmitted((data.quiz_total || 0) > 0);
-      });
-  }, [user, slug]);
+        setQuizScore(result.progress.quiz_score || 0);
+        setQuizTotal(result.progress.quiz_total || 0);
+        setQuizSubmitted((result.progress.quiz_total || 0) > 0);
+      } catch (error) {
+        if (!cancelled) setSaveError(error instanceof Error ? error.message : "Could not load course progress.");
+      }
+    }
+
+    void loadProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, [getIdToken, user, slug]);
 
   useEffect(() => {
     setHasReachedLessonEnd(false);

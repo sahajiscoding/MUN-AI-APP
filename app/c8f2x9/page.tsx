@@ -16,8 +16,12 @@ export default function AdminLoginPage() {
   // If the browser is already signed in to a Supabase account, try to turn
   // that identity into an admin session immediately (works for Google-only
   // accounts, which have no password).
+  //
+  // Deliberately does NOT depend on the local `loading` state: flipping it
+  // would tear down this effect mid-flight (cleanup sets `cancelled`), which
+  // previously left the page frozen with both buttons stuck on spinners.
   useEffect(() => {
-    if (authLoading || loading || !user) return;
+    if (authLoading || !user) return;
     let cancelled = false;
 
     async function promoteSession() {
@@ -34,12 +38,14 @@ export default function AdminLoginPage() {
 
         if (res.ok) {
           router.push("/c8f2x9/k7m3");
-        } else {
-          setError(data.error || "This account is not approved for administrator access.");
+          return;
         }
+        setError(data.error || "This account is not approved for administrator access.");
       } catch {
         if (!cancelled) setError("Could not verify this account. Try signing in again.");
       } finally {
+        // Always release the buttons so a rejected account can try another
+        // sign-in instead of being stranded on a spinner.
         if (!cancelled) setLoading(false);
       }
     }
@@ -48,7 +54,7 @@ export default function AdminLoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, getIdToken, loading, router, user]);
+  }, [authLoading, getIdToken, router, user]);
 
   async function handleEmailSubmit(e: FormEvent) {
     e.preventDefault();

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { jsonError } from "@/lib/api";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { reconcilePaidPayments } from "@/lib/server/payment-reconciliation";
-import { checkRateLimit } from "@/lib/server/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,15 +19,9 @@ function privateJson(body: unknown, status = 200, extraHeaders?: Record<string, 
   });
 }
 
-function getClientIp(request: Request) {
-  return request.headers.get("x-real-ip")
-    ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? "unknown";
-}
-
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  if (!checkRateLimit(`admin-reconcile:${ip}`, 5, 60_000)) {
+  if (!(await checkRateLimit(`admin-reconcile:${ip}`, 5, 60_000))) {
     return privateJson(
       { ok: false, error: "Too many reconciliation requests. Try again later." },
       429,
@@ -36,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await requireAdmin();
+    await requireAdminOwner();
 
     const results = await reconcilePaidPayments(50);
     return privateJson({

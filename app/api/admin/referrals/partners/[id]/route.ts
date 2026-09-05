@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { requireAdminOwner } from "@/lib/server/admin-auth";
+import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -20,7 +21,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const admin = await requireAdminOwner();
     const id = idSchema.safeParse((await params).id);
     if (!id.success) throw new ApiError(400, "invalid_partner_id", "That partner could not be updated.");
     const parsed = updateSchema.safeParse(await parseJson<unknown>(request));
@@ -46,6 +47,15 @@ export async function PATCH(
       throw new ApiError(500, "partner_update_failed", "Could not update partner.");
     }
     if (!data) throw new ApiError(404, "partner_not_found", "Partner not found.");
+
+    await recordAdminAction({
+      actorUid: admin.uid,
+      actorEmail: admin.email,
+      action: "partner_update",
+      target: id.data,
+      metadata: { changes: Object.keys(update) },
+    });
+
     return Response.json({ partner: data });
   } catch (error) {
     return jsonError(error);

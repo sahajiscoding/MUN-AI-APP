@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError } from "@/lib/api";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { requireAdminOwner } from "@/lib/server/admin-auth";
+import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    const admin = await requireAdminOwner();
     const id = idSchema.safeParse((await params).id);
     if (!id.success) throw new ApiError(400, "invalid_commission_id", "That commission could not be updated.");
 
@@ -30,7 +31,16 @@ export async function POST(
       throw new ApiError(500, "commission_update_failed", "Could not mark commission as paid.");
     }
 
-    if (data) return Response.json({ commission: data });
+    if (data) {
+      await recordAdminAction({
+        actorUid: admin.uid,
+        actorEmail: admin.email,
+        action: "commission_pay",
+        target: id.data,
+        metadata: { status: data.status, paid_at: data.paid_at },
+      });
+      return Response.json({ commission: data });
+    }
 
     const { data: existing, error: lookupError } = await supabaseAdmin()
       .from("referral_commissions")

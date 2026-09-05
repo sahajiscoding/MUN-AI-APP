@@ -181,6 +181,9 @@ export async function processReferralCommission(input: {
   if (outcome.reason === "already_processed") {
     return { created: false, reason: "already_processed" as const };
   }
+  if (outcome.reason === "self_referral") {
+    return { created: false, reason: "self_referral" as const };
+  }
 
   return {
     created: outcome.created === true,

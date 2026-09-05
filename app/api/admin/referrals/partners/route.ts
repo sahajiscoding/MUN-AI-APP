@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { requireAdminOwner } from "@/lib/server/admin-auth";
+import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ const partnerSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    const admin = await requireAdminOwner();
     const parsed = partnerSchema.safeParse(await parseJson<unknown>(request));
     if (!parsed.success) throw new ApiError(400, "invalid_partner", "Enter valid partner details.");
 
@@ -41,6 +42,14 @@ export async function POST(request: Request) {
       console.error("Partner creation failed:", error.message);
       throw new ApiError(500, "partner_create_failed", "Could not create partner.");
     }
+    await recordAdminAction({
+      actorUid: admin.uid,
+      actorEmail: admin.email,
+      action: "partner_create",
+      target: data.id,
+      metadata: { email: values.email, referral_code: values.referralCode, status: values.status, commission_rate: values.commissionRate },
+    });
+
     return Response.json({ partner: data }, { status: 201 });
   } catch (error) {
     return jsonError(error);

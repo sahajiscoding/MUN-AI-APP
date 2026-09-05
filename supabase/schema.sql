@@ -98,15 +98,12 @@ ALTER TABLE public.research_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_users       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.webhook_events     ENABLE ROW LEVEL SECURITY;
 
--- Users: owner can read, insert, update (no delete)
+-- Users: owner can read only. Rows are created by the auth trigger; all
+-- inserts/updates happen through server routes with the service role.
 CREATE POLICY "users_select_own"  ON public.users FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "users_insert_own"  ON public.users FOR INSERT WITH CHECK (auth.uid() = uid);
-CREATE POLICY "users_update_own"  ON public.users FOR UPDATE USING (auth.uid() = uid);
 
--- Delegate profiles: owner can read, insert, update
+-- Delegate profiles: owner can read only (writes are server-side).
 CREATE POLICY "delegate_profiles_select_own" ON public.delegate_profiles FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "delegate_profiles_insert_own" ON public.delegate_profiles FOR INSERT WITH CHECK (auth.uid() = uid);
-CREATE POLICY "delegate_profiles_update_own" ON public.delegate_profiles FOR UPDATE USING (auth.uid() = uid);
 
 -- Entitlements: owner can read only (writes are server-side via service role)
 CREATE POLICY "entitlements_select_own" ON public.entitlements FOR SELECT USING (auth.uid() = uid);
@@ -117,11 +114,8 @@ CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.ui
 -- AI generations: owner can read only
 CREATE POLICY "ai_generations_select_own" ON public.ai_generations FOR SELECT USING (auth.uid() = uid);
 
--- Research notes: full CRUD for owner
+-- Research notes: owner can read only (writes are server-side).
 CREATE POLICY "research_notes_select_own" ON public.research_notes FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "research_notes_insert_own" ON public.research_notes FOR INSERT WITH CHECK (auth.uid() = uid);
-CREATE POLICY "research_notes_update_own" ON public.research_notes FOR UPDATE USING (auth.uid() = uid);
-CREATE POLICY "research_notes_delete_own" ON public.research_notes FOR DELETE USING (auth.uid() = uid);
 
 -- Admin users: no direct user access (service role only)
 
@@ -162,6 +156,7 @@ CREATE TABLE IF NOT EXISTS public.course_progress (
   completed_lessons INTEGER[] DEFAULT '{}',
   quiz_score INTEGER DEFAULT 0,
   quiz_total INTEGER DEFAULT 0,
+  quiz_verified_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW(),
@@ -169,9 +164,9 @@ CREATE TABLE IF NOT EXISTS public.course_progress (
 );
 
 ALTER TABLE public.course_progress ENABLE ROW LEVEL SECURITY;
+-- Owner reads only; progress and quiz results are written by server routes
+-- (service role), never directly by the browser.
 CREATE POLICY "course_progress_select_own" ON public.course_progress FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "course_progress_insert_own" ON public.course_progress FOR INSERT WITH CHECK (auth.uid() = uid);
-CREATE POLICY "course_progress_update_own" ON public.course_progress FOR UPDATE USING (auth.uid() = uid);
 
 -- Course analytics (certificate download events; server-side only)
 CREATE TABLE IF NOT EXISTS public.certificate_downloads (
@@ -281,3 +276,41 @@ CREATE INDEX IF NOT EXISTS referrals_status_idx ON public.referrals (status);
 CREATE INDEX IF NOT EXISTS referral_commissions_partner_idx ON public.referral_commissions (partner_id);
 CREATE INDEX IF NOT EXISTS referral_commissions_status_idx ON public.referral_commissions (status);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_commissions_payment_uidx ON public.referral_commissions (payment_id) WHERE payment_id IS NOT NULL;
+
+-- ============================================================
+-- RATE LIMITS, AI USAGE, AND ADMIN AUDIT (service-role only)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.rate_limits (
+  key      TEXT PRIMARY KEY,
+  count    INTEGER NOT NULL DEFAULT 1,
+  reset_at TIMESTAMPTZ NOT NULL
+);
+ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
+-- No policies: browser roles receive no grants and no access.
+
+CREATE TABLE IF NOT EXISTS public.ai_usage (
+  uid          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  day          DATE NOT NULL,
+  requests     INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  updated_at   TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (uid, day)
+);
+ALTER TABLE public.ai_usage ENABLE ROW LEVEL SECURITY;
+-- No policies: server-only writes and reads.
+
+CREATE TABLE IF NOT EXISTS public.admin_audit_log (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_uid   TEXT,
+  actor_email TEXT,
+  action      TEXT NOT NULL,
+  target_uid  TEXT,
+  target      TEXT,
+  metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.admin_audit_log ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS admin_audit_log_created_idx
+  ON public.admin_audit_log (created_at DESC);
+-- No policies: service-role writes only.

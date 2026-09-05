@@ -4,7 +4,8 @@ import { runMunResearch } from "@/lib/ai/router";
 import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
-import { checkRateLimit } from "@/lib/server/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { assertAiUsageAllowed, recordAiUsage } from "@/lib/server/ai-usage";
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -61,8 +62,8 @@ export async function POST(request: Request) {
       uid = admin.uid;
     }
 
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    if (!checkRateLimit(`ai-user:${uid}`, 12, 60_000) || !checkRateLimit(`ai-ip:${ip}`, 30, 60_000)) {
+    const ip = getClientIp(request);
+    if (!(await checkRateLimit(`ai-user:${uid}`, 12, 60_000)) || !(await checkRateLimit(`ai-ip:${ip}`, 30, 60_000))) {
       throw new ApiError(429, "rate_limited", "Too many AI requests. Please wait a minute and try again.");
     }
 
@@ -87,6 +88,10 @@ export async function POST(request: Request) {
       country: body.data.country,
       agenda: body.data.agenda.slice(0, 500),
     };
+    // Enforce the per-user daily AI budget before spending provider tokens.
+    await assertAiUsageAllowed(uid);
+    await recordAiUsage(uid, { requests: 1 });
+
     const result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
 
     if (result.stream) {
@@ -143,6 +148,8 @@ function persistStream(
   let content = "";
   let buffer = "";
   let cancelled = false;
+  let promptTokens = 0;
+  let completionTokens = 0;
 
   const consumeLine = (line: string) => {
     if (!line.startsWith("data: ")) return;
@@ -150,8 +157,18 @@ function persistStream(
     if (data === "[DONE]") return;
 
     try {
-      const parsed = JSON.parse(data) as { content?: string };
+      const parsed = JSON.parse(data) as { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } };
       if (parsed.content) content += parsed.content;
+
+      const usage = parsed.usage;
+      if (usage) {
+        if (Number.isSafeInteger(usage.prompt_tokens) && (usage.prompt_tokens ?? 0) > promptTokens) {
+          promptTokens = usage.prompt_tokens ?? 0;
+        }
+        if (Number.isSafeInteger(usage.completion_tokens) && (usage.completion_tokens ?? 0) > completionTokens) {
+          completionTokens = usage.completion_tokens ?? 0;
+        }
+      }
     } catch {
       // Ignore incomplete or provider-specific SSE lines.
     }
@@ -179,6 +196,7 @@ function persistStream(
             output: content,
             turns: details.turns.concat({ role: "assistant", content }),
           });
+          await recordAiUsage(details.uid, { promptTokens, completionTokens });
         }
         if (!cancelled) controller.close();
       } catch (error) {

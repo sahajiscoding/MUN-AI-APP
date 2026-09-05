@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { XMLParser } from "fast-xml-parser";
-import { checkRateLimit } from "@/lib/server/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -73,32 +73,6 @@ function getHttpsUrl(value: unknown): string {
   }
 }
 
-function getNestedUrl(value: unknown): string {
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      const url = getNestedUrl(entry);
-      if (url) return url;
-    }
-    return "";
-  }
-
-  if (typeof value === "string") return getHttpsUrl(value);
-  if (!value || typeof value !== "object") return "";
-
-  const record = value as Record<string, unknown>;
-  for (const key of ["@_url", "@_href", "url", "href"]) {
-    const url = getHttpsUrl(record[key]);
-    if (url) return url;
-  }
-
-  for (const key of ["media:content", "media:thumbnail", "enclosure", "image"]) {
-    const url = getNestedUrl(record[key]);
-    if (url) return url;
-  }
-
-  return "";
-}
-
 function getSourceUrl(value: unknown): string {
   if (!value || typeof value !== "object") return "";
   const record = value as Record<string, unknown>;
@@ -106,11 +80,9 @@ function getSourceUrl(value: unknown): string {
 }
 
 function extractImage(item: Record<string, unknown>): NewsImage | undefined {
-  for (const candidate of [item["media:content"], item["media:thumbnail"], item.enclosure, item.image]) {
-    const url = getNestedUrl(candidate);
-    if (url) return { url, kind: "article" };
-  }
-
+  // Only Google-controlled favicon URLs are allowed. Publisher media URLs
+  // from the feed are intentionally dropped so the browser never fetches
+  // arbitrary third-party hosts (which could fingerprint or track readers).
   const sourceUrl = getSourceUrl(item.source);
   if (!sourceUrl) return undefined;
 
@@ -212,12 +184,6 @@ function cleanText(value: string): string {
     .trim();
 }
 
-function getClientIp(request: Request) {
-  return request.headers.get("x-real-ip")
-    ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? "unknown";
-}
-
 function newsResponse(body: unknown, status = 200) {
   return NextResponse.json(body, {
     status,
@@ -230,7 +196,7 @@ function newsResponse(body: unknown, status = 200) {
 
 export async function GET(request: Request) {
   const ip = getClientIp(request);
-  if (!checkRateLimit(`news:${ip}`, 30, 60_000)) {
+  if (!(await checkRateLimit(`news:${ip}`, 30, 60_000))) {
     return newsResponse(
       { news: [], error: "Too many news requests. Please try again later." },
       429,

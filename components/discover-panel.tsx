@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Newspaper, RefreshCw, Trophy, Zap } from "lucide-react";
+import { Globe, Landmark, Newspaper, RefreshCw, ShieldAlert, TrendingUp, Vote } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type NewsItem = {
@@ -13,10 +13,13 @@ type NewsItem = {
   imageKind?: "article" | "publisher";
 };
 
+// These must match the categories served by /api/news.
 const categoryConfig: Record<string, { label: string; icon: typeof Globe; color: string }> = {
-  national: { label: "National", icon: Zap, color: "text-[var(--oxblood)]" },
-  international: { label: "World", icon: Globe, color: "text-[var(--patina)]" },
-  sports: { label: "Sports", icon: Trophy, color: "text-[var(--brass)]" },
+  diplomacy: { label: "Diplomacy", icon: Globe, color: "text-[var(--patina)]" },
+  conflict: { label: "Conflict", icon: ShieldAlert, color: "text-[var(--oxblood)]" },
+  economics: { label: "Economics", icon: TrendingUp, color: "text-[var(--brass)]" },
+  elections: { label: "Elections", icon: Vote, color: "text-[var(--ink)]" },
+  global: { label: "Global", icon: Landmark, color: "text-[var(--patina)]" },
 };
 
 export function DiscoverPanel() {
@@ -114,7 +117,7 @@ export function DiscoverPanel() {
         ) : (
           <div className="space-y-3">
             {filtered.map((item, i) => {
-              const config = categoryConfig[item.category] || categoryConfig.national;
+              const config = categoryConfig[item.category] || categoryConfig.global;
               const Icon = config.icon;
               const timeAgo = getRelativeTime(item.pubDate);
               const itemKey = `${item.category}-${item.link || i}`;

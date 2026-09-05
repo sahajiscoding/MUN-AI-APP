@@ -1,12 +1,7 @@
 import { ApiError } from "@/lib/api";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
-const DEFAULT_MINIMAX_MODEL = "minimaxai/minimax-m3";
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
-
-export function callNvidiaMiniMax(input: AICompletionInput) {
-  return callNvidiaModel(input, process.env.NVIDIA_MINIMAX_MODEL || DEFAULT_MINIMAX_MODEL, "nvidia");
-}
 
 export function callNvidiaKimi(input: AICompletionInput) {
   return callNvidiaModel(input, process.env.NVIDIA_KIMI_MODEL || DEFAULT_KIMI_MODEL, "nvidia-kimi");

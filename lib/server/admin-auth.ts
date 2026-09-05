@@ -1,11 +1,12 @@
-import { timingSafeEqual } from "node:crypto";
 import { ApiError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "admin_session";
-const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
+// Short-lived enough to bound a stolen session, long enough for real admin
+// work sessions between page loads.
+const SESSION_MAX_AGE = 60 * 60 * 4; // 4 hours
 const SESSION_ISSUER = "mun-ai-app";
 const SESSION_AUDIENCE = "mun-ai-admin";
 
@@ -16,18 +17,6 @@ type AdminSessionClaims = {
 };
 
 export type AdminSession = AdminSessionClaims;
-
-function getAdminPassword() {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
-    throw new ApiError(
-      503,
-      "admin_not_configured",
-      "Administrator access is not configured."
-    );
-  }
-  return password;
-}
 
 function getSessionSecret() {
   const secret = process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SECRET_KEY;
@@ -42,33 +31,28 @@ function getSessionSecret() {
 }
 
 /**
- * Verify the administrator password and create a session for an already
- * approved Supabase admin. Admins must be provisioned deliberately; this
- * endpoint never creates a default account or uses a fallback password.
+ * Build an admin session for an already-approved Supabase user.
+ *
+ * Admin identity comes from the user's own Supabase account (verified by
+ * requireUser against the access token), not from a shared password. A user
+ * who is not in admin_users can never obtain an admin session.
  */
-export async function adminLogin(password: string): Promise<AdminSession> {
-  const configuredPassword = Buffer.from(getAdminPassword());
-  const suppliedPassword = Buffer.from(password);
-  if (configuredPassword.length !== suppliedPassword.length || !timingSafeEqual(configuredPassword, suppliedPassword)) {
-    throw new ApiError(401, "invalid_password", "Incorrect admin password.");
-  }
-
-  const { data: admins, error: adminLookupError } = await supabaseAdmin()
+export async function adminSessionForUid(uid: string): Promise<AdminSession> {
+  const { data: adminRow, error: adminLookupError } = await supabaseAdmin()
     .from("admin_users")
     .select("uid, approved_at")
-    .order("approved_at", { ascending: true })
-    .limit(1);
+    .eq("uid", uid)
+    .maybeSingle();
 
-  if (adminLookupError || !admins?.[0]?.uid) {
+  if (adminLookupError || !adminRow) {
     throw new ApiError(
-      503,
-      "admin_not_configured",
-      "Administrator access is not configured."
+      403,
+      "admin_unauthorized",
+      "This account is not approved for administrator access."
     );
   }
 
-  const adminUid = admins[0].uid;
-  const { data: userData, error: userLookupError } = await supabaseAdmin().auth.admin.getUserById(adminUid);
+  const { data: userData, error: userLookupError } = await supabaseAdmin().auth.admin.getUserById(uid);
   const adminEmail = userData?.user?.email;
 
   if (userLookupError || !adminEmail) {
@@ -80,9 +64,9 @@ export async function adminLogin(password: string): Promise<AdminSession> {
   }
 
   return {
-    uid: adminUid,
+    uid,
     email: adminEmail,
-    approvedAt: admins[0].approved_at || new Date().toISOString(),
+    approvedAt: adminRow.approved_at || new Date().toISOString(),
   };
 }
 
@@ -151,6 +135,48 @@ export async function requireAdmin(): Promise<AdminSession> {
   const session = await getAdminSession();
   if (!session) {
     throw new ApiError(401, "admin_unauthorized", "Admin login required.");
+  }
+  return session;
+}
+
+/**
+ * Whether the UID is a designated owner: one of the ADMIN_OWNER_UIDS values
+ * when set, otherwise the first approved admin (the bootstrap account).
+ */
+export async function isOwnerAdmin(uid: string): Promise<boolean> {
+  const ownerUid = uid.trim().toLowerCase();
+
+  const configured = (process.env.ADMIN_OWNER_UIDS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (configured.length > 0) {
+    return configured.includes(ownerUid);
+  }
+
+  const { data, error } = await supabaseAdmin()
+    .from("admin_users")
+    .select("uid")
+    .order("approved_at", { ascending: true })
+    .limit(1);
+
+  return !error && !!data?.[0] && data[0].uid.toLowerCase() === ownerUid;
+}
+
+/**
+ * Sensitive actions (grant/revoke admin, partner management, commission
+ * settlement) require the account owner, not just any administrator. This
+ * stops a compromised or delegated admin from promoting arbitrary accounts.
+ */
+export async function requireAdminOwner(): Promise<AdminSession> {
+  const session = await requireAdmin();
+  if (!(await isOwnerAdmin(session.uid))) {
+    throw new ApiError(
+      403,
+      "admin_owner_required",
+      "Only the administrator account owner can perform this action."
+    );
   }
   return session;
 }

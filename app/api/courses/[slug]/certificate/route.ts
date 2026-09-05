@@ -9,8 +9,9 @@ export const runtime = "nodejs";
 
 const slugSchema = z.string().trim().min(1).max(120);
 const customizationSchema = z.object({
+  // Extra fields (such as the legacy user-supplied signature) are stripped;
+  // only the student's own name may be customized.
   name: z.string().trim().min(1).max(80).optional(),
-  signature: z.string().trim().max(80).optional(),
 });
 
 function safePdfText(value: string) {
@@ -53,7 +54,7 @@ async function generateCertificate(
 
   const { data: progress, error } = await supabaseAdmin()
     .from("course_progress")
-    .select("completed_lessons, completed_at")
+    .select("completed_lessons, quiz_score, quiz_total, quiz_verified_at, completed_at")
     .eq("uid", user.uid)
     .eq("course_slug", slug)
     .maybeSingle();
@@ -64,14 +65,25 @@ async function generateCertificate(
     ? (progress.completed_lessons as number[])
     : [];
   const completedSet = new Set(completedLessons);
-  const isComplete = course.lessons.every((_, index) => completedSet.has(index));
+
+  // A certificate requires every lesson plus a server-verified passing final
+  // review. quiz_verified_at is only written by the grading server route, so
+  // self-reported scores can never unlock a certificate.
+  const quizVerified = typeof progress?.quiz_verified_at === "string" && progress.quiz_verified_at.length > 0;
+  const quizTotal = Number(progress?.quiz_total) || 0;
+  const quizScore = Number(progress?.quiz_score) || 0;
+  const isComplete =
+    course.lessons.every((_, index) => completedSet.has(index)) &&
+    quizVerified &&
+    quizTotal > 0 &&
+    quizScore / quizTotal >= 0.7;
 
   if (!isComplete) {
-    throw new ApiError(403, "course_incomplete", "Complete every lesson before downloading your certificate.");
+    throw new ApiError(403, "course_incomplete", "Complete every lesson and pass the final review before downloading your certificate.");
   }
 
   const displayName = safePdfText(customization.name || user.name || user.email?.split("@")[0] || "Delegate") || "Delegate";
-  const signature = safePdfText(customization.signature || "MUN Prep Faculty") || "MUN Prep Faculty";
+  const signature = "MUN Prep Faculty";
   const courseTitle = safePdfText(course.title);
   const date = formatDate(progress?.completed_at);
   const id = certificateId(user.uid, slug);

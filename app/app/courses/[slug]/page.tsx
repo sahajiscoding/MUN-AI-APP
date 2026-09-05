@@ -19,7 +19,7 @@ import {
 import { Streamdown } from "streamdown";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
 import { getCourseBySlug, type Lesson, type QuizQuestion } from "@/lib/courses";
-import { quizzes } from "@/lib/quizzes";
+import { buildCourseReviewQuestions, quizzes } from "@/lib/quizzes";
 import { useAuth } from "@/components/auth-provider";
 
 type CheckpointState = "idle" | "correct" | "incorrect";
@@ -69,7 +69,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   const [certificateError, setCertificateError] = useState("");
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const [certificateName, setCertificateName] = useState("");
-  const [certificateSignature, setCertificateSignature] = useState("MUN Prep Faculty");
   const lessonEndRef = useRef<HTMLDivElement>(null);
 
   const courseQuiz = useMemo(() => (course ? quizzes[slug] || [] : []), [course, slug]);
@@ -77,14 +76,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     () => (course ? course.lessons.map((lesson, index) => courseQuiz[index] || makeFallbackQuestion(lesson)) : []),
     [course, courseQuiz]
   );
-  const finalQuizQuestions = useMemo(() => {
-    if (!course) return [];
-    const questions = [...courseQuiz];
-    course.lessons.forEach((lesson, index) => {
-      if (!courseQuiz[index]) questions.push(makeFallbackQuestion(lesson));
-    });
-    return questions;
-  }, [course, courseQuiz]);
+  const finalQuizQuestions = useMemo(() => (course ? buildCourseReviewQuestions(course) : []), [course]);
 
   const totalLessons = course?.lessons.length || 0;
   const completedCount = completedLessons.length;
@@ -93,6 +85,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     ? course.lessons.findIndex((_, index) => !completedLessons.includes(index))
     : -1;
   const allLessonsComplete = totalLessons > 0 && activeLessonIndex === -1;
+  const quizPassed = quizTotal > 0 && quizScore / Math.max(quizTotal, 1) >= 0.7;
   const activeQuestion = activeLessonIndex >= 0 ? lessonQuestions[activeLessonIndex] : null;
   const finalQuestion = finalQuizQuestions[finalQuestionIndex];
 
@@ -147,12 +140,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     return () => observer.disconnect();
   }, [activeLessonIndex]);
 
-  async function saveProgress(
-    lessons: number[],
-    score?: number,
-    total?: number,
-    completedAt = false
-  ) {
+  async function saveProgress(lessons: number[]) {
     if (!user) return;
     setSaving(true);
     setSaveError("");
@@ -167,9 +155,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         body: JSON.stringify({
           course_slug: slug,
           completed_lessons: lessons,
-          quiz_score: score,
-          quiz_total: total,
-          completed_at: completedAt ? new Date().toISOString() : undefined,
         }),
       });
       if (!response.ok) {
@@ -191,7 +176,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
 
     const nextLessons = [...new Set([...completedLessons, activeLessonIndex])].sort((a, b) => a - b);
     setCompletedLessons(nextLessons);
-    void saveProgress(nextLessons, undefined, undefined, nextLessons.length === totalLessons);
+    void saveProgress(nextLessons);
   }
 
   function resetCheckpoint() {
@@ -212,25 +197,41 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     setFinalAnswers(next);
   }
 
-  function submitFinalQuiz(answers: number[]) {
-    const score = finalQuizQuestions.reduce(
-      (total, question, index) => total + (answers[index] === question.correct ? 1 : 0),
-      0
-    );
-    setQuizScore(score);
-    setQuizTotal(finalQuizQuestions.length);
-    setQuizSubmitted(true);
-    setFinalQuizStarted(false);
-    void saveProgress(
-      completedLessons,
-      score,
-      finalQuizQuestions.length,
-      score / Math.max(finalQuizQuestions.length, 1) >= 0.7
-    );
+  async function submitFinalQuiz(answers: number[]) {
+    if (!user) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const token = await getIdToken();
+      const response = await fetch("/api/progress", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ course_slug: slug, quizAnswers: answers }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        quiz?: { score: number; total: number; passed: boolean };
+      };
+      if (!response.ok) throw new Error(result.error || "Could not save your review.");
+
+      if (result.quiz) {
+        setQuizScore(result.quiz.score);
+        setQuizTotal(result.quiz.total);
+        setQuizSubmitted(true);
+        setFinalQuizStarted(false);
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save your review. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function downloadCertificate() {
-    if (!user || !allLessonsComplete || downloadingCertificate) return;
+    if (!user || !allLessonsComplete || !quizPassed || downloadingCertificate) return;
     setDownloadingCertificate(true);
     setCertificateError("");
     try {
@@ -243,7 +244,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         },
         body: JSON.stringify({
           name: certificateName.trim() || undefined,
-          signature: certificateSignature.trim() || undefined,
         }),
       });
       if (!response.ok) {
@@ -278,7 +278,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   function advanceFinalQuiz() {
     if (finalAnswers[finalQuestionIndex] === undefined) return;
     if (finalQuestionIndex === finalQuizQuestions.length - 1) {
-      submitFinalQuiz(finalAnswers);
+      void submitFinalQuiz(finalAnswers);
       return;
     }
     setFinalQuestionIndex((current) => current + 1);
@@ -581,7 +581,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
           </section>
         ) : null}
 
-        {allLessonsComplete ? (
+        {allLessonsComplete && quizPassed ? (
           <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-6 shadow-[0_16px_40px_rgba(39,35,28,0.08)] sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
             <div className="flex items-start gap-4">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--brass)] text-white">
@@ -604,16 +604,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                     value={certificateName}
                     onChange={(event) => setCertificateName(event.target.value)}
                     placeholder="Use your account name"
-                    maxLength={80}
-                    className="min-h-10 rounded-lg border border-[var(--line)] bg-white/70 px-3 text-sm font-normal outline-none transition focus:border-[var(--patina)] focus:ring-2 focus:ring-[var(--patina)]/20"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-xs font-bold text-[var(--ink)]">
-                  Signature text
-                  <input
-                    value={certificateSignature}
-                    onChange={(event) => setCertificateSignature(event.target.value)}
-                    placeholder="MUN Prep Faculty"
                     maxLength={80}
                     className="min-h-10 rounded-lg border border-[var(--line)] bg-white/70 px-3 text-sm font-normal outline-none transition focus:border-[var(--patina)] focus:ring-2 focus:ring-[var(--patina)]/20"
                   />

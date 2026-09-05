@@ -1,4 +1,4 @@
-import type { QuizQuestion } from "@/lib/courses";
+import type { Course, Lesson, QuizQuestion } from "@/lib/courses";
 
 export const quizzes: Record<string, QuizQuestion[]> = {
   "mun-basics": [
@@ -57,3 +57,26 @@ export const quizzes: Record<string, QuizQuestion[]> = {
     { question: "What does 'pacta sunt servanda' mean?", options: ["Peace is necessary", "Treaties must be followed", "War is last resort", "All men are equal"], correct: 1 },
   ],
 };
+
+function makeFallbackQuestion(lesson: Lesson): QuizQuestion {
+  return {
+    question: `Which topic is the focus of the lesson “${lesson.title}”?`,
+    options: [lesson.title, "A completely unrelated topic", "A private social event", "An optional bonus activity"],
+    correct: 0,
+  };
+}
+
+/**
+ * Build the final course review question list in the exact same order the
+ * course UI presents it: the course quiz first, then one predictable
+ * fallback question per lesson that has no quiz entry. Used by the client to
+ * render the review and by the server to grade submissions identically.
+ */
+export function buildCourseReviewQuestions(course: Course): QuizQuestion[] {
+  const courseQuiz = quizzes[course.slug] ?? [];
+  const questions = [...courseQuiz];
+  course.lessons.forEach((lesson, index) => {
+    if (!courseQuiz[index]) questions.push(makeFallbackQuestion(lesson));
+  });
+  return questions;
+}

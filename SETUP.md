@@ -1,6 +1,6 @@
 # MUN Prep App setup
 
-MUN Prep is a Next.js application using **Supabase Auth/Postgres/Storage**, **UroPay**, and server-only AI provider routes. The frontend never calls NVIDIA or OpenRouter directly, and no provider or payment secret belongs in browser-exposed variables.
+MUN Prep is a Next.js application using **Supabase Auth/Postgres/Storage**, **UroPay**, and server-only AI provider routes. The frontend never calls NVIDIA or GMI Cloud directly, and no provider or payment secret belongs in browser-exposed variables.
 
 ## Local runtime
 
@@ -29,17 +29,17 @@ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SECRET_KEY=
 SUPABASE_JWKS_URL=https://YOUR_PROJECT.supabase.co/auth/v1/.well-known/jwks.json
 
-OPENROUTER_API_KEY=
-OPENROUTER_GLM_MODEL=
 NVIDIA_API_KEY=
-NVIDIA_MINIMAX_MODEL=minimaxai/minimax-m3
 NVIDIA_KIMI_MODEL=moonshotai/kimi-k3
 GMI_CLOUD_API_KEY=
 GMI_CLOUD_BASE_URL=https://api.gmi-serving.com
 GMI_MINIMAX_MODEL=MiniMaxAI/MiniMax-M3
 
-ADMIN_PASSWORD=
 ADMIN_SESSION_SECRET=
+ADMIN_OWNER_UIDS=
+
+AI_DAILY_REQUEST_CAP=60
+AI_DAILY_TOKEN_CAP=300000
 
 UROPAY_API_KEY=
 UROPAY_API_SECRET=
@@ -49,7 +49,9 @@ UROPAY_ENVIRONMENT=test
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-`ADMIN_SESSION_SECRET` should be a random value of at least 32 characters. If it is omitted, the server-only Supabase secret is used to sign administrator sessions, but a separate secret is preferred. Admin provisioning is deliberate: the application no longer creates a default administrator or accepts a fallback password.
+`ADMIN_SESSION_SECRET` should be a random value of at least 32 characters. If it is omitted, the server-only Supabase secret is used to sign administrator sessions, but a separate secret is preferred. `ADMIN_OWNER_UIDS` is an optional comma-separated list of Supabase UIDs allowed to grant/revoke administrator access and settle commissions; when empty, the first approved administrator row is treated as the owner.
+
+There is **no shared admin password**. Administrators sign in with their own Supabase account, and only accounts present in the `admin_users` table receive an admin session. A stranger who finds the admin URL still cannot escalate: they would need their account approved by the owner first, and account-granting is owner-only.
 
 ## Supabase Auth
 

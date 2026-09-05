@@ -1,40 +1,85 @@
 "use client";
 
-import { Landmark, Loader2, Lock } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { Landmark, Loader2, Lock, Mail } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { user, loading: authLoading, signInWithEmail, signInWithGoogle, getIdToken } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
+  // If the browser is already signed in to a Supabase account, try to turn
+  // that identity into an admin session immediately (works for Google-only
+  // accounts, which have no password).
+  useEffect(() => {
+    if (authLoading || loading || !user) return;
+    let cancelled = false;
+
+    async function promoteSession() {
+      setLoading(true);
+      setError("");
+      try {
+        const token = await getIdToken();
+        const res = await fetch("/api/c8f2x9/login", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+
+        if (res.ok) {
+          router.push("/c8f2x9/k7m3");
+        } else {
+          setError(data.error || "This account is not approved for administrator access.");
+        }
+      } catch {
+        if (!cancelled) setError("Could not verify this account. Try signing in again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void promoteSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, getIdToken, loading, router, user]);
+
+  async function handleEmailSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!password.trim() || loading) return;
+    if (!email.trim() || !password || loading) return;
 
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch("/api/c8f2x9/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
+      await signInWithEmail(email.trim(), password);
+      // Release the loading guard so the effect above can promote the
+      // session with the now-authenticated identity.
+      setLoading(false);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "";
+      setError(message || "Sign-in failed. Use an administrator account to continue.");
+      setLoading(false);
+    }
+  }
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data.error || "Login failed.");
-        return;
-      }
-
-      router.push("/c8f2x9/k7m3");
+  async function handleGoogleSubmit() {
+    if (loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      await signInWithGoogle("/c8f2x9");
+      // If the browser returns without redirecting (e.g. popup blocked),
+      // release the loading guard so the user can retry.
+      setLoading(false);
     } catch {
-      setError("Something went wrong.");
-    } finally {
+      setError("Google sign-in could not be started. Try again.");
       setLoading(false);
     }
   }
@@ -47,13 +92,28 @@ export default function AdminLoginPage() {
             <Landmark className="h-7 w-7" />
           </div>
           <h1 className="display-type text-3xl text-[var(--paper)]">Panel</h1>
-          <p className="text-sm text-white/50 mt-2">Enter password to continue</p>
+          <p className="text-sm text-white/50 mt-2">Sign in with an administrator account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleEmailSubmit} className="space-y-4">
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+            <label htmlFor="admin-email" className="sr-only">Administrator email</label>
+            <input
+              id="admin-email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Admin email"
+              disabled={loading}
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/10 text-[var(--paper)] placeholder:text-white/40 text-sm focus:outline-none focus:border-[var(--brass)]/50 disabled:opacity-50"
+            />
+          </div>
+
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-            <label htmlFor="admin-password" className="sr-only">Administrator password</label>
+            <label htmlFor="admin-password" className="sr-only">Account password</label>
             <input
               id="admin-password"
               type="password"
@@ -61,8 +121,8 @@ export default function AdminLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              autoFocus
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/10 text-[var(--paper)] placeholder:text-white/40 text-sm focus:outline-none focus:border-[var(--brass)]/50"
+              disabled={loading}
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/10 border border-white/10 text-[var(--paper)] placeholder:text-white/40 text-sm focus:outline-none focus:border-[var(--brass)]/50 disabled:opacity-50"
             />
           </div>
 
@@ -72,7 +132,7 @@ export default function AdminLoginPage() {
 
           <button
             type="submit"
-            disabled={loading || !password.trim()}
+            disabled={loading || !email.trim() || !password}
             className="w-full py-3 rounded-xl bg-[var(--brass)] text-[var(--ink)] font-semibold text-sm hover:brightness-110 transition disabled:opacity-40"
           >
             {loading ? (
@@ -82,6 +142,25 @@ export default function AdminLoginPage() {
             )}
           </button>
         </form>
+
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/15" />
+          <span className="text-xs uppercase tracking-wider text-white/40">or</span>
+          <div className="h-px flex-1 bg-white/15" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleSubmit}
+          disabled={loading}
+          className="w-full py-3 rounded-xl bg-white text-[var(--ink)] font-semibold text-sm hover:bg-white/90 transition disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+          ) : (
+            "Continue with Google"
+          )}
+        </button>
       </div>
     </div>
   );

@@ -535,5 +535,12 @@ async function markWebhookEventProcessed(admin: ReturnType<typeof supabaseAdmin>
 }
 
 export async function GET() {
-  return Response.json({ ok: true });
+  return new Response(null, {
+    status: 405,
+    headers: {
+      Allow: "POST",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }

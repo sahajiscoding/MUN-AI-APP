@@ -140,43 +140,30 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     return () => observer.disconnect();
   }, [activeLessonIndex]);
 
-  async function saveProgress(lessons: number[]) {
-    if (!user) return;
+  async function submitCheckpoint() {
+    if (!user || activeLessonIndex < 0 || activeAnswer === null || !activeQuestion) return;
     setSaving(true);
     setSaveError("");
     try {
       const token = await getIdToken();
-      const response = await fetch("/api/progress", {
+      const response = await fetch("/api/progress/checkpoint", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          course_slug: slug,
-          completed_lessons: lessons,
-        }),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ course_slug: slug, lesson_index: activeLessonIndex, answer_index: activeAnswer }),
       });
-      if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
-        throw new Error(result.error || "Could not save progress.");
+      const result = (await response.json().catch(() => ({}))) as { correct?: boolean; completed_lessons?: number[]; error?: string };
+      if (response.status === 422) {
+        setCheckpointState("incorrect");
+        return;
       }
+      if (!response.ok) throw new Error(result.error || "Could not save progress.");
+      setCheckpointState(result.correct ? "correct" : "incorrect");
+      if (result.correct && result.completed_lessons) setCompletedLessons(result.completed_lessons);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save progress. Please try again.");
     } finally {
       setSaving(false);
     }
-  }
-
-  function submitCheckpoint() {
-    if (activeLessonIndex < 0 || activeAnswer === null || !activeQuestion) return;
-    const correct = activeAnswer === activeQuestion.correct;
-    setCheckpointState(correct ? "correct" : "incorrect");
-    if (!correct) return;
-
-    const nextLessons = [...new Set([...completedLessons, activeLessonIndex])].sort((a, b) => a - b);
-    setCompletedLessons(nextLessons);
-    void saveProgress(nextLessons);
   }
 
   function resetCheckpoint() {

@@ -40,19 +40,17 @@ export async function POST(request: Request) {
     }
 
     const nextLessons = [...new Set([...completedLessons, lesson_index])].sort((a, b) => a - b);
-    const complete = nextLessons.length === course.lessons.length;
     const { error: writeError } = await supabaseAdmin().from("course_progress").upsert({
       uid: user.uid,
       course_slug,
       completed_lessons: nextLessons,
       quiz_score: current?.quiz_score ?? 0,
       quiz_total: current?.quiz_total ?? 0,
-      completed_at: complete ? (current?.completed_at || new Date().toISOString()) : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "uid,course_slug" });
     if (writeError) throw writeError;
 
-    return Response.json({ ok: true, correct: true, completed_lessons: nextLessons, completed: complete });
+    return Response.json({ ok: true, correct: true, completed_lessons: nextLessons });
   } catch (error) {
     return jsonError(error);
   }

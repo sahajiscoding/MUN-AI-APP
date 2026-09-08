@@ -14,6 +14,7 @@ type AdminSessionClaims = {
   uid: string;
   email: string;
   approvedAt: string;
+  sessionVersion: number;
 };
 
 export type AdminSession = AdminSessionClaims;
@@ -40,7 +41,7 @@ function getSessionSecret() {
 export async function adminSessionForUid(uid: string): Promise<AdminSession> {
   const { data: adminRow, error: adminLookupError } = await supabaseAdmin()
     .from("admin_users")
-    .select("uid, approved_at")
+    .select("uid, approved_at, session_version")
     .eq("uid", uid)
     .maybeSingle();
 
@@ -67,6 +68,7 @@ export async function adminSessionForUid(uid: string): Promise<AdminSession> {
     uid,
     email: adminEmail,
     approvedAt: adminRow.approved_at || new Date().toISOString(),
+    sessionVersion: Number(adminRow.session_version ?? 1),
   };
 }
 
@@ -75,6 +77,7 @@ async function signAdminSession(session: AdminSession) {
     uid: session.uid,
     email: session.email,
     approvedAt: session.approvedAt,
+    sessionVersion: session.sessionVersion,
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt()
@@ -113,18 +116,24 @@ export async function getAdminSession(): Promise<AdminSession | null> {
     if (
       typeof payload.uid !== "string" ||
       typeof payload.email !== "string" ||
-      typeof payload.approvedAt !== "string"
+      typeof payload.approvedAt !== "string" ||
+      typeof payload.sessionVersion !== "number"
     ) {
       return null;
     }
 
-    const isAdmin = await isUserAdmin(payload.uid);
-    if (!isAdmin) return null;
+    const { data: adminRow, error: adminError } = await supabaseAdmin()
+      .from("admin_users")
+      .select("uid, session_version")
+      .eq("uid", payload.uid)
+      .maybeSingle();
+    if (adminError || !adminRow || Number(adminRow.session_version ?? 1) !== payload.sessionVersion) return null;
 
     return {
       uid: payload.uid,
       email: payload.email,
       approvedAt: payload.approvedAt,
+      sessionVersion: payload.sessionVersion,
     };
   } catch {
     return null;

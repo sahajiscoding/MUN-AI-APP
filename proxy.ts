@@ -32,6 +32,10 @@ export function proxy(request: NextRequest) {
   });
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+  if (request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/api/news") {
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.headers.set("Vary", "Authorization, Cookie");
+  }
   return response;
 }
 

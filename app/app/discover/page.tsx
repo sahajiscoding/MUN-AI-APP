@@ -319,7 +319,7 @@ function FeaturedCard({
       href={item.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="block surface rounded-2xl overflow-hidden hover:-translate-y-0.5 transition group"
+      className="block surface rounded-xl overflow-hidden hover:-translate-y-0.5 transition group"
     >
       <div className="flex flex-col md:flex-row">
         {/* Image placeholder */}

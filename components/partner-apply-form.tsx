@@ -38,7 +38,7 @@ export function PartnerApplyForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="surface rounded-2xl p-6 sm:p-8">
+    <form onSubmit={handleSubmit} className="surface rounded-xl p-6 sm:p-8">
       <p className="label-text text-[var(--patina)]">Apply to become a partner</p>
       <h2 className="display-type mt-3 text-3xl">Tell us about yourself</h2>
       <p className="mt-3 text-sm leading-6 text-[var(--muted)]">

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
     const { data: entitlements } = await supabaseAdmin()
       .from("entitlements")
-      .select("uid, status, plan_id, expires_at");
+      .select("uid, status, plan_id, source, expires_at");
 
     const { data: admins } = await supabaseAdmin()
       .from("admin_users")

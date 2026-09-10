@@ -62,7 +62,7 @@ export default async function PartnerDashboardPage({
           </p>
         ) : null}
 
-        <section className="mt-8 rounded-2xl border border-[var(--line)] bg-white/40 p-5" aria-label="Your referral link">
+        <section className="mt-8 rounded-xl border border-[var(--line)] bg-white/40 p-5" aria-label="Your referral link">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">Share this link to earn</p>
           <p className="mt-2 break-all font-mono text-sm font-semibold text-[var(--patina)] sm:text-base">
             {process.env.NEXT_PUBLIC_SITE_URL || "https://mun-ai-app.vercel.app"}
@@ -93,14 +93,14 @@ export default async function PartnerDashboardPage({
           </div>
 
           {commissions.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-[var(--line)] bg-white/30 px-5 py-10 text-center">
+            <div className="mt-4 rounded-xl border border-dashed border-[var(--line)] bg-white/30 px-5 py-10 text-center">
               <p className="text-sm font-semibold text-[var(--ink)]">No commissions yet</p>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
                 Share your link above. When someone signs up through it and buys a plan, the verified commission will appear here.
               </p>
             </div>
           ) : (
-            <div className="mt-4 overflow-x-auto rounded-2xl border border-[var(--line)] bg-white/40">
+            <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--line)] bg-white/40">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="bg-black/[0.03] text-xs uppercase tracking-wider text-[var(--muted)]">
                   <tr>
@@ -145,7 +145,7 @@ export default async function PartnerDashboardPage({
               <p className="label-text text-[var(--patina)]">Who came through your link</p>
               <h2 id="referrals-heading" className="display-type mt-1 text-2xl">Recent signups</h2>
             </div>
-            <div className="mt-4 overflow-x-auto rounded-2xl border border-[var(--line)] bg-white/40">
+            <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--line)] bg-white/40">
               <table className="w-full min-w-[420px] text-left text-sm">
                 <thead className="bg-black/[0.03] text-xs uppercase tracking-wider text-[var(--muted)]">
                   <tr>
@@ -191,7 +191,7 @@ export default async function PartnerDashboardPage({
 
 function Stat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-white/40 p-4">
+    <div className="rounded-xl border border-[var(--line)] bg-white/40 p-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">{label}</p>
       <p className={`mt-2 text-2xl font-black sm:text-3xl ${accent ? "text-[var(--brass)]" : "text-[var(--ink)]"}`}>{value}</p>
     </div>

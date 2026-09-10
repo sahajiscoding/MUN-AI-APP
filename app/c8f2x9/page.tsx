@@ -4,6 +4,7 @@ import { Landmark, Loader2, Lock, Mail } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -91,13 +92,14 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--ink)] px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-[var(--inverse-panel)] px-4">
+      <div className="absolute top-4 right-4"><ThemeToggle /></div>
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--patina)] text-white mb-4">
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-[var(--patina)] text-white mb-4">
             <Landmark className="h-7 w-7" />
           </div>
-          <h1 className="display-type text-3xl text-[var(--paper)]">Panel</h1>
+          <h1 className="display-type text-3xl text-[var(--panel-text)]">Panel</h1>
           <p className="text-sm text-white/50 mt-2">Sign in with an administrator account</p>
         </div>
 
@@ -139,7 +141,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading || !email.trim() || !password}
-            className="w-full py-3 rounded-xl bg-[var(--brass)] text-[var(--ink)] font-semibold text-sm hover:brightness-110 transition disabled:opacity-40"
+            className="w-full py-3 rounded-xl bg-[var(--brass)] text-[#171412] font-semibold text-sm hover:brightness-110 transition disabled:opacity-40"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin mx-auto" />
@@ -159,7 +161,7 @@ export default function AdminLoginPage() {
           type="button"
           onClick={handleGoogleSubmit}
           disabled={loading}
-          className="w-full py-3 rounded-xl bg-white text-[var(--ink)] font-semibold text-sm hover:bg-white/90 transition disabled:opacity-50"
+          className="w-full py-3 rounded-xl bg-white text-[#171412] font-semibold text-sm hover:bg-white/90 transition disabled:opacity-50"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin mx-auto" />

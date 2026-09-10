@@ -36,7 +36,7 @@ export default function BecomePartnerPage() {
               />
             </div>
 
-            <p className="mt-10 max-w-xl rounded-2xl border border-[var(--line)] bg-white/40 p-5 text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-10 max-w-xl rounded-xl border border-[var(--line)] bg-white/40 p-5 text-sm leading-6 text-[var(--muted)]">
               <strong className="text-[var(--ink)]">Good to know:</strong> referral partners are vetted — we approve
               people who can genuinely introduce MUN Prep to new delegates. Applications are reviewed by the team and
               partners receive their link only after approval.
@@ -54,7 +54,7 @@ export default function BecomePartnerPage() {
 
 function Step({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
-    <div className="flex items-start gap-4 rounded-2xl border border-[var(--line)] bg-white/40 p-5">
+    <div className="flex items-start gap-4 rounded-xl border border-[var(--line)] bg-white/40 p-5">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--patina)]/10 text-[var(--patina)]">{icon}</span>
       <div>
         <h2 className="font-bold text-[var(--ink)]">{title}</h2>

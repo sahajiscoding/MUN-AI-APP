@@ -36,7 +36,7 @@ function shortDate(value: string) {
 
 function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Users; label: string; value: number; detail: string; tone: string }) {
   return (
-    <div className="surface rounded-2xl p-5">
+    <div className="surface rounded-xl p-5">
       <div className={`grid h-10 w-10 place-items-center rounded-xl ${tone}`}><Icon className="h-5 w-5" /></div>
       <p className="mt-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">{label}</p>
       <p className="mt-1 text-3xl font-bold text-[var(--ink)]">{value}</p>
@@ -98,7 +98,7 @@ export function AnalyticsAdminPanel() {
               <StatCard icon={Activity} label="Courses with activity" value={analytics.totals.activeCourses} detail="Courses with a completion or download" tone="bg-[var(--oxblood)]/10 text-[var(--oxblood)]" />
             </div>
 
-            <section className="surface mt-6 rounded-2xl p-5 sm:p-6" aria-labelledby="trend-heading">
+            <section className="surface mt-6 rounded-xl p-5 sm:p-6" aria-labelledby="trend-heading">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="label-text text-[var(--brass)]">Last 14 days</p>
@@ -122,7 +122,7 @@ export function AnalyticsAdminPanel() {
               </div>
             </section>
 
-            <section className="surface mt-6 rounded-2xl p-5 sm:p-6" aria-labelledby="course-metrics-heading">
+            <section className="surface mt-6 rounded-xl p-5 sm:p-6" aria-labelledby="course-metrics-heading">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="label-text text-[var(--patina)]">Course breakdown</p>

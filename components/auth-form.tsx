@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -68,15 +69,18 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
 
   return (
     <div className="grid min-h-dvh min-w-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-      <section className="relative hidden min-w-0 overflow-hidden bg-[var(--ink)] text-[var(--paper)] lg:block">
+      <section className="relative hidden min-w-0 overflow-hidden bg-[var(--inverse-panel)] text-[var(--panel-text)] lg:block">
         <div className="diplomatic-grid absolute inset-0 opacity-25" />
         <div className="relative grid min-h-dvh grid-rows-[auto_1fr_auto] p-8 lg:p-12">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-panel bg-[var(--paper)] text-[var(--ink)]">
-              <Landmark className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span className="display-type text-2xl">MUN Prep</span>
-          </Link>
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/" className="flex items-center gap-3">
+              <span className="grid h-12 w-12 place-items-center rounded-panel bg-[var(--paper)] text-[var(--ink)]">
+                <Landmark className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="display-type text-2xl">MUN Prep</span>
+            </Link>
+            <ThemeToggle />
+          </div>
 
           <div className="flex items-center py-16 lg:py-20">
             <div className="max-w-2xl">
@@ -104,8 +108,9 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
 
       <main className="grid min-w-0 min-h-dvh place-items-center px-5 py-10 sm:px-8">
         <div className="w-full max-w-md min-w-0">
-          <div className="mb-8 lg:hidden">
+          <div className="mb-8 flex items-center justify-between gap-4 lg:hidden">
             <Link href="/" className="display-type text-3xl">MUN Prep</Link>
+            <ThemeToggle />
           </div>
 
           <div className="surface rounded-panel p-6 sm:p-8">

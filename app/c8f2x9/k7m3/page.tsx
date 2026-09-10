@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Ban,
   Bot,
+  CalendarPlus,
   Check,
   CheckCircle2,
   Copy,
@@ -17,6 +19,7 @@ import {
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type AdminUser = {
   uid: string;
@@ -27,6 +30,7 @@ type AdminUser = {
   entitlement: {
     status: string;
     plan_id?: string;
+    source?: string;
     expires_at?: string;
   };
   referral: {
@@ -95,6 +99,49 @@ export default function AdminDashboardPage() {
   async function handleLogout() {
     await fetch("/api/c8f2x9/login", { method: "DELETE" });
     router.push("/c8f2x9");
+  }
+
+  async function grantSubscription(uid: string, planId: "weekly-pass" | "monthly-pass") {
+    if (actionBusy) return;
+    setActionBusy(`grant:${planId}:${uid}`);
+    setStatusMessage("");
+    try {
+      const response = await fetch("/api/c8f2x9/grant-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, planId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not grant the subscription.");
+      setStatusMessage(data.message || "Subscription granted.");
+      await fetchUsers();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Could not grant the subscription.");
+    } finally {
+      setActionBusy("");
+    }
+  }
+
+  async function revokeSubscription(uid: string) {
+    if (actionBusy) return;
+    if (!window.confirm("Revoke the manually granted subscription for this user? Paid subscriptions are never affected.")) return;
+    setActionBusy(`revoke-pass:${uid}`);
+    setStatusMessage("");
+    try {
+      const response = await fetch("/api/c8f2x9/revoke-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not revoke the subscription.");
+      setStatusMessage(data.message || "Subscription revoked.");
+      await fetchUsers();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Could not revoke the subscription.");
+    } finally {
+      setActionBusy("");
+    }
   }
 
   async function copyReferralLink(user: AdminUser) {
@@ -203,6 +250,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <nav className="flex shrink-0 items-center gap-2" aria-label="Administrator navigation">
+            <ThemeToggle />
             <Link href="/admin/analytics" className="button-secondary inline-flex items-center px-3 py-2 text-sm font-semibold sm:px-4">
               Analytics
             </Link>
@@ -222,7 +270,7 @@ export default function AdminDashboardPage() {
 
       <main className="diplomatic-grid min-h-[calc(100vh-65px)]">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <section className="relative overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--paper-strong)] px-5 py-7 shadow-[0_20px_70px_rgba(23,20,18,0.08)] sm:px-8 sm:py-9">
+          <section className="relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--paper-strong)] px-5 py-7 shadow-[0_20px_70px_rgba(23,20,18,0.08)] sm:px-8 sm:py-9">
             <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-[var(--brass)]/25" aria-hidden="true" />
             <div className="pointer-events-none absolute -right-4 -top-12 h-44 w-44 rounded-full border border-[var(--patina)]/20" aria-hidden="true" />
             <div className="relative max-w-2xl">
@@ -240,7 +288,7 @@ export default function AdminDashboardPage() {
             </p>
           ) : null}
 
-          <section className="surface rounded-2xl p-5 sm:p-7" aria-labelledby="ai-testing-heading">
+          <section className="surface rounded-xl p-5 sm:p-7" aria-labelledby="ai-testing-heading">
             <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--patina)]/12 text-[var(--patina)]">
@@ -310,7 +358,7 @@ export default function AdminDashboardPage() {
             ) : null}
           </section>
 
-          <section className="surface rounded-2xl p-5 sm:p-7" aria-labelledby="users-heading">
+          <section className="surface rounded-xl p-5 sm:p-7" aria-labelledby="users-heading">
             <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="label-text">Access registry</p>
@@ -415,7 +463,40 @@ export default function AdminDashboardPage() {
                           {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : "Never"}
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
+                            {!user.isAdmin ? (
+                              <button
+                                onClick={() => grantSubscription(user.uid, "weekly-pass")}
+                                disabled={Boolean(actionBusy)}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--brass)] transition hover:bg-[var(--brass)]/10 disabled:opacity-40"
+                                title="Manually grant one week of Premium access"
+                              >
+                                <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                                Weekly
+                              </button>
+                            ) : null}
+                            {!user.isAdmin ? (
+                              <button
+                                onClick={() => grantSubscription(user.uid, "monthly-pass")}
+                                disabled={Boolean(actionBusy)}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--brass)] transition hover:bg-[var(--brass)]/10 disabled:opacity-40"
+                                title="Manually grant one month of Premium access"
+                              >
+                                <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                                Monthly
+                              </button>
+                            ) : null}
+                            {user.entitlement.status === "active" && user.entitlement.source === "admin_manual" ? (
+                              <button
+                                onClick={() => revokeSubscription(user.uid)}
+                                disabled={Boolean(actionBusy)}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--oxblood)] transition hover:bg-[var(--oxblood)]/10 disabled:opacity-40"
+                                title="Revoke the manually granted subscription"
+                              >
+                                <Ban className="h-3.5 w-3.5" aria-hidden="true" />
+                                Revoke pass
+                              </button>
+                            ) : null}
                             {!user.isAdmin ? (
                               <button
                                 onClick={() => mutateAdmin(user.uid, "approve")}

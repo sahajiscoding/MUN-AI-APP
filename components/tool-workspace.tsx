@@ -435,7 +435,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
             {turns.map((turn, index) =>
               turn.role === "user" ? (
                 <div className="flex justify-end" key={`${turn.role}-${index}`}>
-                  <div className="max-w-[80%] rounded-2xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
+                  <div className="max-w-[80%] rounded-xl bg-[var(--ink)] px-4 py-3 text-[var(--paper)]">
                     <p className="whitespace-pre-wrap text-sm leading-6">{turn.content}</p>
                   </div>
                 </div>
@@ -446,7 +446,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                       <Bot className="h-4 w-4" aria-hidden="true" />
                     </div>
                   </div>
-                  <div className="surface flex-1 rounded-2xl px-5 py-4">
+                  <div className="surface flex-1 rounded-xl px-5 py-4">
                     <div className="chat-markdown text-sm leading-7">
                       <Streamdown
                         mode="static"
@@ -469,7 +469,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                     <Bot className="h-4 w-4" aria-hidden="true" />
                   </div>
                 </div>
-                <div className="surface flex-1 rounded-2xl px-5 py-4">
+                <div className="surface flex-1 rounded-xl px-5 py-4">
                   {status ? <p className="mb-3 text-xs text-[var(--muted)]" aria-live="polite">{status}</p> : null}
                   <div className="chat-markdown text-sm leading-7">
                     <Streamdown
@@ -496,7 +496,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                     <Bot className="h-4 w-4" aria-hidden="true" />
                   </div>
                 </div>
-                <div className="surface flex-1 rounded-2xl px-5 py-4">
+                <div className="surface flex-1 rounded-xl px-5 py-4">
                   <p className="text-sm text-[var(--muted)]">{status || "Generating your response…"}</p>
                 </div>
               </div>
@@ -504,7 +504,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           </div>
         ) : chatLoadError ? (
           <div className="flex h-full items-center justify-center px-5 text-center" role="alert">
-            <div className="max-w-md rounded-2xl border border-[var(--oxblood)]/25 bg-[var(--paper-strong)] p-6 shadow-sm">
+            <div className="max-w-md rounded-xl border border-[var(--oxblood)]/25 bg-[var(--paper-strong)] p-6 shadow-sm">
               <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--oxblood)] text-[var(--paper)]">
                 <MessageSquare className="h-5 w-5" aria-hidden="true" />
               </div>
@@ -532,7 +532,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           <button
             type="button"
             onClick={jumpToLatest}
-            className="sticky bottom-4 left-full ml-auto mr-5 flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-black/5"
+            className="sticky bottom-4 left-full ml-auto mr-5 flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-black/5"
           >
             <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
             Jump to latest
@@ -543,7 +543,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       {/* Input area */}
       <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 backdrop-blur-sm sm:px-5 sm:py-4">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-2 surface rounded-2xl border border-[var(--line)] px-4 py-3">
+          <div className="flex items-end gap-2 surface rounded-xl border border-[var(--line)] px-4 py-3">
             <textarea
               className="min-h-[2.5rem] max-h-32 flex-1 resize-none bg-transparent px-1 outline-none text-sm leading-6"
               value={input}

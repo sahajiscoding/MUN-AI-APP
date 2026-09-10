@@ -305,11 +305,11 @@ export function ReferralAdminPanel() {
                 <button type="button" onClick={() => void loadApplications()} className="button-secondary px-3 py-1.5 text-xs font-semibold">Refresh</button>
               </div>
               {applications.length === 0 ? (
-                <p className="mt-4 rounded-2xl border border-dashed border-[var(--line)] bg-white/30 px-4 py-6 text-center text-sm text-[var(--muted)]">No new applications. Submissions from the public Become a partner page appear here.</p>
+                <p className="mt-4 rounded-xl border border-dashed border-[var(--line)] bg-white/30 px-4 py-6 text-center text-sm text-[var(--muted)]">No new applications. Submissions from the public Become a partner page appear here.</p>
               ) : (
                 <div className="mt-4 space-y-3">
                   {applications.map((application) => (
-                    <div key={application.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white/40 p-4">
+                    <div key={application.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/40 p-4">
                       <div className="min-w-0">
                         <p className="font-semibold">{application.name} <span className="font-normal text-[var(--muted)]">· {new Date(application.created_at).toLocaleDateString("en-IN")}</span></p>
                         <p className="mt-0.5 text-sm text-[var(--muted)]">{application.email}{application.whatsapp ? ` · WhatsApp: ${application.whatsapp}` : ""}</p>

@@ -4,6 +4,7 @@ import { Landmark } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function PublicNav() {
   const router = useRouter();
@@ -28,12 +29,13 @@ export function PublicNav() {
         <span className="display-type text-2xl">MUN Prep</span>
       </Link>
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <button
           type="button"
           onClick={handleSignIn}
           disabled={loading}
           aria-busy={loading}
-          className="rounded-full border border-[var(--line)] px-5 py-2 text-sm font-semibold text-[var(--ink)] transition hover:bg-black/5 disabled:cursor-wait disabled:opacity-60"
+          className="rounded-xl border border-[var(--line)] px-5 py-2 text-sm font-semibold text-[var(--ink)] transition hover:bg-black/5 disabled:cursor-wait disabled:opacity-60"
         >
           Sign in
         </button>
@@ -42,7 +44,7 @@ export function PublicNav() {
           onClick={handleGetStarted}
           disabled={loading}
           aria-busy={loading}
-          className="rounded-full bg-[var(--ink)] px-5 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[var(--ink)]/80 disabled:cursor-wait disabled:opacity-60"
+          className="rounded-xl bg-[var(--ink)] px-5 py-2 text-sm font-semibold text-[var(--paper)] transition hover:bg-[var(--ink)]/80 disabled:cursor-wait disabled:opacity-60"
         >
           Get started
         </button>

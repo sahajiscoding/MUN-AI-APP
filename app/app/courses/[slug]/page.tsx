@@ -308,7 +308,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
           </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">{course.description}</p>
 
-          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/35 p-4 shadow-[0_12px_34px_rgba(39,35,28,0.06)] sm:p-5">
+          <div className="mt-6 rounded-xl border border-[var(--line)] bg-white/35 p-4 shadow-[0_12px_34px_rgba(39,35,28,0.06)] sm:p-5">
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">Your progress</p>
@@ -353,7 +353,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
               return (
                 <article
                   key={lesson.title}
-                  className={`overflow-hidden rounded-2xl border transition ${
+                  className={`overflow-hidden rounded-xl border transition ${
                     isActive
                       ? "border-[var(--patina)]/55 bg-[var(--surface)] shadow-[0_16px_40px_rgba(39,35,28,0.09)]"
                       : isCompleted
@@ -414,7 +414,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                                 <p className="text-sm font-semibold text-[var(--ink)]">Keep reading — the knowledge check unlocks when you reach the end of this lesson.</p>
                               </div>
                             ) : activeQuestion ? (
-                              <div className="rounded-2xl border border-[var(--line)] bg-[var(--paper)] p-4 sm:p-6">
+                              <div className="rounded-xl border border-[var(--line)] bg-[var(--paper)] p-4 sm:p-6">
                                 <div className="flex items-center justify-between gap-3">
                                   <div className="flex items-center gap-2 text-[var(--patina)]">
                                     <CircleHelp className="h-5 w-5" />
@@ -499,7 +499,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
             </div>
 
             {!finalQuizStarted && !quizSubmitted ? (
-              <div className="surface rounded-2xl p-6 sm:p-8">
+              <div className="surface rounded-xl p-6 sm:p-8">
                 <p className="max-w-xl text-sm leading-6 text-[var(--muted)]">
                   Test what you learned across every lesson. Pick an answer, move through the questions, and see your result at the end.
                 </p>
@@ -511,7 +511,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
             ) : null}
 
             {finalQuizStarted && finalQuestion ? (
-              <div className="surface rounded-2xl p-4 sm:p-7">
+              <div className="surface rounded-xl p-4 sm:p-7">
                 <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
                   <span>Question {finalQuestionIndex + 1} of {finalQuizQuestions.length}</span>
                   <span>{Math.round(((finalQuestionIndex + 1) / finalQuizQuestions.length) * 100)}% through</span>
@@ -528,7 +528,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                         key={option}
                         type="button"
                         onClick={() => chooseFinalAnswer(optionIndex)}
-                        className={`min-h-20 rounded-2xl border-2 px-5 py-4 text-left text-sm font-bold transition active:scale-[0.98] sm:text-base ${
+                        className={`min-h-20 rounded-xl border-2 px-5 py-4 text-left text-sm font-bold transition active:scale-[0.98] sm:text-base ${
                           selected
                             ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] shadow-lg"
                             : `${answerColors[optionIndex % answerColors.length]} bg-white/65 text-[var(--ink)]`
@@ -553,7 +553,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
             ) : null}
 
             {quizSubmitted ? (
-              <div className="surface rounded-2xl p-6 text-center sm:p-8">
+              <div className="surface rounded-xl p-6 text-center sm:p-8">
                 <Trophy className={`mx-auto mb-3 h-11 w-11 ${quizScore / Math.max(quizTotal, 1) >= 0.7 ? "text-[var(--patina)]" : "text-[var(--oxblood)]"}`} />
                 <p className="text-3xl font-bold text-[var(--ink)]">{quizScore}/{quizTotal}</p>
                 <p className="mt-2 text-sm text-[var(--muted)]">
@@ -569,7 +569,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         ) : null}
 
         {allLessonsComplete && quizPassed ? (
-          <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-6 shadow-[0_16px_40px_rgba(39,35,28,0.08)] sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+          <section className="mt-8 overflow-hidden rounded-xl border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-6 shadow-[0_16px_40px_rgba(39,35,28,0.08)] sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
             <div className="flex items-start gap-4">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--brass)] text-white">
                 <Award className="h-6 w-6" />

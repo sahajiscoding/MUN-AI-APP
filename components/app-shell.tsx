@@ -16,6 +16,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
 import { SidebarToggle } from "@/components/sidebar-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type ChatHistoryItem = {
@@ -151,6 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="display-type text-lg">MUN Prep</span>
           </Link>
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
@@ -241,15 +243,19 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {!collapsed && <span className="display-type truncate text-lg">MUN Prep</span>}
               </Link>
               {!collapsed && (
-                <SidebarToggle
-                  collapsed={collapsed}
-                  onToggle={() => setCollapsed((value) => !value)}
-                />
+                <div className="flex items-center gap-1">
+                  <ThemeToggle />
+                  <SidebarToggle
+                    collapsed={collapsed}
+                    onToggle={() => setCollapsed((value) => !value)}
+                  />
+                </div>
               )}
             </div>
 
             {collapsed ? (
-              <div className="mt-2 flex justify-center">
+              <div className="mt-2 flex flex-col items-center gap-2">
+                <ThemeToggle />
                 <SidebarToggle
                   collapsed={collapsed}
                   onToggle={() => setCollapsed((value) => !value)}

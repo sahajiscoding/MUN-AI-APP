@@ -21,7 +21,7 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative surface rounded-2xl border border-[var(--line)] shadow-2xl w-full max-w-lg mx-4 p-6">
+      <div className="relative surface rounded-xl border border-[var(--line)] shadow-2xl w-full max-w-lg mx-4 p-6">
         {/* Close button */}
         <button
           onClick={onClose}

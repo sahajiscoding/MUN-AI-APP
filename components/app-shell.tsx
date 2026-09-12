@@ -243,25 +243,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {!collapsed && <span className="display-type truncate text-lg">MUN Prep</span>}
               </Link>
               {!collapsed && (
-                <div className="flex items-center gap-1">
-                  <ThemeToggle />
-                  <SidebarToggle
-                    collapsed={collapsed}
-                    onToggle={() => setCollapsed((value) => !value)}
-                  />
-                </div>
-              )}
-            </div>
-
-            {collapsed ? (
-              <div className="mt-2 flex flex-col items-center gap-2">
-                <ThemeToggle />
                 <SidebarToggle
                   collapsed={collapsed}
                   onToggle={() => setCollapsed((value) => !value)}
                 />
-              </div>
-            ) : null}
+              )}
+            </div>
+
+            {/* The appearance picker gets its own row: sharing this row with the
+                logo squeezed the workspace name away and spilled past the rail. */}
+            <div className={cn("mt-2 flex gap-2", collapsed ? "flex-col items-center" : "items-center")}>
+              <ThemeToggle compact={collapsed} />
+              {collapsed ? (
+                <SidebarToggle
+                  collapsed={collapsed}
+                  onToggle={() => setCollapsed((value) => !value)}
+                />
+              ) : null}
+            </div>
 
             <Link
               href="/app/research"

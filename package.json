@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/security-contract-check.mjs"
+    "test": "node scripts/security-contract-check.mjs",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",

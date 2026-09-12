@@ -5,7 +5,7 @@ export type ChatMessage = {
   content: string;
 };
 
-export type AIProvider = "nvidia" | "gmi" | "nvidia-kimi";
+export type AIProvider = "nvidia" | "nvidia-kimi";
 
 export type AIUsage = {
   promptTokens?: number;

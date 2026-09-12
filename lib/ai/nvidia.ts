@@ -2,9 +2,19 @@ import { ApiError } from "@/lib/api";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
+const DEFAULT_MINIMAX_MODEL = "minimaxai/minimax-m3";
 
+/** Max mode: the larger reasoning model. */
 export function callNvidiaKimi(input: AICompletionInput) {
   return callNvidiaModel(input, process.env.NVIDIA_KIMI_MODEL || DEFAULT_KIMI_MODEL, "nvidia-kimi");
+}
+
+/**
+ * Quick and thorough modes: the faster model. It runs through the same NVIDIA
+ * NIM endpoint as Max, so the whole app depends on a single provider key.
+ */
+export function callNvidiaMiniMax(input: AICompletionInput) {
+  return callNvidiaModel(input, process.env.NVIDIA_MINIMAX_MODEL || DEFAULT_MINIMAX_MODEL, "nvidia");
 }
 
 async function callNvidiaModel(

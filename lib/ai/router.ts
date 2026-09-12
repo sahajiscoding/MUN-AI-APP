@@ -1,5 +1,4 @@
-import { callGmiMiniMax } from "@/lib/ai/gmi";
-import { callNvidiaKimi } from "@/lib/ai/nvidia";
+import { callNvidiaKimi, callNvidiaMiniMax } from "@/lib/ai/nvidia";
 import { munResearchSystemPrompt } from "@/lib/ai/prompts";
 import type { ChatMessage } from "@/lib/ai/types";
 
@@ -48,9 +47,11 @@ export async function runMunResearch(input: ResearchInput) {
     maxTokens: modeConfig.maxTokens,
   };
 
+  // Every mode runs through NVIDIA NIM; only the model differs. Max gets the
+  // larger reasoning model, quick and thorough get the faster one.
   if (mode === "max") {
     return callNvidiaKimi(aiInput);
   }
 
-  return callGmiMiniMax(aiInput);
+  return callNvidiaMiniMax(aiInput);
 }

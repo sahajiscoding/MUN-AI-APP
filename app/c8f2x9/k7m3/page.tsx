@@ -101,7 +101,13 @@ export default function AdminDashboardPage() {
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiMode, setAiMode] = useState<"quick" | "thorough" | "max">("thorough");
   const [copiedReferralUid, setCopiedReferralUid] = useState<string | null>(null);
-  const [customGrant, setCustomGrant] = useState<{ uid: string; label: string; date: string; min: string } | null>(null);
+  const [customGrant, setCustomGrant] = useState<{
+    uid: string;
+    label: string;
+    date: string;
+    min: string;
+    currentExpiry: string | null;
+  } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -596,12 +602,21 @@ export default function AdminDashboardPage() {
                             {!user.isAdmin ? (
                               <button
                                 type="button"
-                                onClick={() => setCustomGrant({
-                                  uid: user.uid,
-                                  label: user.display_name || user.email || user.uid,
-                                  date: "",
-                                  min: new Date(Date.now() + ONE_DAY_MS).toISOString().slice(0, 10),
-                                })}
+                                onClick={() => {
+                                  // A live pass is extended rather than replaced, so
+                                  // the earliest grantable date is the day after it.
+                                  const live = user.entitlement.status === "active" ? getExpiry(user.entitlement.expires_at) : null;
+                                  const inForce = live && !live.lapsed ? live : null;
+                                  const earliest = inForce ? inForce.target.getTime() + ONE_DAY_MS : Date.now() + ONE_DAY_MS;
+
+                                  setCustomGrant({
+                                    uid: user.uid,
+                                    label: user.display_name || user.email || user.uid,
+                                    date: "",
+                                    min: new Date(earliest).toISOString().slice(0, 10),
+                                    currentExpiry: inForce ? formatExpiryDate(inForce.target) : null,
+                                  });
+                                }}
                                 disabled={Boolean(actionBusy)}
                                 className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--brass)] transition hover:bg-[var(--brass)]/10 disabled:opacity-40"
                                 title="Grant access that ends on a date you choose"
@@ -665,6 +680,13 @@ export default function AdminDashboardPage() {
               <h2 id="custom-grant-heading" className="display-type text-xl">Grant a pass until a date</h2>
               <p className="mt-1 truncate text-sm text-[var(--muted)]">{customGrant.label}</p>
 
+              {customGrant.currentExpiry ? (
+                <p className="mt-3 rounded-panel border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+                  This pass currently runs to <strong className="text-[var(--ink)]">{customGrant.currentExpiry}</strong>. A new grant extends it from
+                  there, so the earliest date you can pick is the day after.
+                </p>
+              ) : null}
+
               <label className="mt-4 block">
                 <span className="label-text">Access ends on</span>
                 <input
@@ -672,12 +694,13 @@ export default function AdminDashboardPage() {
                   className="input-field mt-2"
                   value={customGrant.date}
                   min={customGrant.min}
+                  autoFocus
                   onChange={(event) => setCustomGrant({ ...customGrant, date: event.target.value })}
                 />
               </label>
 
               <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
-                Access runs to the end of that day. A live pass is extended, so pick a date beyond its current expiry.
+                Access runs to the end of that day.
               </p>
 
               <div className="mt-5 flex items-center justify-end gap-2">

@@ -21,7 +21,7 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative surface rounded-xl border border-[var(--line)] shadow-2xl w-full max-w-lg mx-4 p-6">
+      <div className="relative surface rounded-xl border border-[var(--line)] shadow-2xl w-full max-w-lg mx-4 p-5">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -42,7 +42,7 @@ export function PaywallModal({ open, onClose }: PaywallModalProps) {
         </div>
 
         {/* Plans */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2">
           {plans.map((plan) => (
             <div
               key={plan.id}

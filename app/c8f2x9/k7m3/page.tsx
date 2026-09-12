@@ -21,24 +21,70 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-type AdminUser = {
-  uid: string;
-  display_name: string;
-  email: string;
-  last_seen_at: string;
-  isAdmin: boolean;
-  entitlement: {
-    status: string;
-    plan_id?: string;
-    source?: string;
-    expires_at?: string;
-  };
+type AdminUser = {    uid: string;
+    display_name: string;
+    email: string;
+    last_seen_at: string;
+    isAdmin: boolean;
+    entitlement: {
+      status: string;
+      plan_id?: string;
+      source?: string;
+      expires_at?: string | null;
+    };
   referral: {
     code: string;
     status: string;
     link: string | null;
   } | null;
 };
+
+function getExpiry(expiresAt?: string | null) {
+  if (!expiresAt) return null;
+  const target = new Date(expiresAt);
+  if (Number.isNaN(target.getTime())) return null;
+  const diffDays = Math.ceil((target.getTime() - Date.now()) / 86400000);
+  return { target, diffDays, lapsed: diffDays <= 0 };
+}
+
+function formatExpiryDate(target: Date) {
+  return target.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function ExpiryNote({ expiresAt }: { expiresAt?: string | null }) {
+  const expiry = getExpiry(expiresAt);
+  if (!expiry) return null;
+
+  const dateLabel = formatExpiryDate(expiry.target);
+
+  if (expiry.lapsed) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border border-[var(--oxblood)]/25 bg-[var(--oxblood)]/8 px-2 py-1 text-xs font-semibold text-[var(--oxblood)]"
+        title={`Pass lapsed on ${dateLabel}`}
+      >
+        <XCircle className="h-3 w-3" aria-hidden="true" />
+        Lapsed {dateLabel}
+      </span>
+    );
+  }
+
+  const expiresSoon = expiry.diffDays <= 7;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${
+        expiresSoon
+          ? "border border-[var(--brass)]/25 bg-[var(--brass)]/8 text-[var(--brass)]"
+          : "border border-[var(--line)] bg-[var(--paper)] text-[var(--muted)]"
+      }`}
+      title={`Pass expires on ${dateLabel}`}
+    >
+      <CalendarPlus className="h-3 w-3" aria-hidden="true" />
+      {expiry.diffDays === 1 ? "Expires in 1 day" : `Expires in ${expiry.diffDays} days`}
+      <span className="opacity-70">· {dateLabel}</span>
+    </span>
+  );
+}
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -74,6 +120,14 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     void fetchUsers();
   }, [fetchUsers]);
+
+  // Re-render the expiry notes on a slow tick so a pass that lapses while this
+  // tab is open flips to "Expired" without needing a manual refresh.
+  const [, setExpiryTick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setExpiryTick((value) => value + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function mutateAdmin(uid: string, action: "approve" | "revoke") {
     if (actionBusy) return;
@@ -270,7 +324,7 @@ export default function AdminDashboardPage() {
 
       <main className="diplomatic-grid min-h-[calc(100vh-65px)]">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <section className="relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--paper-strong)] px-5 py-7 shadow-[0_20px_70px_rgba(23,20,18,0.08)] sm:px-8 sm:py-9">
+          <section className="relative overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--paper-strong)] px-5 py-5 shadow-[0_20px_70px_rgba(23,20,18,0.08)] sm:px-7 sm:py-7">
             <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-[var(--brass)]/25" aria-hidden="true" />
             <div className="pointer-events-none absolute -right-4 -top-12 h-44 w-44 rounded-full border border-[var(--patina)]/20" aria-hidden="true" />
             <div className="relative max-w-2xl">
@@ -405,18 +459,23 @@ export default function AdminDashboardPage() {
                   <tbody>
                     {filtered.map((user) => (
                       <tr key={user.uid} className="border-b border-[var(--line)] last:border-b-0 transition hover:bg-[var(--patina)]/5">
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3">
                           <p className="font-semibold text-[var(--ink)]">{user.display_name || "Unnamed"}</p>
                           <p className="mt-0.5 text-xs text-[var(--muted)]">{user.email}</p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3">
                           <code className="mono-type rounded bg-[var(--ink)]/5 px-2 py-1 text-xs text-[var(--muted)]">{user.uid.slice(0, 12)}...</code>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3">
                           {user.isAdmin ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brass)]/15 px-2.5 py-1 text-xs font-bold text-[var(--oxblood)]">
                               <Crown className="h-3 w-3" aria-hidden="true" />
                               Admin
+                            </span>
+                          ) : getExpiry(user.entitlement.expires_at)?.lapsed ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--oxblood)]/8 px-2.5 py-1 text-xs font-bold text-[var(--oxblood)]">
+                              <XCircle className="h-3 w-3" aria-hidden="true" />
+                              Expired
                             </span>
                           ) : user.entitlement.status === "active" ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--patina)]/12 px-2.5 py-1 text-xs font-bold text-[var(--patina)]">
@@ -429,8 +488,13 @@ export default function AdminDashboardPage() {
                               Free
                             </span>
                           )}
+                          {user.entitlement.expires_at && (user.entitlement.status === "active" || getExpiry(user.entitlement.expires_at)?.lapsed) ? (
+                            <div className="mt-1.5">
+                              <ExpiryNote expiresAt={user.entitlement.expires_at} />
+                            </div>
+                          ) : null}
                         </td>
-                        <td className="max-w-[280px] px-4 py-4">
+                        <td className="max-w-[280px] px-4 py-3">
                           {user.referral?.link ? (
                             <div className="flex items-center gap-2">
                               <a
@@ -459,10 +523,10 @@ export default function AdminDashboardPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-xs text-[var(--muted)]">
+                        <td className="px-4 py-3 text-xs text-[var(--muted)]">
                           {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString() : "Never"}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
                             {!user.isAdmin ? (
                               <button
@@ -532,3 +596,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+

@@ -11,7 +11,7 @@ export default function CheckoutFailurePage() {
     <ProtectedAppShell>
       <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
         <XCircle className="mx-auto h-10 w-10 text-[var(--oxblood)]" aria-hidden="true" />
-        <h1 className="display-type mt-5 text-5xl">Payment not verified.</h1>
+        <h1 className="display-type mt-5 text-4xl">Payment not verified.</h1>
         <p className="mt-4 leading-7 text-[var(--muted)]">
           The account was not unlocked because verification failed or was cancelled. If money was
           deducted, the payment provider can still reconcile the order.

@@ -85,7 +85,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
           <div className="flex items-center py-16 lg:py-20">
             <div className="max-w-2xl">
               <p className="label-text text-[var(--brass)]">Delegate command center</p>
-              <h1 className="display-type mt-5 text-5xl leading-[0.98] sm:text-6xl lg:text-7xl">
+              <h1 className="display-type mt-5 text-4xl leading-[1] sm:text-5xl lg:text-6xl">
               Research, draft, and debate with a sharper brief.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-white/72">
@@ -113,9 +113,9 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
             <ThemeToggle />
           </div>
 
-          <div className="surface rounded-panel p-6 sm:p-8">
+          <div className="surface rounded-panel p-6 sm:p-7">
             <p className="label-text">Secure access</p>
-            <h2 className="display-type mt-3 text-4xl">
+            <h2 className="display-type mt-2 text-4xl">
               {mode === "signup" ? "Create your delegate desk." : "Enter your delegate desk."}
             </h2>
 
@@ -123,13 +123,13 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
               type="button"
               onClick={handleGoogle}
               disabled={busy}
-              className="button-secondary mt-7 flex w-full items-center justify-center gap-3 px-4 font-semibold"
+              className="button-secondary mt-6 flex w-full items-center justify-center gap-3 px-4 font-semibold"
             >
               <Mail className="h-4 w-4" aria-hidden="true" />
               Sign in with Google
             </button>
 
-            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+            <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
               <span className="h-px flex-1 bg-[var(--line)]" />
               or
               <span className="h-px flex-1 bg-[var(--line)]" />

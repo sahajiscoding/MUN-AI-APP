@@ -33,16 +33,16 @@ export default function HomePage({ referralName }: { referralName?: string } = {
           ) : null}
           <PublicNav />
 
-          <div className="flex flex-1 flex-col justify-center py-16 text-center lg:py-20">
+          <div className="flex flex-1 flex-col justify-center py-12 text-center lg:py-16">
             <p className="label-text text-[var(--oxblood)]">Delegate command center</p>
-            <h1 className="display-type mx-auto mt-5 max-w-4xl text-6xl leading-[0.94] sm:text-7xl lg:text-8xl">
+            <h1 className="display-type mx-auto mt-5 max-w-4xl text-5xl leading-[0.96] sm:text-6xl lg:text-7xl">
               Prepare like your committee starts tomorrow.
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--muted)]">
               A focused Model UN workspace for research briefs, country policy, speeches,
               POIs, and draft resolution strategy. Sign in to get started.
             </p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
               <Link className="button-primary inline-flex items-center justify-center gap-2 px-5 font-semibold" href="/dashboard">
                 Open dashboard
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -53,12 +53,12 @@ export default function HomePage({ referralName }: { referralName?: string } = {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-3">
             {workspaces.map((item) => {
               const Icon = item.icon;
 
               return (
-                <article key={item.title} className="border-t border-[var(--line)] py-4">
+                <article key={item.title} className="border-t border-[var(--line)] py-5">
                   <Icon className="h-5 w-5 text-[var(--patina)]" aria-hidden="true" />
                   <h2 className="mt-3 font-bold">{item.title}</h2>
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.body}</p>

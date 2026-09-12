@@ -27,13 +27,15 @@ Options:
   -h, --help           Show this help
 `;
 
-const NOISE = [
-  /^next-env\.d\.ts$/,
-  /\.tsbuildinfo$/,
-  /^\.env(\.|$)/,
-  /\.log$/,
-  /^\.DS_Store$/,
-];
+/**
+ * Generated or local-only files that should never be staged. `.env.example` is
+ * the one tracked env file, so it is deliberately not treated as noise.
+ */
+function isNoise(name) {
+  if (name === ".env.example") return false;
+  if (name === ".env" || name.startsWith(".env.")) return true;
+  return name === "next-env.d.ts" || /\.tsbuildinfo$/.test(name) || /\.log$/.test(name) || name === ".DS_Store";
+}
 
 // Each gate is the same check a human would run by hand; the local binary is
 // preferred so the gate does not depend on a package-manager shim resolving.
@@ -158,8 +160,8 @@ function main() {
     return 1;
   }
 
-  const staged = entries.filter((entry) => !NOISE.some((pattern) => pattern.test(path.basename(entry.file))));
-  const skipped = entries.filter((entry) => NOISE.some((pattern) => pattern.test(path.basename(entry.file))));
+  const staged = entries.filter((entry) => !isNoise(path.basename(entry.file)));
+  const skipped = entries.filter((entry) => isNoise(path.basename(entry.file)));
 
   if (skipped.length > 0) {
     console.log("Skipping generated/local files:");

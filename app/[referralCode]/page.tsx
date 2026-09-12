@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import HomePage from "@/app/page";
+import { HomeLanding } from "@/components/home-landing";
 import { ReferralCookieCapture } from "@/components/referral-cookie-capture";
 import { getReferralPartner } from "@/lib/referrals";
 
@@ -37,7 +37,7 @@ export default async function ReferralLandingPage({
   return (
     <>
       <ReferralCookieCapture code={partner.referral_code} />
-      <HomePage referralName={partner.name} />
+      <HomeLanding referralName={partner.name} />
     </>
   );
 }

@@ -107,6 +107,11 @@ export async function grantEntitlement(
     source: string;
     paymentId?: string;
     orderId?: string;
+    /**
+     * Overrides the plan's usual duration. Owner-initiated grants use this to
+     * end a pass on a chosen date instead of a fixed weekly/monthly window.
+     */
+    accessDays?: number;
   }
 ) {
   const plan = getPlan(
@@ -125,7 +130,7 @@ export async function grantEntitlement(
     p_uid: input.uid,
     p_plan_id: plan.id,
     p_source: input.source,
-    p_access_days: plan.accessDays,
+    p_access_days: input.accessDays ?? plan.accessDays,
     p_payment_id: input.paymentId ?? null,
     p_order_id: input.orderId ?? null,
   });

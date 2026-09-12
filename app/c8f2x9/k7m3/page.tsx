@@ -3,6 +3,7 @@
 import {
   Ban,
   Bot,
+  CalendarDays,
   CalendarPlus,
   Check,
   CheckCircle2,
@@ -38,6 +39,8 @@ type AdminUser = {    uid: string;
     link: string | null;
   } | null;
 };
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function getExpiry(expiresAt?: string | null) {
   if (!expiresAt) return null;
@@ -98,6 +101,7 @@ export default function AdminDashboardPage() {
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiMode, setAiMode] = useState<"quick" | "thorough" | "max">("thorough");
   const [copiedReferralUid, setCopiedReferralUid] = useState<string | null>(null);
+  const [customGrant, setCustomGrant] = useState<{ uid: string; label: string; date: string; min: string } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -128,6 +132,17 @@ export default function AdminDashboardPage() {
     const timer = window.setInterval(() => setExpiryTick((value) => value + 1), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!customGrant) return;
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCustomGrant(null);
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [customGrant]);
 
   async function mutateAdmin(uid: string, action: "approve" | "revoke") {
     if (actionBusy) return;
@@ -171,6 +186,34 @@ export default function AdminDashboardPage() {
       await fetchUsers();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Could not grant the subscription.");
+    } finally {
+      setActionBusy("");
+    }
+  }
+
+  async function grantCustomExpiry() {
+    if (!customGrant || actionBusy) return;
+    if (!customGrant.date) {
+      setStatusMessage("Pick an expiry date for the custom pass.");
+      return;
+    }
+
+    const uid = customGrant.uid;
+    setActionBusy(`grant-custom:${uid}`);
+    setStatusMessage("");
+    try {
+      const response = await fetch("/api/c8f2x9/grant-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, expiresAt: customGrant.date }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not grant the custom pass.");
+      setStatusMessage(data.message || "Custom pass granted.");
+      setCustomGrant(null);
+      await fetchUsers();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Could not grant the custom pass.");
     } finally {
       setActionBusy("");
     }
@@ -550,6 +593,23 @@ export default function AdminDashboardPage() {
                                 Monthly
                               </button>
                             ) : null}
+                            {!user.isAdmin ? (
+                              <button
+                                type="button"
+                                onClick={() => setCustomGrant({
+                                  uid: user.uid,
+                                  label: user.display_name || user.email || user.uid,
+                                  date: "",
+                                  min: new Date(Date.now() + ONE_DAY_MS).toISOString().slice(0, 10),
+                                })}
+                                disabled={Boolean(actionBusy)}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--brass)] transition hover:bg-[var(--brass)]/10 disabled:opacity-40"
+                                title="Grant access that ends on a date you choose"
+                              >
+                                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                                Until date…
+                              </button>
+                            ) : null}
                             {user.entitlement.status === "active" && user.entitlement.source === "admin_manual" ? (
                               <button
                                 onClick={() => revokeSubscription(user.uid)}
@@ -592,6 +652,50 @@ export default function AdminDashboardPage() {
             )}
           </section>
         </div>
+
+        {customGrant ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="custom-grant-heading">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setCustomGrant(null)}
+              aria-label="Close the custom pass dialog"
+            />
+            <div className="surface relative w-full max-w-sm rounded-xl border border-[var(--line)] p-5 shadow-2xl">
+              <h2 id="custom-grant-heading" className="display-type text-xl">Grant a pass until a date</h2>
+              <p className="mt-1 truncate text-sm text-[var(--muted)]">{customGrant.label}</p>
+
+              <label className="mt-4 block">
+                <span className="label-text">Access ends on</span>
+                <input
+                  type="date"
+                  className="input-field mt-2"
+                  value={customGrant.date}
+                  min={customGrant.min}
+                  onChange={(event) => setCustomGrant({ ...customGrant, date: event.target.value })}
+                />
+              </label>
+
+              <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                Access runs to the end of that day. A live pass is extended, so pick a date beyond its current expiry.
+              </p>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setCustomGrant(null)} className="button-secondary px-4 py-2 text-sm font-semibold">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void grantCustomExpiry()}
+                  disabled={!customGrant.date || Boolean(actionBusy)}
+                  className="button-primary px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                >
+                  {actionBusy.startsWith("grant-custom") ? "Granting…" : "Grant pass"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </main>
     </div>
   );

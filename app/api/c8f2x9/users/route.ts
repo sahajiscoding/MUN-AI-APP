@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       return {
         ...u,
         isAdmin: adminUids.has(u.uid),
-        entitlement: entitlementMap.get(u.uid) || { status: "inactive" },
+        entitlement: entitlementMap.get(u.uid) || { status: "inactive", expires_at: null },
         referral: partner
           ? {
               code: partner.referral_code,

@@ -431,7 +431,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
             </div>
           </div>
         ) : turns.length > 0 || output ? (
-          <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
+          <div className="max-w-3xl mx-auto px-5 py-5 space-y-5">
             {turns.map((turn, index) =>
               turn.role === "user" ? (
                 <div className="flex justify-end" key={`${turn.role}-${index}`}>
@@ -522,7 +522,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               <div className="grid h-16 w-16 mx-auto place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] mb-6">
                 <Bot className="h-8 w-8" />
               </div>
-              <h2 className="display-type text-3xl mb-3">{title}</h2>
+              <h2 className="display-type text-2xl mb-3">{title}</h2>
               <p className="text-sm leading-6 text-[var(--muted)]">{description}</p>
             </div>
           </div>
@@ -541,7 +541,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Input area */}
-      <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 backdrop-blur-sm sm:px-5 sm:py-4">
+      <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 backdrop-blur-sm sm:px-5 sm:py-3.5">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
           <div className="flex items-end gap-2 surface rounded-xl border border-[var(--line)] px-4 py-3">
             <textarea

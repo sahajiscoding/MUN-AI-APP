@@ -8,17 +8,17 @@ export const metadata = { title: "Become a partner" };
 export default function BecomePartnerPage() {
   return (
     <PublicPage>
-      <section className="mx-auto max-w-5xl px-5 py-16 sm:px-8">
+      <section className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
         <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
           <div>
             <p className="label-text text-[var(--oxblood)]">Referral partners</p>
-            <h1 className="display-type mt-3 text-5xl sm:text-6xl">Turn your MUN circle into income.</h1>
+            <h1 className="display-type mt-3 text-4xl sm:text-5xl">Turn your MUN circle into income.</h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-[var(--muted)]">
               MUN Prep helps delegates research, draft, and debate with a sharper brief. Share your personal link with
               students, teachers, and conference organizers — and earn 16.72% of every paid plan they buy.
             </p>
 
-            <div className="mt-10 space-y-4">
+            <div className="mt-8 space-y-4">
               <Step
                 icon={<Share2 className="h-5 w-5" aria-hidden="true" />}
                 title="Share your link"

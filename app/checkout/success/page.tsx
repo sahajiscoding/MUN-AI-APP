@@ -165,7 +165,7 @@ export default function CheckoutSuccessPage() {
             aria-hidden="true"
           />
 
-          <h1 className="display-type mt-5 text-5xl">
+          <h1 className="display-type mt-5 text-4xl">
             Access unlocked.
           </h1>
 

@@ -127,6 +127,8 @@ const grantSubscriptionRoute = await source("app/api/c8f2x9/grant-subscription/r
 assert(grantSubscriptionRoute.includes("requireAdminOwner"), "manual subscription grants are not owner-only");
 assert(grantSubscriptionRoute.includes("grantEntitlement"), "manual subscription grant does not use the atomic entitlement path");
 assert(grantSubscriptionRoute.includes("recordAdminAction"), "manual subscription grant is not audit-logged");
+assert(grantSubscriptionRoute.includes("expiresAt"), "manual subscription grant cannot take a custom expiry");
+assert(grantSubscriptionRoute.includes("MAX_ACCESS_DAYS"), "custom expiry is not bounded");
 
 const revokeSubscriptionRoute = await source("app/api/c8f2x9/revoke-subscription/route.ts");
 assert(revokeSubscriptionRoute.includes("requireAdminOwner"), "manual subscription revokes are not owner-only");

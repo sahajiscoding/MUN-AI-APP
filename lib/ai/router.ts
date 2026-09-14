@@ -1,4 +1,4 @@
-import { callNvidiaKimi, callNvidiaMiniMax } from "@/lib/ai/nvidia";
+import { callNvidiaKimi, callNvidiaDeepSeek } from "@/lib/ai/nvidia";
 import { munResearchSystemPrompt } from "@/lib/ai/prompts";
 import type { ChatMessage } from "@/lib/ai/types";
 
@@ -48,10 +48,10 @@ export async function runMunResearch(input: ResearchInput) {
   };
 
   // Every mode runs through NVIDIA NIM; only the model differs. Max gets the
-  // larger reasoning model, quick and thorough get the faster one.
+  // larger reasoning model, quick and thorough get DeepSeek V4 Flash.
   if (mode === "max") {
     return callNvidiaKimi(aiInput);
   }
 
-  return callNvidiaMiniMax(aiInput);
+  return callNvidiaDeepSeek(aiInput);
 }

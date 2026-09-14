@@ -135,6 +135,53 @@ assert(revokeSubscriptionRoute.includes("requireAdminOwner"), "manual subscripti
 assert(revokeSubscriptionRoute.includes('source !== "admin_manual"'), "subscription revoke can touch non-manual grants");
 assert(revokeSubscriptionRoute.includes("recordAdminAction"), "manual subscription revoke is not audit-logged");
 
+// Post-audit hardening invariants: every fix below must hold or the build
+// fails. These assert the remediations, not just the original design.
+const aiUsageAtomic = await source("supabase/migrations/20260908_ai_usage_atomic.sql");
+assert(aiUsageAtomic.includes("increment_ai_usage"), "atomic AI usage RPC is missing");
+assert(aiUsageAtomic.includes("on conflict"), "atomic AI usage RPC is not race-safe");
+assert(aiUsageAtomic.includes("to service_role"), "atomic AI usage RPC grant is missing");
+
+const partnerTokenMigration = await source("supabase/migrations/20260908_partner_token_security.sql");
+assert(partnerTokenMigration.includes("dashboard_token_expires_at"), "partner token expiry column is missing");
+assert(partnerTokenMigration.includes("digest("), "partner token hashing backfill is missing");
+
+assert(adminAuth.includes("listFactors"), "admin MFA enrollment is not enforced");
+assert(adminAuth.includes("admin_mfa_required"), "admin MFA error is missing");
+assert(adminAuth.includes("bumpAdminSessionVersion"), "admin session revocation helper is missing");
+assert(adminLoginRoute.includes("bumpAdminSessionVersion"), "admin logout does not revoke the session");
+assert(progress.includes("lessons_require_checkpoint"), "bulk progress can still self-attest lessons");
+assert(progress.includes("progress-quiz"), "quiz submissions are not rate limited");
+const checkpointRoute = await source("app/api/progress/checkpoint/route.ts");
+assert(checkpointRoute.includes("checkpoint:"), "checkpoint oracle is not rate limited");
+const finalRoute = await sourceOptional("app/api/progress/final/route.ts");
+assert(finalRoute === null, "dead final-review route still exposes a contradictory trust path");
+assert(statusRoute.includes("payment-status"), "payment status polling is not rate limited");
+assert(reconcile.includes("admin-reconcile:${admin.uid}"), "reconcile throttle is not keyed by admin identity");
+const createOrderRoute = await source("app/api/payments/create-order/route.ts");
+assert(createOrderRoute.includes("assertSafeCheckoutUrl"), "checkout URL is not allowlisted");
+assert(approveRoute.includes("getUserById"), "admin approval does not verify the target user");
+assert(approveRoute.includes("preservesPaid"), "admin approval can clobber paid entitlements");
+const revokeRoute = await source("app/api/c8f2x9/revoke/route.ts");
+assert(revokeRoute.includes('existing.source === "admin"'), "admin revoke can wipe paid entitlements");
+assert(referrals.includes("hashDashboardToken"), "partner tokens are not hashed");
+assert(referrals.includes('partner.status !== "active"'), "suspended partners can still open dashboards");
+assert(dashboardLinkRoute.includes("mintPartnerDashboardToken"), "dashboard links are not rotation-issued");
+assert(dashboardLinkRoute.includes("recordAdminAction"), "dashboard link minting is not audit-logged");
+const usersRoute = await source("app/api/c8f2x9/users/route.ts");
+assert(usersRoute.includes("maskEmail"), "delegated admins see unmasked user emails");
+assert(usersRoute.includes("pageSize"), "admin user list is unpaginated");
+const referralsAdminRoute = await source("app/api/admin/referrals/route.ts");
+assert(referralsAdminRoute.includes("isOwnerAdmin"), "referral PII is not tiered by admin role");
+assert(aiUsage.includes("increment_ai_usage"), "AI metering does not use the atomic increment");
+assert(aiUsage.includes("ai_usage_unavailable"), "AI caps fail open when the ledger is unreachable");
+const apiLib = await source("lib/api.ts");
+assert(apiLib.includes("payload_too_large"), "JSON bodies have no byte cap");
+assert(news.includes("readCappedText"), "news feed bodies are unbounded");
+const adminLoginPage = await source("app/c8f2x9/page.tsx");
+assert(adminLoginPage.includes("mfa.verify"), "admin UI has no MFA verification flow");
+assert(adminLoginPage.includes("admin_mfa_required"), "admin UI does not handle the MFA challenge");
+
 const skippedMigrations = [migration, migration2, migration3, migration4].filter((file) => file === null).length;
 if (skippedMigrations > 0) {
   console.log(`Note: ${skippedMigrations} applied migration file(s) were removed from the repo after being run; their content assertions were skipped.`);

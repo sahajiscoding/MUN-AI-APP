@@ -4,6 +4,7 @@ import { getCourseBySlug } from "@/lib/courses";
 import { buildCourseReviewQuestions } from "@/lib/quizzes";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/server/auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -95,6 +96,20 @@ export async function POST(request: Request) {
       ) {
         throw new ApiError(400, "invalid_lessons", "One or more lesson indexes are invalid.");
       }
+      // Lessons are earned exclusively through /api/progress/checkpoint,
+      // which verifies each answer server-side. This bulk endpoint may
+      // re-assert already-earned lessons but must never grant new ones —
+      // otherwise clients could self-attest completion and bypass every
+      // checkpoint (certificate forgery).
+      const storedSet = new Set(storedLessons);
+      const novel = completed_lessons.filter((index) => !storedSet.has(index));
+      if (novel.length > 0) {
+        throw new ApiError(
+          400,
+          "lessons_require_checkpoint",
+          "Complete each lesson through its checkpoint before saving progress here."
+        );
+      }
       lessons = [...uniqueLessons].sort((a, b) => a - b);
     }
 
@@ -105,7 +120,12 @@ export async function POST(request: Request) {
 
     // Final-review submissions are graded here, server-side, against the same
     // question list the client renders. Self-reported scores are never accepted.
+    // The aggregate score response still leaks one bit per submission
+    // (hill-climbing), so submissions are tightly budgeted per user+course.
     if (quizAnswers !== undefined) {
+      if (!(await checkRateLimit(`progress-quiz:${user.uid}:${course_slug}`, 5, 10 * 60_000))) {
+        throw new ApiError(429, "rate_limited", "Too many review submissions. Wait a few minutes and try again.");
+      }
       const questions = buildCourseReviewQuestions(course);
       if (quizAnswers.length !== questions.length) {
         throw new ApiError(400, "invalid_quiz_answers", "Your review answers could not be verified. Please retake the final review.");

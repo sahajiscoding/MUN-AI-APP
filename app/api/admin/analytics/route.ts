@@ -1,7 +1,8 @@
-import { jsonError } from "@/lib/api";
+import { ApiError, jsonError } from "@/lib/api";
 import { courses } from "@/lib/courses";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,14 +32,18 @@ function lastDays(count: number) {
 
 export async function GET() {
   try {
-    await requireAdmin();
-    const admin = supabaseAdmin();
+    const admin = await requireAdmin();
+    // 10k-row scans per call: throttle per admin identity.
+    if (!(await checkRateLimit(`admin-analytics:${admin.uid}`, 30, 60_000))) {
+      throw new ApiError(429, "rate_limited", "Too many requests. Please try again later.");
+    }
+    const db = supabaseAdmin();
     const [progressResult, downloadResult] = await Promise.all([
-      admin
+      db
         .from("course_progress")
         .select("uid, course_slug, completed_lessons, completed_at")
         .limit(10000),
-      admin
+      db
         .from("certificate_downloads")
         .select("course_slug, downloaded_at")
         .order("downloaded_at", { ascending: false })

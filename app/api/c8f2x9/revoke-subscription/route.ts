@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
@@ -5,9 +6,7 @@ import { recordAdminAction } from "@/lib/server/admin-audit";
 
 export const runtime = "nodejs";
 
-type RevokeBody = {
-  uid: string;
-};
+const revokeSubscriptionSchema = z.object({ uid: z.string().uuid() }).strict();
 
 /**
  * Ends a subscription that was granted manually from the admin panel.
@@ -20,11 +19,12 @@ type RevokeBody = {
 export async function POST(request: Request) {
   try {
     const admin = await requireAdminOwner();
-    const body = await parseJson<RevokeBody>(request);
+    const parsed = revokeSubscriptionSchema.safeParse(await parseJson<unknown>(request));
 
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.uid || "")) {
+    if (!parsed.success) {
       throw new ApiError(400, "invalid_uid", "Provide a valid user UID to revoke a subscription.");
     }
+    const body = parsed.data;
 
     const { data: existing, error: fetchError } = await supabaseAdmin()
       .from("entitlements")

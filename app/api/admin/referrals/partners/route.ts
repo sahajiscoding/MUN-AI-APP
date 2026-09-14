@@ -3,7 +3,7 @@ import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { createPartnerDashboardToken } from "@/lib/referrals";
+import { createPartnerDashboardToken, dashboardTokenExpiryDate, hashDashboardToken } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -24,6 +24,9 @@ export async function POST(request: Request) {
     if (!parsed.success) throw new ApiError(400, "invalid_partner", "Enter valid partner details.");
 
     const values = parsed.data;
+    // The dashboard token is a bearer credential: only its hash is stored,
+    // so a database read can never impersonate the partner. The working link
+    // is minted (and delivered once) via the dashboard-link endpoint.
     const { data, error } = await supabaseAdmin()
       .from("referral_partners")
       .insert({
@@ -34,7 +37,8 @@ export async function POST(request: Request) {
         status: values.status,
         commission_rate: values.commissionRate,
         notes: values.notes ?? null,
-        dashboard_token: createPartnerDashboardToken(),
+        dashboard_token: hashDashboardToken(createPartnerDashboardToken()),
+        dashboard_token_expires_at: dashboardTokenExpiryDate(),
       })
       .select("id, name, email, whatsapp, referral_code, status, commission_rate, notes, created_at, updated_at")
       .single();

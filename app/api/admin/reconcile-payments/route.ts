@@ -20,8 +20,18 @@ function privateJson(body: unknown, status = 200, extraHeaders?: Record<string, 
 }
 
 export async function POST(request: Request) {
+  // Authenticate first, throttle second. The previous order (IP bucket before
+  // auth) let unauthenticated requests burn the owner's bucket (self-DoS
+  // behind shared NAT) while IP rotation bypassed the throttle entirely.
+  // The bucket is keyed by the verified owner identity, with a looser
+  // per-IP bucket retained as a second layer.
+  const admin = await requireAdminOwner();
+
   const ip = getClientIp(request);
-  if (!(await checkRateLimit(`admin-reconcile:${ip}`, 5, 60_000))) {
+  if (
+    !(await checkRateLimit(`admin-reconcile:${admin.uid}`, 5, 60_000)) ||
+    !(await checkRateLimit(`admin-reconcile-ip:${ip}`, 10, 60_000))
+  ) {
     return privateJson(
       { ok: false, error: "Too many reconciliation requests. Try again later." },
       429,
@@ -30,8 +40,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    await requireAdminOwner();
-
     const results = await reconcilePaidPayments(50);
     return privateJson({
       ok: true,

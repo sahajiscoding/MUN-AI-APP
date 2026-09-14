@@ -1,8 +1,10 @@
+import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { getEntitlement, grantEntitlement } from "@/lib/server/entitlements";
 import { getPlan } from "@/lib/plans";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -12,12 +14,12 @@ const DAY_MS = 86_400_000;
 /** Mirrors the ceiling enforced inside grant_entitlement_atomic. */
 const MAX_ACCESS_DAYS = 3650;
 
-type GrantBody = {
-  uid: string;
-  planId?: string;
+const grantSchema = z.object({
+  uid: z.string().uuid(),
+  planId: z.string().optional(),
   /** A calendar date (YYYY-MM-DD). When set, the pass ends on that day. */
-  expiresAt?: string;
-};
+  expiresAt: z.string().optional(),
+}).strict();
 
 /**
  * Reads a date input as the last moment of that calendar day (UTC), so a pass
@@ -47,10 +49,21 @@ function parseExpiryDate(value: string) {
 export async function POST(request: Request) {
   try {
     const admin = await requireAdminOwner();
-    const body = await parseJson<GrantBody>(request);
+    const parsed = grantSchema.safeParse(await parseJson<unknown>(request));
 
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.uid || "")) {
+    if (!parsed.success) {
+      throw new ApiError(400, "invalid_request", "Provide a valid user UID and subscription to grant.");
+    }
+    const body = parsed.data;
+
+    if (!body.uid) {
       throw new ApiError(400, "invalid_uid", "Provide a valid user UID to grant a subscription.");
+    }
+
+    // No orphan grants on a typo: the target must be a real user.
+    const { data: targetUser, error: targetError } = await supabaseAdmin().auth.admin.getUserById(body.uid);
+    if (targetError || !targetUser?.user) {
+      throw new ApiError(404, "user_not_found", "No user exists with that UID.");
     }
 
     let planId: string;

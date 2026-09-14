@@ -1,24 +1,31 @@
 import { ApiError, jsonError } from "@/lib/api";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { isOwnerAdmin, requireAdmin } from "@/lib/server/admin-auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
-    const admin = supabaseAdmin();
+    const admin = await requireAdmin();
+    if (!(await checkRateLimit(`admin-referrals:${admin.uid}`, 30, 60_000))) {
+      throw new ApiError(429, "rate_limited", "Too many requests. Please try again later.");
+    }
+    // Customer contact details are owner-only: delegated admins see names
+    // and aggregates, never email addresses.
+    const owner = await isOwnerAdmin(admin.uid);
+    const db = supabaseAdmin();
 
     const [partnersResult, referralsResult, commissionsResult] = await Promise.all([
-      admin
+      db
         .from("referral_partners")
         .select("id, name, email, whatsapp, referral_code, status, commission_rate, notes, created_at, updated_at")
         .order("created_at", { ascending: false }),
-      admin
+      db
         .from("referrals")
         .select("id, partner_id, referred_uid, referral_code, status, first_payment_id, first_order_id, converted_at, created_at")
         .order("created_at", { ascending: false }),
-      admin
+      db
         .from("referral_commissions")
         .select("id, partner_id, referral_id, payment_id, order_id, plan_id, payment_amount, commission_rate, commission_amount, status, paid_at, created_at")
         .order("created_at", { ascending: false }),
@@ -36,10 +43,10 @@ export async function GET(request: Request) {
 
     const [{ data: customers, error: customersError }, { data: payments, error: paymentsError }] = await Promise.all([
       customerUids.length
-        ? admin.from("users").select("uid, display_name, email").in("uid", customerUids)
+        ? db.from("users").select("uid, display_name, email").in("uid", customerUids)
         : Promise.resolve({ data: [], error: null }),
       paymentIds.length
-        ? admin.from("payments").select("id, uid, order_ref, plan_id, amount, status, created_at").in("id", paymentIds)
+        ? db.from("payments").select("id, uid, order_ref, plan_id, amount, status, created_at").in("id", paymentIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -57,8 +64,11 @@ export async function GET(request: Request) {
     const partnerRows = (partnersResult.data ?? []).map((partner) => {
       const partnerReferrals = referrals.filter((referral) => referral.partner_id === partner.id);
       const partnerCommissions = commissions.filter((commission) => commission.partner_id === partner.id);
+      // Partner contact details (email/whatsapp/notes) are owner-only.
+      const { email, whatsapp, notes, ...partnerPublic } = partner;
       return {
-        ...partner,
+        ...partnerPublic,
+        ...(owner ? { email, whatsapp, notes } : { email: "", whatsapp: "", notes: "" }),
         successful_referrals: partnerReferrals.filter((referral) => referral.status === "converted").length,
         total_commission: sum(partnerCommissions.map((commission) => Number(commission.commission_amount))),
         unpaid_commission: sum(partnerCommissions.filter((commission) => commission.status === "unpaid").map((commission) => Number(commission.commission_amount))),
@@ -79,7 +89,7 @@ export async function GET(request: Request) {
         partner_name: partner?.name ?? "Unknown partner",
         referral_code: referral?.referral_code ?? partner?.referral_code ?? "",
         customer_name: customer?.display_name || "Delegate",
-        customer_email: customer?.email || "",
+        customer_email: owner ? customer?.email || "" : "",
         payment_status: payment?.status ?? "successful",
       };
     });
@@ -96,7 +106,7 @@ export async function GET(request: Request) {
         ...referral,
         partner_name: partnerById.get(referral.partner_id)?.name ?? "Unknown partner",
         customer_name: customerByUid.get(referral.referred_uid)?.display_name || "Delegate",
-        customer_email: customerByUid.get(referral.referred_uid)?.email || "",
+        customer_email: owner ? customerByUid.get(referral.referred_uid)?.email || "" : "",
       })),
       commissions: commissionRows,
     });

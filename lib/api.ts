@@ -26,9 +26,22 @@ export function jsonError(error: unknown) {
   );
 }
 
-export async function parseJson<T>(request: Request): Promise<T> {
+export async function parseJson<T>(request: Request, maxBytes = 512_000): Promise<T> {
+  let raw: string;
   try {
-    return (await request.json()) as T;
+    raw = await request.text();
+  } catch {
+    throw new ApiError(400, "invalid_json", "Request body must be valid JSON.");
+  }
+  // Defense-in-depth body cap: field-level zod max()s run after parsing, so
+  // bound raw bytes first. The platform also caps request size; this keeps a
+  // single oversized JSON body from consuming disproportionate memory/CPU
+  // before validation runs.
+  if (raw.length > maxBytes) {
+    throw new ApiError(413, "payload_too_large", "Request body is too large.");
+  }
+  try {
+    return JSON.parse(raw) as T;
   } catch {
     throw new ApiError(400, "invalid_json", "Request body must be valid JSON.");
   }

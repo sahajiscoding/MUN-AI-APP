@@ -10,8 +10,11 @@ export function callNvidiaKimi(input: AICompletionInput) {
 }
 
 /**
- * Quick and thorough modes: the faster model. It runs through the same NVIDIA
- * NIM endpoint as Max, so the whole app depends on a single provider key.
+ * Quick and thorough modes: MiniMax-M3 through NVIDIA NIM.
+ *
+ * MiniMax-M3 has a model-specific chat-completions contract, so its request
+ * body intentionally avoids OpenAI extensions that are not documented for M3
+ * (such as stream_options).
  */
 export function callNvidiaMiniMax(input: AICompletionInput) {
   return callNvidiaModel(input, process.env.NVIDIA_MINIMAX_MODEL || DEFAULT_MINIMAX_MODEL, "nvidia");
@@ -34,6 +37,23 @@ async function callNvidiaModel(
 
   const maxTokens = input.maxTokens ?? 12_000;
   const timeoutMs = maxTokens <= 2_000 ? 75_000 : 240_000;
+  const isMiniMax = model === DEFAULT_MINIMAX_MODEL;
+
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages: input.messages,
+    temperature: input.temperature ?? 0.8,
+    max_tokens: maxTokens,
+    stream: true,
+  };
+
+  // MiniMax-M3 documents temperature and top_p as sampling controls, but
+  // recommends not changing both at once. Keep the request conservative.
+  if (!isMiniMax) {
+    requestBody.top_p = 0.95;
+    requestBody.stream_options = { include_usage: true };
+  }
+
   const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -41,20 +61,45 @@ async function callNvidiaModel(
       Accept: "text/event-stream",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      messages: input.messages,
-      temperature: input.temperature ?? 0.8,
-      top_p: 0.95,
-      max_tokens: maxTokens,
-      stream: true,
-      stream_options: { include_usage: true },
-    }),
+    body: JSON.stringify(requestBody),
     signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {
-    throw new ApiError(502, "nvidia_failed", "The NVIDIA AI provider could not complete the request.");
+    let providerMessage = "Unknown NVIDIA provider error.";
+
+    try {
+      const raw = await response.text();
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as {
+            error?: { message?: string } | string;
+            message?: string;
+          };
+          const error = parsed.error;
+          providerMessage =
+            typeof error === "string"
+              ? error
+              : error?.message || parsed.message || raw;
+        } catch {
+          providerMessage = raw;
+        }
+      }
+    } catch {
+      // Keep the generic fallback if the provider response cannot be read.
+    }
+
+    // Never expose credentials or an excessively large provider response.
+    providerMessage = providerMessage
+      .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+      .replace(/nvapi-[A-Za-z0-9_-]+/gi, "[redacted]")
+      .slice(0, 1000);
+
+    throw new ApiError(
+      502,
+      "nvidia_failed",
+      `NVIDIA ${model} request failed (${response.status}): ${providerMessage}`,
+    );
   }
 
   const stream = new ReadableStream<Uint8Array>({

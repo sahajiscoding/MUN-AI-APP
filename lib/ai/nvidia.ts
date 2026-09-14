@@ -26,6 +26,40 @@ export function callNvidiaDeepSeek(input: AICompletionInput) {
   return callNvidiaModel(input, model, "nvidia");
 }
 
+function redactProviderMessage(message: string) {
+  return message
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+    .replace(/nvapi-[A-Za-z0-9_-]+/gi, "[redacted]")
+    .slice(0, 1000);
+}
+
+async function readProviderError(response: Response) {
+  let providerMessage = "Unknown NVIDIA provider error.";
+
+  try {
+    const raw = await response.text();
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as {
+          error?: { message?: string } | string;
+          message?: string;
+        };
+        const error = parsed.error;
+        providerMessage =
+          typeof error === "string"
+            ? error
+            : error?.message || parsed.message || raw;
+      } catch {
+        providerMessage = raw;
+      }
+    }
+  } catch {
+    // Keep the generic fallback if the provider response cannot be read.
+  }
+
+  return redactProviderMessage(providerMessage);
+}
+
 async function callNvidiaModel(
   input: AICompletionInput,
   model: string,
@@ -63,121 +97,106 @@ async function callNvidiaModel(
     requestBody.top_p = 0.95;
   }
 
-  const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "text/event-stream",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-
-  if (!response.ok) {
-    let providerMessage = "Unknown NVIDIA provider error.";
-
-    try {
-      const raw = await response.text();
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw) as {
-            error?: { message?: string } | string;
-            message?: string;
-          };
-          const error = parsed.error;
-          providerMessage =
-            typeof error === "string"
-              ? error
-              : error?.message || parsed.message || raw;
-        } catch {
-          providerMessage = raw;
-        }
-      }
-    } catch {
-      // Keep the generic fallback if the provider response cannot be read.
-    }
-
-    // Never expose credentials or an excessively large provider response.
-    providerMessage = providerMessage
-      .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
-      .replace(/nvapi-[A-Za-z0-9_-]+/gi, "[redacted]")
-      .slice(0, 1000);
-
-    throw new ApiError(
-      502,
-      "nvidia_failed",
-      `NVIDIA ${model} request failed (${response.status}): ${providerMessage}`,
-    );
-  }
-
+  // Important: do not await NVIDIA here. Returning the ReadableStream first lets
+  // the Next.js route send SSE headers immediately. The upstream NVIDIA request
+  // starts when the stream is consumed, so the UI no longer sits on "Connecting"
+  // while waiting for NVIDIA response headers.
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const reader = response.body?.getReader();
-      if (!reader) {
-        controller.close();
-        return;
-      }
-
-      const decoder = new TextDecoder();
       const encoder = new TextEncoder();
-      let buffer = "";
       let closed = false;
-      let finishReason: string | undefined;
 
       const emit = (payload: Record<string, unknown>) => {
         if (!closed) controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
 
-      const consumeLine = (line: string) => {
-        if (!line.startsWith("data: ")) return;
-        const data = line.slice(6).trim();
-        if (!data || data === "[DONE]") return;
+      try {
+        const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            Accept: "text/event-stream",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+
+        if (!response.ok) {
+          const providerMessage = await readProviderError(response);
+          emit({
+            error: `NVIDIA ${model} request failed (${response.status}): ${providerMessage}`,
+          });
+          emit({ finishReason: "error" });
+          emit({ done: true });
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          emit({ error: "NVIDIA returned an empty response stream." });
+          emit({ finishReason: "error" });
+          emit({ done: true });
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finishReason: string | undefined;
+
+        const consumeLine = (line: string) => {
+          if (!line.startsWith("data: ")) return;
+          const data = line.slice(6).trim();
+          if (!data || data === "[DONE]") return;
+
+          try {
+            const parsed = JSON.parse(data) as {
+              choices?: Array<{
+                delta?: { content?: string };
+                finish_reason?: string | null;
+              }>;
+              usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+            };
+            const choice = parsed.choices?.[0];
+            const content = choice?.delta?.content;
+            if (content) emit({ content });
+
+            const usage = normalizeAIUsage(parsed.usage);
+            if (usage) emit({ usage });
+
+            if (choice?.finish_reason) {
+              finishReason = choice.finish_reason;
+              emit({ finishReason });
+            }
+          } catch {
+            // Ignore malformed provider chunks while preserving the rest of the stream.
+          }
+        };
 
         try {
-          const parsed = JSON.parse(data) as {
-            choices?: Array<{
-              delta?: { content?: string };
-              finish_reason?: string | null;
-            }>;
-            usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-          };
-          const choice = parsed.choices?.[0];
-          const content = choice?.delta?.content;
-          if (content) emit({ content });
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const usage = normalizeAIUsage(parsed.usage);
-          if (usage) emit({ usage });
-
-          if (choice?.finish_reason) {
-            finishReason = choice.finish_reason;
-            emit({ finishReason });
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            lines.forEach(consumeLine);
           }
-        } catch {
-          // Ignore malformed provider chunks while preserving the rest of the stream.
+
+          buffer += decoder.decode();
+          if (buffer) consumeLine(buffer);
+          emit({ finishReason: finishReason || "stop" });
+          emit({ done: true });
+        } finally {
+          reader.releaseLock();
         }
-      };
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          lines.forEach(consumeLine);
-        }
-
-        buffer += decoder.decode();
-        if (buffer) consumeLine(buffer);
-        emit({ finishReason: finishReason || "stop" });
       } catch (error) {
-        if (!closed) controller.error(error);
-        closed = true;
-        return;
+        const message = error instanceof Error ? error.message : "NVIDIA request failed.";
+        emit({ error: redactProviderMessage(message) });
+        emit({ finishReason: "error" });
+        emit({ done: true });
       } finally {
-        reader.releaseLock();
         if (!closed) {
           closed = true;
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));

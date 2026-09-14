@@ -194,6 +194,29 @@ function newsResponse(body: unknown, status = 200) {
   });
 }
 
+// Upstream feed bodies are attacker-influenceable in size (compromised feed,
+// compression bomb over the wire inflating in memory). Cap what we buffer.
+const MAX_FEED_BYTES = 2_000_000;
+
+async function readCappedText(response: Response): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      if (text.length > MAX_FEED_BYTES) throw new Error("Feed body exceeds size cap.");
+    }
+    text += decoder.decode();
+    return text;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function GET(request: Request) {
   const ip = getClientIp(request);
   if (!(await checkRateLimit(`news:${ip}`, 30, 60_000))) {
@@ -223,7 +246,7 @@ export async function GET(request: Request) {
           signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) throw new Error(`Feed ${cat} returned ${res.status}`);
-        const xml = await res.text();
+        const xml = await readCappedText(res);
         return parseRSS(xml, cat);
       }),
     );

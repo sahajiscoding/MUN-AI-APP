@@ -2,6 +2,7 @@ import { ApiError, jsonError } from "@/lib/api";
 import {
   adminSessionForUid,
   setAdminSession,
+  bumpAdminSessionVersion,
   clearAdminSession,
   getAdminSession,
 } from "@/lib/server/admin-auth";
@@ -55,6 +56,9 @@ export async function DELETE() {
       actorEmail: session.email,
       action: "admin_logout",
     });
+    // Revoke server-side, not just client-side: any copied cookie for this
+    // account stops working immediately (all devices are signed out together).
+    await bumpAdminSessionVersion(session.uid);
   }
   await clearAdminSession();
   return Response.json({ ok: true });

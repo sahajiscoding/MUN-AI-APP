@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getTrustedCourse, getTrustedQuestions, normalizeLessonIndexes, isSequentiallyComplete } from "@/lib/server/course-progress";
 
@@ -22,6 +23,17 @@ export async function POST(request: Request) {
     const course = getTrustedCourse(course_slug);
     const questions = getTrustedQuestions(course_slug);
     if (!course || !questions[lesson_index]) throw new ApiError(400, "invalid_course", "That course does not exist.");
+
+    // This endpoint is a correctness oracle (correct vs 422 per guess), so
+    // guesses are budgeted: a global per-user bucket plus a tight per-lesson
+    // bucket. Legitimate learners answer each checkpoint once; systematic
+    // answer-harvesting hits 429 quickly.
+    if (
+      !(await checkRateLimit(`checkpoint:${user.uid}`, 60, 60_000)) ||
+      !(await checkRateLimit(`checkpoint:${user.uid}:${course_slug}:${lesson_index}`, 8, 10 * 60_000))
+    ) {
+      throw new ApiError(429, "rate_limited", "Too many checkpoint attempts. Wait a few minutes and try again.");
+    }
 
     const { data: current, error: readError } = await supabaseAdmin()
       .from("course_progress")

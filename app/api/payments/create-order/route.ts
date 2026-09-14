@@ -34,6 +34,57 @@ const schema =
         .min(1),
   });
 
+// Hosts UroPay is expected to serve checkout pages from. The provider's
+// openUrl is navigated to blindly by the client, so an unexpected host
+// (compromised/tampered provider response) must never reach the browser.
+const ALLOWED_CHECKOUT_HOSTS = (
+  process.env.UROPAY_ALLOWED_HOSTS ||
+  "api.uropai.in,uropai.in,www.uropai.in,checkout.uropai.in"
+)
+  .split(",")
+  .map((host) => host.trim().toLowerCase())
+  .filter(Boolean);
+
+function assertSafeCheckoutUrl(value: unknown): string {
+  if (typeof value !== "string" || !value) {
+    throw new ApiError(
+      502,
+      "payment_provider_error",
+      "Could not create the payment with UroPay. Please try again."
+    );
+  }
+
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    throw new ApiError(
+      502,
+      "payment_provider_error",
+      "Could not create the payment with UroPay. Please try again."
+    );
+  }
+
+  if (
+    url.protocol !== "https:" ||
+    !ALLOWED_CHECKOUT_HOSTS.includes(url.hostname.toLowerCase())
+  ) {
+    console.error(
+      "UroPay returned an unexpected checkout host:",
+      url.hostname
+    );
+
+    throw new ApiError(
+      502,
+      "payment_provider_error",
+      "Could not create the payment with UroPay. Please try again."
+    );
+  }
+
+  return url.href;
+}
+
 export async function POST(
   request: Request
 ) {
@@ -199,6 +250,13 @@ export async function POST(
           returnUrl,
           WEBHOOK_URL
         );
+
+      // Validate before persisting or returning: the client navigates to
+      // this URL without its own allowlist.
+      uropayOrder = {
+        orderId: uropayOrder.orderId,
+        openUrl: assertSafeCheckoutUrl(uropayOrder.openUrl),
+      };
     } catch (error) {
       console.error(
         "UroPay order creation failed:",
@@ -245,6 +303,10 @@ export async function POST(
       .eq(
         "id",
         payment.id
+      )
+      .eq(
+        "uid",
+        user.uid
       )
       .eq(
         "status",

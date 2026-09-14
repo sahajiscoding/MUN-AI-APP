@@ -67,6 +67,8 @@ export async function adminSessionForUid(uid: string): Promise<AdminSession> {
     );
   }
 
+  await assertAdminMfaEnrolled(uid);
+
   return {
     uid,
     email: adminEmail,
@@ -196,6 +198,63 @@ export async function requireAdminOwner(): Promise<AdminSession> {
 export async function clearAdminSession() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+}
+
+/**
+ * Advance an admin's session version, instantly invalidating every issued
+ * admin cookie for that account (each request re-checks the live version).
+ * Used on logout so a stolen cookie does not survive it, and available for
+ * credential-change revocation. Single-session side effect: all of the
+ * admin's devices are signed out of the panel together.
+ */
+export async function bumpAdminSessionVersion(uid: string): Promise<void> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("admin_users")
+    .select("session_version")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (error || !data) return;
+  await admin
+    .from("admin_users")
+    .update({ session_version: Number(data.session_version ?? 1) + 1 })
+    .eq("uid", uid);
+}
+
+/**
+ * Administrator accounts are the highest-privilege sessions in the app, so a
+ * password (or OAuth) alone is not enough: the account must have at least one
+ * verified MFA factor enrolled. Enrollment/verification happens in the admin
+ * sign-in UI before the session is promoted.
+ *
+ * Emergency lever: set ADMIN_REQUIRE_MFA=false to bypass (logs loudly).
+ * Default is enforced.
+ */
+export async function assertAdminMfaEnrolled(uid: string): Promise<void> {
+  if (process.env.ADMIN_REQUIRE_MFA === "false") {
+    console.error(
+      "ADMIN_REQUIRE_MFA is disabled: administrator sessions are single-factor. Re-enable immediately."
+    );
+    return;
+  }
+
+  const { data, error } = await supabaseAdmin().auth.admin.mfa.listFactors({ userId: uid });
+  if (error) {
+    throw new ApiError(
+      503,
+      "admin_not_configured",
+      "Administrator access is not configured."
+    );
+  }
+
+  const hasVerifiedFactor = (data?.factors ?? []).some((factor) => factor.status === "verified");
+  if (!hasVerifiedFactor) {
+    throw new ApiError(
+      403,
+      "admin_mfa_required",
+      "Protect this administrator account with two-factor authentication, then sign in again."
+    );
+  }
 }
 
 export async function isUserAdmin(uid: string): Promise<boolean> {

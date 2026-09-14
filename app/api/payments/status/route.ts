@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { jsonError, ApiError } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEntitlement, grantEntitlement } from "@/lib/server/entitlements";
 import { canonicalPlanId } from "@/lib/plans";
@@ -48,6 +49,17 @@ function normalizeStatus(value: unknown): PaymentStatus | null {
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
+
+    // Each poll can hit UroPay's authoritative endpoint plus DB repair
+    // writes. Without a throttle one authenticated user can burn upstream
+    // quota and write load at will; the checkout page polls this route.
+    if (!(await checkRateLimit(`payment-status:${user.uid}`, 10, 5 * 60_000))) {
+      throw new ApiError(
+        429,
+        "rate_limited",
+        "Too many status checks. Please wait a few minutes and try again."
+      );
+    }
 
     const url = new URL(request.url);
 
@@ -219,7 +231,7 @@ export async function GET(request: Request) {
       if (!entitlementMatchesPayment) {
         try {
           entitlement = await grantEntitlement({
-            uid: payment.uid,
+            uid: user.uid,
             planId: canonicalPlanId(payment.plan_id) ?? payment.plan_id,
             source: "uropay-recovery",
             paymentId: payment.id,
@@ -261,7 +273,7 @@ export async function GET(request: Request) {
       // idempotent per payment, so a later webhook delivery cannot double-pay.
       try {
         await processReferralCommission({
-          uid: payment.uid,
+          uid: user.uid,
           paymentId: payment.id,
           orderId: payment.uropay_order_id ?? payment.order_ref,
           planId: canonicalPlanId(payment.plan_id) ?? payment.plan_id,

@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
@@ -219,52 +219,52 @@ export async function processReferralCommission(input: {
 
 const DASHBOARD_TOKEN_PATTERN = /^[a-f0-9]{48}$/;
 
+/** Bearer dashboard links live this long from issuance/rotation. */
+const DASHBOARD_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+
 /** Random, unguessable token that opens only this partner's dashboard. */
 export function createPartnerDashboardToken() {
   return randomBytes(24).toString("hex");
 }
 
 /**
- * Make sure a partner has a dashboard token, creating one if missing.
- * Safe to call concurrently: the unique index resolves races and the loser
- * simply returns the token the winner wrote.
+ * One-way hash of a dashboard token for storage. Tokens are 192-bit CSPRNG
+ * output, so plain SHA-256 is sufficient — there is nothing to dictionary
+ * attack. The database must never hold a usable bearer token: a DB/backup
+ * read must not impersonate every partner.
  */
-export async function ensurePartnerDashboardToken(partnerId: string): Promise<string | null> {
+export function hashDashboardToken(rawToken: string) {
+  return createHash("sha256").update(rawToken.trim().toLowerCase()).digest("hex");
+}
+
+export function dashboardTokenExpiryDate(from: Date = new Date()) {
+  return new Date(from.getTime() + DASHBOARD_TOKEN_TTL_MS).toISOString();
+}
+
+/**
+ * Mint a fresh dashboard token for a partner, invalidating any previous
+ * link. Always rotates (the stored value is a hash, so a previous raw token
+ * is unrecoverable by design). Returns the raw token exactly once — the
+ * caller must deliver it to the partner, it can never be read back.
+ */
+export async function mintPartnerDashboardToken(partnerId: string): Promise<string | null> {
   const admin = supabaseAdmin();
+  const rawToken = createPartnerDashboardToken();
 
-  const { data: existing, error: existingError } = await admin
+  const { error } = await admin
     .from("referral_partners")
-    .select("dashboard_token")
-    .eq("id", partnerId)
-    .maybeSingle();
-  if (existingError) {
-    console.error("Dashboard token lookup failed:", existingError.message);
+    .update({
+      dashboard_token: hashDashboardToken(rawToken),
+      dashboard_token_expires_at: dashboardTokenExpiryDate(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", partnerId);
+
+  if (error) {
+    console.error("Dashboard token minting failed:", error.message);
     return null;
   }
-  if (existing?.dashboard_token) return existing.dashboard_token;
-
-  const token = createPartnerDashboardToken();
-  const { data: updated, error: updateError } = await admin
-    .from("referral_partners")
-    .update({ dashboard_token: token, updated_at: new Date().toISOString() })
-    .eq("id", partnerId)
-    .is("dashboard_token", null)
-    .select("dashboard_token")
-    .maybeSingle();
-  if (updateError) {
-    if (updateError.code === "23505") {
-      // Another request created the token first; read it back.
-      const { data: winner } = await admin
-        .from("referral_partners")
-        .select("dashboard_token")
-        .eq("id", partnerId)
-        .maybeSingle();
-      return winner?.dashboard_token ?? null;
-    }
-    console.error("Dashboard token creation failed:", updateError.message);
-    return null;
-  }
-  return updated?.dashboard_token ?? token;
+  return rawToken;
 }
 
 /**
@@ -341,14 +341,21 @@ export async function getPartnerDashboard(token: string): Promise<PartnerDashboa
   const admin = supabaseAdmin();
   const { data: partner, error: partnerError } = await admin
     .from("referral_partners")
-    .select("id, name, referral_code, status, commission_rate, click_count, last_clicked_at")
-    .eq("dashboard_token", normalized)
+    .select("id, name, referral_code, status, commission_rate, click_count, last_clicked_at, dashboard_token_expires_at")
+    .eq("dashboard_token", hashDashboardToken(normalized))
     .maybeSingle();
   if (partnerError) {
     console.error("Partner dashboard lookup failed:", partnerError.message);
     return null;
   }
   if (!partner) return null;
+  // A dashboard link is a bearer credential: suspended/pending partners and
+  // expired links open nothing. Previously the page merely bannered while
+  // still rendering the ledger.
+  if (partner.status !== "active") return null;
+  if (partner.dashboard_token_expires_at && new Date(partner.dashboard_token_expires_at).getTime() <= Date.now()) {
+    return null;
+  }
 
   const [referralsResult, commissionsResult] = await Promise.all([
     admin

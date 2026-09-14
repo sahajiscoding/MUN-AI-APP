@@ -142,7 +142,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                   <input
                     className="input-field mt-2"
                     value={name}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) => { setName(event.target.value); }}
                     autoComplete="name"
                     required
                   />
@@ -154,7 +154,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                 <input
                   className="input-field mt-2"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => { setEmail(event.target.value); }}
                   type="email"
                   autoComplete="email"
                   required
@@ -167,7 +167,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                   <input
                     className="input-field pr-11"
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(event) => { setPassword(event.target.value); }}
                     type="password"
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     minLength={6}

@@ -83,8 +83,8 @@ export default function DiscoverPage() {
         setNews(data.news || []);
         setNewsError(data.message || "");
       })
-      .catch((error) => setNewsError(error instanceof Error ? error.message : "News is temporarily unavailable."))
-      .finally(() => setLoading(false));
+      .catch((error) => { setNewsError(error instanceof Error ? error.message : "News is temporarily unavailable."); })
+      .finally(() => { setLoading(false); });
   }
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function DiscoverPage() {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setShareStatus("We could not share this article. Copy its URL from the address bar.");
     }
-    window.setTimeout(() => setShareStatus(""), 3000);
+    window.setTimeout(() => { setShareStatus(""); }, 3000);
   }
 
   function getRelativeTime(dateStr: string): string {
@@ -190,7 +190,7 @@ export default function DiscoverPage() {
               {TABS.map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => { setActiveTab(tab.key); }}
                   className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
                     activeTab === tab.key
                       ? "bg-[var(--ink)] text-[var(--paper)]"
@@ -210,7 +210,7 @@ export default function DiscoverPage() {
                   type="text"
                   placeholder="Search the record"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); }}
                   className="pl-9 pr-4 py-1.5 w-52 rounded-lg bg-black/5 border border-[var(--line)] text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--patina)]/50"
                 />
               </div>
@@ -254,7 +254,7 @@ export default function DiscoverPage() {
                   {newsError || (activeTab === "saved" ? "No saved articles yet. Bookmark articles to read later." : "No articles found.")}
                 </p>
                 {newsError ? (
-                  <button type="button" onClick={() => fetchNews(activeTab === "all" || activeTab === "saved" ? undefined : activeTab)} className="button-secondary mt-5 inline-flex items-center gap-2 px-4 text-sm font-semibold">
+                  <button type="button" onClick={() => { fetchNews(activeTab === "all" || activeTab === "saved" ? undefined : activeTab); }} className="button-secondary mt-5 inline-flex items-center gap-2 px-4 text-sm font-semibold">
                     <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     Try again
                   </button>
@@ -267,7 +267,7 @@ export default function DiscoverPage() {
                   <FeaturedCard
                     item={featured}
                     isSaved={saved.has(featured.link)}
-                    onToggleSave={() => toggleSave(featured.link)}
+                    onToggleSave={() => { toggleSave(featured.link); }}
                     onShare={() => void shareItem(featured)}
                     getRelativeTime={getRelativeTime}
                   />
@@ -280,7 +280,7 @@ export default function DiscoverPage() {
                       key={`${item.category}-${i}`}
                       item={item}
                       isSaved={saved.has(item.link)}
-                      onToggleSave={() => toggleSave(item.link)}
+                      onToggleSave={() => { toggleSave(item.link); }}
                       onShare={() => void shareItem(item)}
                       getRelativeTime={getRelativeTime}
                     />

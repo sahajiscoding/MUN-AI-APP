@@ -74,7 +74,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     applyNow();
     media.addEventListener("change", applyNow);
-    return () => media.removeEventListener("change", applyNow);
+    return () => { media.removeEventListener("change", applyNow); };
   }, [theme]);
 
   // Resolve what the user actually sees right now: explicit light/dark, or the

@@ -125,12 +125,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   function getChatTitle(chat: ChatHistoryItem) {
     const summary = chat.input_summary;
-    const agenda = summary?.agenda?.replace(/\s+/g, " ").trim();
+    const agenda = summary.agenda?.replace(/\s+/g, " ").trim();
     if (agenda) {
       const title = agenda.split("Tool focus:")[0]?.trim();
       if (title) return title.length > 56 ? `${title.slice(0, 56)}…` : title;
     }
-    if (summary?.committee && summary?.country) {
+    if (summary.committee && summary?.country) {
       return `${summary.committee} / ${summary.country}`;
     }
     return chat.tool.replace(/-/g, " ");
@@ -155,7 +155,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ThemeToggle />
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(true)}
+              onClick={() => { setMobileMenuOpen(true); }}
               className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5"
               aria-label="Open workspace menu"
               aria-expanded={mobileMenuOpen}
@@ -177,16 +177,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="absolute inset-0 bg-black/45"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={() => { setMobileMenuOpen(false); }}
               aria-label="Close workspace menu"
             />
             <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,22rem)] flex-col overflow-hidden border-r border-[var(--line)] bg-[var(--paper-strong)] shadow-2xl">
               <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
                 <span className="text-sm font-bold">Workspace menu</span>
-                <button type="button" onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5" aria-label="Close workspace menu"><X className="h-5 w-5" aria-hidden="true" /></button>
+                <button type="button" onClick={() => { setMobileMenuOpen(false); }} className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5" aria-label="Close workspace menu"><X className="h-5 w-5" aria-hidden="true" /></button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <Link href="/app/research" onClick={() => setMobileMenuOpen(false)} className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5"><Plus className="h-4 w-4" aria-hidden="true" /> New chat</Link>
+                <Link href="/app/research" onClick={() => { setMobileMenuOpen(false); }} className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5"><Plus className="h-4 w-4" aria-hidden="true" /> New chat</Link>
                 <SidebarNav collapsed={false} />
                 <div className="border-t border-[var(--line)] p-3">
                   <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Recent chats</p>

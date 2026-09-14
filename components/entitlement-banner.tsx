@@ -55,7 +55,7 @@ export function EntitlementBanner() {
       }
     }
 
-    load();
+    void load();
 
     return () => {
       cancelled = true;
@@ -84,7 +84,7 @@ export function EntitlementBanner() {
             {active ? "Paid workspace active" : "Paid tools locked"}
           </p>
           <p className="text-sm text-[var(--muted)]">
-            {active && data?.expiresAt
+            {active && data.expiresAt
               ? `Access expires ${new Date(data.expiresAt).toLocaleDateString("en-IN")}.`
               : "Unlock AI research, speeches, POIs, and resolution drafting for this account."}
           </p>

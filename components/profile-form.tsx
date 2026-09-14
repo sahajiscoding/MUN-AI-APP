@@ -105,21 +105,21 @@ export function ProfileForm() {
           <input
             className="input-field mt-2"
             value={profile.school}
-            onChange={(event) => updateField("school", event.target.value)}
+            onChange={(event) => { updateField("school", event.target.value); }}
           />
         </Field>
         <Field label="Grade">
           <input
             className="input-field mt-2"
             value={profile.grade}
-            onChange={(event) => updateField("grade", event.target.value)}
+            onChange={(event) => { updateField("grade", event.target.value); }}
           />
         </Field>
         <Field label="Experience">
           <select
             className="input-field mt-2"
             value={profile.experienceLevel}
-            onChange={(event) => updateField("experienceLevel", event.target.value)}
+            onChange={(event) => { updateField("experienceLevel", event.target.value); }}
           >
             <option value="first-timer">First timer</option>
             <option value="beginner">Beginner</option>
@@ -131,7 +131,7 @@ export function ProfileForm() {
           <input
             className="input-field mt-2"
             value={profile.country}
-            onChange={(event) => updateField("country", event.target.value)}
+            onChange={(event) => { updateField("country", event.target.value); }}
             placeholder="India, France, Brazil..."
           />
         </Field>
@@ -139,7 +139,7 @@ export function ProfileForm() {
           <input
             className="input-field mt-2"
             value={profile.committee}
-            onChange={(event) => updateField("committee", event.target.value)}
+            onChange={(event) => { updateField("committee", event.target.value); }}
             placeholder="UNHRC, UNSC, WHO..."
           />
         </Field>
@@ -147,7 +147,7 @@ export function ProfileForm() {
           <input
             className="input-field mt-2"
             value={profile.conferenceDate}
-            onChange={(event) => updateField("conferenceDate", event.target.value)}
+            onChange={(event) => { updateField("conferenceDate", event.target.value); }}
             type="date"
           />
         </Field>
@@ -155,7 +155,7 @@ export function ProfileForm() {
           <textarea
             className="input-field mt-2 min-h-28 resize-y md:col-span-2"
             value={profile.agenda}
-            onChange={(event) => updateField("agenda", event.target.value)}
+            onChange={(event) => { updateField("agenda", event.target.value); }}
             placeholder="Agenda topic or crisis arc"
           />
         </Field>
@@ -163,7 +163,7 @@ export function ProfileForm() {
           <textarea
             className="input-field mt-2 min-h-28 resize-y md:col-span-2"
             value={profile.goals}
-            onChange={(event) => updateField("goals", event.target.value)}
+            onChange={(event) => { updateField("goals", event.target.value); }}
             placeholder="Awards, research depth, confidence in speeches..."
           />
         </Field>

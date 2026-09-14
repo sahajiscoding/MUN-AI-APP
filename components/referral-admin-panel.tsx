@@ -159,7 +159,7 @@ export function ReferralAdminPanel() {
     try {
       await navigator.clipboard.writeText(partner.referral_link);
       setCopiedPartnerId(partner.id);
-      window.setTimeout(() => setCopiedPartnerId((current) => current === partner.id ? null : current), 1800);
+      window.setTimeout(() => { setCopiedPartnerId((current) => current === partner.id ? null : current); }, 1800);
     } catch {
       setError("Could not copy the referral link. Please open the link and copy it manually.");
     }
@@ -179,7 +179,7 @@ export function ReferralAdminPanel() {
       await navigator.clipboard.writeText(body.link);
       setCopiedDashboardId(partner.id);
       setMessage("Partner dashboard link copied. Send it privately — never post it publicly.");
-      window.setTimeout(() => setCopiedDashboardId((current) => current === partner.id ? null : current), 1800);
+      window.setTimeout(() => { setCopiedDashboardId((current) => current === partner.id ? null : current); }, 1800);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not copy the dashboard link.");
     } finally {
@@ -275,15 +275,15 @@ export function ReferralAdminPanel() {
                 <h2 className="display-type text-2xl">Add partner</h2>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Create a partner only after reviewing the application. Active partners receive valid referral URLs.</p>
                 <div className="mt-5 grid gap-3">
-                  <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
-                  <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
-                  <Field label="WhatsApp" value={form.whatsapp} onChange={(value) => setForm({ ...form, whatsapp: value })} />
-                  <Field label="Referral code" value={form.referralCode} onChange={(value) => setForm({ ...form, referralCode: value.toUpperCase() })} placeholder="MUNRAHUL01" required />
+                  <Field label="Name" value={form.name} onChange={(value) => { setForm({ ...form, name: value }); }} required />
+                  <Field label="Email" type="email" value={form.email} onChange={(value) => { setForm({ ...form, email: value }); }} required />
+                  <Field label="WhatsApp" value={form.whatsapp} onChange={(value) => { setForm({ ...form, whatsapp: value }); }} />
+                  <Field label="Referral code" value={form.referralCode} onChange={(value) => { setForm({ ...form, referralCode: value.toUpperCase() }); }} placeholder="MUNRAHUL01" required />
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="text-sm font-semibold">Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as typeof form.status })} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal"><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
-                    <Field label="Commission rate %" type="number" value={form.commissionRate} onChange={(value) => setForm({ ...form, commissionRate: value })} min="0" max="100" step="0.01" required />
+                    <label className="text-sm font-semibold">Status<select value={form.status} onChange={(event) => { setForm({ ...form, status: event.target.value as typeof form.status }); }} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal"><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
+                    <Field label="Commission rate %" type="number" value={form.commissionRate} onChange={(value) => { setForm({ ...form, commissionRate: value }); }} min="0" max="100" step="0.01" required />
                   </div>
-                  <label className="text-sm font-semibold">Notes<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows={3} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal" /></label>
+                  <label className="text-sm font-semibold">Notes<textarea value={form.notes} onChange={(event) => { setForm({ ...form, notes: event.target.value }); }} rows={3} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal" /></label>
                   <button type="submit" disabled={saving} className="button-primary mt-2 px-4 py-2 text-sm font-semibold">{saving ? "Creating…" : "Create partner"}</button>
                 </div>
               </form>
@@ -342,4 +342,4 @@ export function ReferralAdminPanel() {
 }
 
 function Summary({ label, value }: { label: string; value: string }) { return <div className="surface rounded-panel p-4"><p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">{label}</p><p className="display-type mt-2 text-2xl">{value}</p></div>; }
-function Field({ label, value, onChange, type = "text", placeholder, min, max, step, required }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; min?: string; max?: string; step?: string; required?: boolean }) { return <label className="text-sm font-semibold">{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} min={min} max={max} step={step} required={required} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal" /></label>; }
+function Field({ label, value, onChange, type = "text", placeholder, min, max, step, required }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; min?: string; max?: string; step?: string; required?: boolean }) { return <label className="text-sm font-semibold">{label}<input type={type} value={value} onChange={(event) => { onChange(event.target.value); }} placeholder={placeholder} min={min} max={max} step={step} required={required} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal" /></label>; }

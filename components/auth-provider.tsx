@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
-        syncUserRecord(session.user);
+        void syncUserRecord(session.user);
       }
     });
 

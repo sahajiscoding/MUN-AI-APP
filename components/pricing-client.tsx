@@ -70,7 +70,7 @@ export function PricingClient() {
       }
     }
 
-    loadEntitlement();
+    void loadEntitlement();
 
     return () => {
       cancelled = true;
@@ -83,8 +83,8 @@ export function PricingClient() {
   }, []);
 
   const hasActiveAccess = entitlement?.status === "active";
-  const hasAdminAccess = hasActiveAccess && entitlement?.planId === "admin";
-  const currentPlan = hasActiveAccess ? getPlan(entitlement?.planId) : undefined;
+  const hasAdminAccess = hasActiveAccess && entitlement.planId === "admin";
+  const currentPlan = hasActiveAccess ? getPlan(entitlement.planId) : undefined;
 
   async function applyReferralCodeValue(code: string) {
     if (!user) {
@@ -185,7 +185,7 @@ export function PricingClient() {
               <p className="text-sm text-[var(--muted)]">
                 {hasAdminAccess
                   ? "All paid tools are included for this account."
-                  : entitlement?.expiresAt
+                  : entitlement.expiresAt
                     ? `Expires ${new Date(entitlement.expiresAt).toLocaleDateString("en-IN")}.`
                     : "Your paid access is ready to use."}
               </p>

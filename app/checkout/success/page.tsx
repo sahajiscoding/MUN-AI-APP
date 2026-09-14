@@ -321,7 +321,7 @@ export default function CheckoutSuccessPage() {
             type="button"
             className="button-primary mt-7 inline-flex items-center justify-center gap-2 px-5 font-semibold"
             onClick={() =>
-              router.refresh()
+              { router.refresh(); }
             }
           >
             <RefreshCw

@@ -48,29 +48,29 @@ export function PartnerApplyForm() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="label-text">Full name</span>
-          <input className="input-field mt-2" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required />
+          <input className="input-field mt-2" value={name} onChange={(event) => { setName(event.target.value); }} autoComplete="name" required />
         </label>
         <label className="block">
           <span className="label-text">Email</span>
-          <input className="input-field mt-2" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+          <input className="input-field mt-2" type="email" value={email} onChange={(event) => { setEmail(event.target.value); }} autoComplete="email" required />
         </label>
       </div>
 
       <label className="mt-4 block">
         <span className="label-text">WhatsApp number <span className="font-normal normal-case text-[var(--muted)]">(optional, for faster replies)</span></span>
-        <input className="input-field mt-2" value={whatsapp} onChange={(event) => setWhatsapp(event.target.value)} autoComplete="tel" maxLength={40} />
+        <input className="input-field mt-2" value={whatsapp} onChange={(event) => { setWhatsapp(event.target.value); }} autoComplete="tel" maxLength={40} />
       </label>
 
       <label className="mt-4 block">
         <span className="label-text">Where will you share referrals?</span>
-        <textarea className="input-field mt-2 min-h-24" value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} placeholder="e.g. MUN club at my school, conference WhatsApp groups, debate pages" />
+        <textarea className="input-field mt-2 min-h-24" value={note} onChange={(event) => { setNote(event.target.value); }} maxLength={2000} placeholder="e.g. MUN club at my school, conference WhatsApp groups, debate pages" />
       </label>
 
       {/* Honeypot — hidden from real users */}
       <input
         type="text"
         value={website}
-        onChange={(event) => setWebsite(event.target.value)}
+        onChange={(event) => { setWebsite(event.target.value); }}
         className="hidden"
         tabIndex={-1}
         autoComplete="off"

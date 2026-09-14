@@ -137,7 +137,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
       { rootMargin: "0px 0px -12% 0px" }
     );
     observer.observe(lessonEndRef.current);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); };
   }, [activeLessonIndex]);
 
   async function submitCheckpoint() {
@@ -380,7 +380,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                     {isCompleted ? (
                       <button
                         type="button"
-                        onClick={() => setReviewLessonIndex(isReviewing ? null : index)}
+                        onClick={() => { setReviewLessonIndex(isReviewing ? null : index); }}
                         className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[var(--patina)] transition hover:text-[var(--ink)]"
                       >
                         {isReviewing ? "Close" : "Review"}
@@ -527,7 +527,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                       <button
                         key={option}
                         type="button"
-                        onClick={() => chooseFinalAnswer(optionIndex)}
+                        onClick={() => { chooseFinalAnswer(optionIndex); }}
                         className={`min-h-20 rounded-xl border-2 px-5 py-4 text-left text-sm font-bold transition active:scale-[0.98] sm:text-base ${
                           selected
                             ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] shadow-lg"
@@ -589,7 +589,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                   Student name on certificate
                   <input
                     value={certificateName}
-                    onChange={(event) => setCertificateName(event.target.value)}
+                    onChange={(event) => { setCertificateName(event.target.value); }}
                     placeholder="Use your account name"
                     maxLength={80}
                     className="min-h-10 rounded-lg border border-[var(--line)] bg-white/70 px-3 text-sm font-normal outline-none transition focus:border-[var(--patina)] focus:ring-2 focus:ring-[var(--patina)]/20"
@@ -609,7 +609,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                 <span className="mr-1 text-xs font-bold text-[var(--muted)]">Share completion:</span>
                 <button
                   type="button"
-                  onClick={() => shareCompletion("linkedin")}
+                  onClick={() => { shareCompletion("linkedin"); }}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#0a66c2]/35 bg-[#0a66c2]/10 px-3 py-2 text-xs font-bold text-[#0a66c2] transition hover:bg-[#0a66c2]/20 active:scale-[0.98]"
                   aria-label="Share course completion on LinkedIn"
                 >
@@ -617,7 +617,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                 </button>
                 <button
                   type="button"
-                  onClick={() => shareCompletion("twitter")}
+                  onClick={() => { shareCompletion("twitter"); }}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-black/20 bg-black/5 px-3 py-2 text-xs font-bold text-[var(--ink)] transition hover:bg-black/10 active:scale-[0.98]"
                   aria-label="Share course completion on Twitter"
                 >

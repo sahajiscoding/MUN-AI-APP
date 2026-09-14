@@ -553,7 +553,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  handleSubmit(e as any);
+                  void handleSubmit(e as any);
                 }
               }}
             />

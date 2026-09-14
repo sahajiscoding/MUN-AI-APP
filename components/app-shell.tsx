@@ -130,7 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       const title = agenda.split("Tool focus:")[0]?.trim();
       if (title) return title.length > 56 ? `${title.slice(0, 56)}…` : title;
     }
-    if (summary.committee && summary?.country) {
+    if (summary.committee && summary.country) {
       return `${summary.committee} / ${summary.country}`;
     }
     return chat.tool.replace(/-/g, " ");
@@ -245,7 +245,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {!collapsed && (
                 <SidebarToggle
                   collapsed={collapsed}
-                  onToggle={() => setCollapsed((value) => !value)}
+                  onToggle={() => { setCollapsed((value) => !value); }}
                 />
               )}
             </div>
@@ -257,7 +257,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {collapsed ? (
                 <SidebarToggle
                   collapsed={collapsed}
-                  onToggle={() => setCollapsed((value) => !value)}
+                  onToggle={() => { setCollapsed((value) => !value); }}
                 />
               ) : null}
             </div>

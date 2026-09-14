@@ -25,24 +25,34 @@ export async function POST(request: Request) {
     // escalate with.
     const user = await requireUser(request);
 
-    let session;
     try {
-      session = await adminSessionForUid(user.uid);
+      const session = await adminSessionForUid(user.uid);
+
+      await setAdminSession(session);
+      await recordAdminAction({
+        actorUid: session.uid,
+        actorEmail: session.email,
+        action: "admin_login",
+      });
+
+      return Response.json({ ok: true, admin: { email: session.email } });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        throw new ApiError(403, "admin_unauthorized", "This account is not approved for administrator access.");
+      // Keep the MFA-specific error code intact. The admin login page uses
+      // this code to show the correct MFA setup/verification popup.
+      if (error instanceof ApiError && error.code === "admin_mfa_required") {
+        throw error;
       }
+
+      if (error instanceof ApiError && error.status === 403) {
+        throw new ApiError(
+          403,
+          "admin_unauthorized",
+          "This account is not approved for administrator access."
+        );
+      }
+
       throw error;
     }
-
-    await setAdminSession(session);
-    await recordAdminAction({
-      actorUid: session.uid,
-      actorEmail: session.email,
-      action: "admin_login",
-    });
-
-    return Response.json({ ok: true, admin: { email: session.email } });
   } catch (error) {
     return jsonError(error);
   }

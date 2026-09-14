@@ -227,7 +227,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div
               className={cn(
                 "flex",
-                collapsed ? "justify-center" : "items-center justify-between gap-2"
+                collapsed ? "flex-col items-center gap-2" : "items-center justify-between gap-2"
               )}
             >
               <Link
@@ -242,24 +242,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
                 {!collapsed && <span className="display-type truncate text-lg">MUN Prep</span>}
               </Link>
-              {!collapsed && (
-                <SidebarToggle
-                  collapsed={collapsed}
-                  onToggle={() => { setCollapsed((value) => !value); }}
-                />
-              )}
-            </div>
-
-            {/* The appearance picker gets its own row: sharing this row with the
-                logo squeezed the workspace name away and spilled past the rail. */}
-            <div className={cn("mt-2 flex gap-2", collapsed ? "flex-col items-center" : "items-center")}>
-              <ThemeToggle compact={collapsed} />
-              {collapsed ? (
-                <SidebarToggle
-                  collapsed={collapsed}
-                  onToggle={() => { setCollapsed((value) => !value); }}
-                />
-              ) : null}
+              <SidebarToggle
+                collapsed={collapsed}
+                onToggle={() => { setCollapsed((value) => !value); }}
+              />
             </div>
 
             <Link
@@ -343,8 +329,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
+          {/* Appearance sits with the account controls instead of borrowing a row
+              between the logo and New chat: it reads as part of settings here and
+              leaves the header to the brand and the primary action. */}
           <div className="border-t border-[var(--line)] p-3">
-            <div className={cn("flex items-center justify-between", collapsed && "justify-center")}>
+            <div
+              className={cn(
+                "flex justify-between gap-2",
+                collapsed ? "flex-col items-center" : "items-center"
+              )}
+            >
               {!collapsed && (
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">
@@ -353,15 +347,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <p className="truncate text-xs text-[var(--muted)]">{user?.email}</p>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5"
-                title="Sign out"
-                aria-label="Sign out"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-              </button>
+              <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
+                <ThemeToggle compact={collapsed} />
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-black/5"
+                  title="Sign out"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
         </aside>

@@ -257,7 +257,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
     try {
       const token = await getIdToken();
-      const activeModel = responseMode === "max" ? "Kimi K3" : "MiniMax M3";
+      const activeModel = responseMode === "max" ? "Kimi K3" : "DeepSeek V4 Flash";
       setStatus(`Connecting to ${activeModel} · ${responseMode}…`);
       const response = await fetch("/api/ai/research", {
         method: "POST",

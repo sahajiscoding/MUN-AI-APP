@@ -223,7 +223,7 @@ export default function DiscoverPage() {
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => { setActiveTab(tab.key); }}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
                   activeTab === tab.key
                     ? "bg-[var(--ink)] text-[var(--paper)]"

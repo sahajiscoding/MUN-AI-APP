@@ -135,8 +135,8 @@ export default function AdminDashboardPage() {
   // tab is open flips to "Expired" without needing a manual refresh.
   const [, setExpiryTick] = useState(0);
   useEffect(() => {
-    const timer = window.setInterval(() => setExpiryTick((value) => value + 1), 60_000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => { setExpiryTick((value) => value + 1); }, 60_000);
+    return () => { window.clearInterval(timer); };
   }, []);
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
     };
 
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    return () => { window.removeEventListener("keydown", handleKey); };
   }, [customGrant]);
 
   async function mutateAdmin(uid: string, action: "approve" | "revoke") {
@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
     try {
       await navigator.clipboard.writeText(link);
       setCopiedReferralUid(user.uid);
-      window.setTimeout(() => setCopiedReferralUid((current) => current === user.uid ? null : current), 1800);
+      window.setTimeout(() => { setCopiedReferralUid((current) => current === user.uid ? null : current); }, 1800);
     } catch {
       setStatusMessage("Could not copy the referral link. Please open it and copy the URL manually.");
     }
@@ -334,9 +334,9 @@ export default function AdminDashboardPage() {
 
   const filtered = users.filter(
     (u) =>
-      u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.display_name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.uid?.toLowerCase().includes(search.toLowerCase())
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      u.display_name.toLowerCase().includes(search.toLowerCase()) ||
+      u.uid.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -414,7 +414,7 @@ export default function AdminDashboardPage() {
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setAiMode(m)}
+                    onClick={() => { setAiMode(m); }}
                     className={
                       aiMode === m
                         ? "rounded-lg bg-[var(--ink)] px-3 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--paper-strong)] shadow-sm"
@@ -432,7 +432,7 @@ export default function AdminDashboardPage() {
                   id="admin-ai-prompt"
                   type="text"
                   value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
+                  onChange={(e) => { setAiPrompt(e.target.value); }}
                   placeholder="Ask a concise MUN research question..."
                   className="input-field flex-1"
                 />
@@ -478,7 +478,7 @@ export default function AdminDashboardPage() {
                   id="user-search"
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); }}
                   placeholder="Search users..."
                   className="input-field pl-9"
                 />
@@ -673,7 +673,7 @@ export default function AdminDashboardPage() {
             <button
               type="button"
               className="absolute inset-0 bg-black/50"
-              onClick={() => setCustomGrant(null)}
+              onClick={() => { setCustomGrant(null); }}
               aria-label="Close the custom pass dialog"
             />
             <div className="surface relative w-full max-w-sm rounded-xl border border-[var(--line)] p-5 shadow-2xl">
@@ -695,7 +695,7 @@ export default function AdminDashboardPage() {
                   value={customGrant.date}
                   min={customGrant.min}
                   autoFocus
-                  onChange={(event) => setCustomGrant({ ...customGrant, date: event.target.value })}
+                  onChange={(event) => { setCustomGrant({ ...customGrant, date: event.target.value }); }}
                 />
               </label>
 
@@ -704,7 +704,7 @@ export default function AdminDashboardPage() {
               </p>
 
               <div className="mt-5 flex items-center justify-end gap-2">
-                <button type="button" onClick={() => setCustomGrant(null)} className="button-secondary px-4 py-2 text-sm font-semibold">
+                <button type="button" onClick={() => { setCustomGrant(null); }} className="button-secondary px-4 py-2 text-sm font-semibold">
                   Cancel
                 </button>
                 <button

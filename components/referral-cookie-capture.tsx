@@ -13,7 +13,7 @@ export function ReferralCookieCapture({ code }: { code: string }) {
     }).catch(() => {
       // The landing page remains usable if cookie capture is temporarily unavailable.
     });
-    return () => controller.abort();
+    return () => { controller.abort(); };
   }, [code]);
 
   return null;

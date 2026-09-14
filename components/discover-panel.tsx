@@ -49,9 +49,9 @@ export function DiscoverPanel() {
 
   useEffect(() => {
     fetchNews();
-    const dailyRefresh = window.setInterval(() => fetchNews(true), 24 * 60 * 60 * 1000);
+    const dailyRefresh = window.setInterval(() => { fetchNews(true); }, 24 * 60 * 60 * 1000);
 
-    return () => window.clearInterval(dailyRefresh);
+    return () => { window.clearInterval(dailyRefresh); };
   }, [fetchNews]);
 
   const filtered =
@@ -68,7 +68,7 @@ export function DiscoverPanel() {
           <h2 className="display-type text-xl">Discover</h2>
         </div>
         <button
-          onClick={() => fetchNews()}
+          onClick={() => { fetchNews(); }}
           className="p-2 rounded-lg hover:bg-black/5 transition text-[var(--muted)]"
           title="Refresh news"
         >
@@ -79,7 +79,7 @@ export function DiscoverPanel() {
       {/* Category filters */}
       <div className="flex gap-2 px-5 py-3 border-b border-[var(--line)]">
         <button
-          onClick={() => setActiveCategory("all")}
+          onClick={() => { setActiveCategory("all"); }}
           className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
             activeCategory === "all"
               ? "bg-[var(--ink)] text-[var(--paper)]"
@@ -91,7 +91,7 @@ export function DiscoverPanel() {
         {Object.entries(categoryConfig).map(([key, config]) => (
           <button
             key={key}
-            onClick={() => setActiveCategory(key)}
+            onClick={() => { setActiveCategory(key); }}
             className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
               activeCategory === key
                 ? "bg-[var(--ink)] text-[var(--paper)]"
@@ -140,7 +140,7 @@ export function DiscoverPanel() {
                         loading="lazy"
                         decoding="async"
                         referrerPolicy="no-referrer"
-                        onError={() => setBrokenImages((current) => ({ ...current, [itemKey]: true }))}
+                        onError={() => { setBrokenImages((current) => ({ ...current, [itemKey]: true })); }}
                         className={`h-full w-full ${item.imageKind === "publisher" ? "object-contain rounded-xl bg-white/90 p-6" : "object-cover"}`}
                       />
                     ) : (

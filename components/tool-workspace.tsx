@@ -95,7 +95,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
 
-    return () => window.clearInterval(timer);
+    return () => { window.clearInterval(timer); };
   }, [loading]);
 
   // Keep the selected chat synchronized for deep links, sidebar clicks, and browser back/forward.
@@ -104,7 +104,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       setChatId(urlChatId);
     };
     const handleChatOpen = (event: Event) => {
-      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      const id = (event as CustomEvent<{ id?: string }>).detail.id;
       if (id) setChatId(id);
     };
 
@@ -383,7 +383,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} />
+      <PaywallModal open={showPaywall} onClose={() => { setShowPaywall(false); }} />
 
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3 shrink-0">
@@ -511,7 +511,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               <h2 className="display-type mt-4 text-2xl">Saved chat could not be opened</h2>
               <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{chatLoadError}</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <button type="button" onClick={() => window.location.reload()} className="button-primary px-4 py-2 text-sm font-semibold">Try again</button>
+                <button type="button" onClick={() => { window.location.reload(); }} className="button-primary px-4 py-2 text-sm font-semibold">Try again</button>
                 <button type="button" onClick={handleNewChat} className="button-secondary px-4 py-2 text-sm font-semibold">Start new chat</button>
               </div>
             </div>
@@ -547,7 +547,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
             <textarea
               className="min-h-[2.5rem] max-h-32 flex-1 resize-none bg-transparent px-1 outline-none text-sm leading-6"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); }}
               placeholder={`Ask about ${title.toLowerCase()}...`}
               rows={1}
               onKeyDown={(e) => {
@@ -564,7 +564,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                   <button
                     key={item}
                     type="button"
-                    onClick={() => setResponseMode(item)}
+                    onClick={() => { setResponseMode(item); }}
                     className={
                       responseMode === item
                         ? "bg-[var(--ink)] text-[var(--paper)] px-2 py-1 text-xs font-semibold"

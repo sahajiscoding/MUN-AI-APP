@@ -75,10 +75,10 @@ export default function CoursesPage() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {catCourses.map((course) => {
                     const p = progress[course.slug];
-                    const completedCount = p?.completed || 0;
+                    const completedCount = p.completed || 0;
                     const totalLessons = course.lessons.length;
                     const percent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-                    const hasQuiz = p?.quizTotal && p.quizTotal > 0;
+                    const hasQuiz = p.quizTotal && p.quizTotal > 0;
                     const quizPercent = hasQuiz ? Math.round((p.quizScore / p.quizTotal) * 100) : 0;
 
                     return (

@@ -2,7 +2,8 @@ import { ApiError } from "@/lib/api";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
-const DEFAULT_MINIMAX_MODEL = "minimaxai/minimax-m3";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-ai/deepseek-v4-flash-0731";
+const RETIRED_MINIMAX_MODEL = "minimaxai/minimax-m3";
 
 /** Max mode: the larger reasoning model. */
 export function callNvidiaKimi(input: AICompletionInput) {
@@ -10,14 +11,19 @@ export function callNvidiaKimi(input: AICompletionInput) {
 }
 
 /**
- * Quick and thorough modes: MiniMax-M3 through NVIDIA NIM.
+ * Quick and thorough modes: DeepSeek V4 Flash-0731 through NVIDIA NIM.
  *
- * MiniMax-M3 has a model-specific chat-completions contract, so its request
- * body intentionally avoids OpenAI extensions that are not documented for M3
- * (such as stream_options).
+ * Keep backward compatibility with the old NVIDIA_MINIMAX_MODEL variable so
+ * an existing deployment that still contains the retired MiniMax model value
+ * automatically falls back to the current DeepSeek model instead of failing.
  */
-export function callNvidiaMiniMax(input: AICompletionInput) {
-  return callNvidiaModel(input, process.env.NVIDIA_MINIMAX_MODEL || DEFAULT_MINIMAX_MODEL, "nvidia");
+export function callNvidiaDeepSeek(input: AICompletionInput) {
+  const configuredModel = process.env.NVIDIA_DEEPSEEK_MODEL?.trim() || process.env.NVIDIA_MINIMAX_MODEL?.trim();
+  const model = !configuredModel || configuredModel === RETIRED_MINIMAX_MODEL
+    ? DEFAULT_DEEPSEEK_MODEL
+    : configuredModel;
+
+  return callNvidiaModel(input, model, "nvidia");
 }
 
 async function callNvidiaModel(
@@ -37,7 +43,6 @@ async function callNvidiaModel(
 
   const maxTokens = input.maxTokens ?? 12_000;
   const timeoutMs = maxTokens <= 2_000 ? 75_000 : 240_000;
-  const isMiniMax = model === DEFAULT_MINIMAX_MODEL;
 
   const requestBody: Record<string, unknown> = {
     model,
@@ -47,11 +52,10 @@ async function callNvidiaModel(
     stream: true,
   };
 
-  // MiniMax-M3 documents temperature and top_p as sampling controls, but
-  // recommends not changing both at once. Keep the request conservative.
-  if (!isMiniMax) {
+  // DeepSeek V4 Flash supports top_p, but its documented request contract does
+  // not require the stream_options extension, so keep the body conservative.
+  if (model !== DEFAULT_KIMI_MODEL) {
     requestBody.top_p = 0.95;
-    requestBody.stream_options = { include_usage: true };
   }
 
   const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {

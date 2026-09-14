@@ -1,10 +1,15 @@
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { getReferralCodeFromCookie, getReferralPartner, recordReferralClick, setReferralCookie } from "@/lib/referrals";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    if (!(await checkRateLimit(`referral-capture:${ip}`, 30, 60_000))) {
+      throw new ApiError(429, "rate_limited", "Too many requests. Please try again later.");
+    }
     const body = await parseJson<unknown>(request);
     const code = body && typeof body === "object" && "code" in body
       ? (body as { code?: unknown }).code

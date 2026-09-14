@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createUropayOrder } from "@/lib/payments/uropay";
 import { getPlan } from "@/lib/plans";
@@ -43,6 +44,20 @@ export async function POST(
 
     const user =
       await requireUser(request);
+
+    // Bound order-creation spam: 10 orders per 5 minutes per user/IP.
+    // Prevents DB bloat and upstream UroPay quota exhaustion.
+    const orderIp = getClientIp(request);
+    if (
+      !(await checkRateLimit(`create-order:user:${user.uid}`, 10, 5 * 60_000)) ||
+      !(await checkRateLimit(`create-order:ip:${orderIp}`, 10, 5 * 60_000))
+    ) {
+      throw new ApiError(
+        429,
+        "rate_limited",
+        "Too many payment attempts. Please wait a few minutes and try again."
+      );
+    }
 
     // Capture first-touch attribution again at the trusted checkout boundary
     // in case the client profile sync has not completed yet.

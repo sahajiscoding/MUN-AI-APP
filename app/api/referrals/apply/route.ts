@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 import { applyReferralCodeToUser } from "@/lib/referrals";
 
 export const runtime = "nodejs";
@@ -12,6 +13,9 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
+    if (!(await checkRateLimit(`referral-apply:${user.uid}`, 10, 60_000))) {
+      throw new ApiError(429, "rate_limited", "Too many referral attempts. Please try again later.");
+    }
     const parsed = schema.safeParse(await parseJson<unknown>(request));
 
     if (!parsed.success) {

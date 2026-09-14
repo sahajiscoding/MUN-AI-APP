@@ -4,6 +4,7 @@ import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/courses";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/server/auth";
+import { checkRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -44,6 +45,10 @@ async function generateCertificate(
   customization: z.infer<typeof customizationSchema> = {}
 ) {
   const user = await requireUser(request);
+  // Bound CPU-heavy PDF rendering: 10 generations per minute per user.
+  if (!(await checkRateLimit(`certificate:${user.uid}`, 10, 60_000))) {
+    throw new ApiError(429, "rate_limited", "Too many certificate requests. Please wait a minute and try again.");
+  }
   const { slug: rawSlug } = await params;
   const parsedSlug = slugSchema.safeParse(rawSlug);
   if (!parsedSlug.success) throw new ApiError(400, "invalid_course", "That course does not exist.");

@@ -20,7 +20,10 @@ type AdminSessionClaims = {
 export type AdminSession = AdminSessionClaims;
 
 function getSessionSecret() {
-  const secret = process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SECRET_KEY;
+  // Fail closed: ADMIN_SESSION_SECRET is mandatory and must never fall back
+  // to SUPABASE_SECRET_KEY (cryptographic separation of duties — the DB
+  // master key must not double as a cookie-signing key).
+  const secret = process.env.ADMIN_SESSION_SECRET;
   if (!secret || secret.length < 32) {
     throw new ApiError(
       503,

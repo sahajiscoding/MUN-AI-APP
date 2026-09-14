@@ -52,8 +52,13 @@ async function callNvidiaModel(
     stream: true,
   };
 
-  // DeepSeek V4 Flash supports top_p, but its documented request contract does
-  // not require the stream_options extension, so keep the body conservative.
+  // DeepSeek V4 Flash defaults to high reasoning effort, which can add a large
+  // time-to-first-token. MUN Quick/Thorough should prioritize responsive output.
+  // Max mode continues to use Kimi K3 for the heavier reasoning path.
+  if (model === DEFAULT_DEEPSEEK_MODEL) {
+    requestBody.reasoning_effort = "none";
+  }
+
   if (model !== DEFAULT_KIMI_MODEL) {
     requestBody.top_p = 0.95;
   }

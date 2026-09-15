@@ -118,6 +118,32 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     };
   }, [pathname, urlChatId]);
 
+  // Starting a new chat must clear the previous conversation. The sidebar
+  // "New chat" entry is a plain navigation to the tool root (it only drops
+  // ?chat= from the URL), so without this the old turns would stay rendered
+  // behind the new URL. Any transition of the selected chat to null resets
+  // all conversation state, including aborting an in-flight generation.
+  const prevChatIdRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (prevChatIdRef.current === undefined) {
+      prevChatIdRef.current = chatId;
+      return;
+    }
+    if (chatId === null && prevChatIdRef.current !== null) {
+      requestControllerRef.current?.abort();
+      requestControllerRef.current = null;
+      setInput("");
+      setTurns([]);
+      setOutput("");
+      setStatus("");
+      setChatLoadError("");
+      setLoading(false);
+      setLoadingSavedChat(false);
+      setStreaming(false);
+    }
+    prevChatIdRef.current = chatId;
+  }, [chatId]);
+
   // Load a saved conversation when the sidebar opens one.
   useEffect(() => {
     if (!chatId || !user) return;
@@ -209,7 +235,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     setLoading(false);
     setLoadingSavedChat(false);
     setStreaming(false);
-    if (chatId) {
+    // Drop ?chat= from the URL so a later sync cannot resurrect the old
+    // conversation from stale search params.
+    if (chatId || urlChatId) {
       window.history.replaceState(null, "", pathname);
       setChatId(null);
     }

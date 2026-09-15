@@ -74,7 +74,11 @@ export default function CoursesPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {catCourses.map((course) => {
-                    const p = progress[course.slug];
+                    // Most courses have no saved progress row (fresh account,
+                    // untouched course, signed-out visitor): fall back to an
+                    // empty record instead of dereferencing undefined, which
+                    // crashed the entire page through the error boundary.
+                    const p = progress[course.slug] ?? { completed: 0, total: 0, quizScore: 0, quizTotal: 0 };
                     const completedCount = p.completed || 0;
                     const totalLessons = course.lessons.length;
                     const percent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;

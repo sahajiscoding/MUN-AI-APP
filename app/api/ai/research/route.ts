@@ -62,11 +62,6 @@ export async function POST(request: Request) {
       uid = admin.uid;
     }
 
-    const ip = getClientIp(request);
-    if (!(await checkRateLimit(`ai-user:${uid}`, 12, 60_000)) || !(await checkRateLimit(`ai-ip:${ip}`, 30, 60_000))) {
-      throw new ApiError(429, "rate_limited", "Too many AI requests. Please wait a minute and try again.");
-    }
-
     const body = schema.safeParse(await parseJson<unknown>(request));
     if (!body.success) {
       const detail = body.error.issues[0]
@@ -75,7 +70,19 @@ export async function POST(request: Request) {
       throw new ApiError(400, "invalid_research_request", `Your request could not be processed (${detail}). Please check your inputs and try again.`);
     }
 
-    const existing = body.data.chatId ? await loadOwnedChat(uid, body.data.chatId) : null;
+    const ip = getClientIp(request);
+    // These checks are independent of each other, so run them together
+    // instead of one after another to reach the provider faster.
+    const [userAllowed, ipAllowed, existing] = await Promise.all([
+      checkRateLimit(`ai-user:${uid}`, 12, 60_000),
+      checkRateLimit(`ai-ip:${ip}`, 30, 60_000),
+      body.data.chatId ? loadOwnedChat(uid, body.data.chatId) : Promise.resolve(null),
+      // Enforce the per-user daily AI budget before spending provider tokens.
+      assertAiUsageAllowed(uid).then(() => true),
+    ]);
+    if (!userAllowed || !ipAllowed) {
+      throw new ApiError(429, "rate_limited", "Too many AI requests. Please wait a minute and try again.");
+    }
     if (body.data.chatId && !existing) {
       throw new ApiError(404, "chat_not_found", "That saved chat could not be found.");
     }
@@ -88,8 +95,6 @@ export async function POST(request: Request) {
       country: body.data.country,
       agenda: body.data.agenda.slice(0, 500),
     };
-    // Enforce the per-user daily AI budget before spending provider tokens.
-    await assertAiUsageAllowed(uid);
     await recordAiUsage(uid, { requests: 1 });
 
     const result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });

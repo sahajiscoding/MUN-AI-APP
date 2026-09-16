@@ -143,11 +143,20 @@ async function callNvidiaModel(
         const decoder = new TextDecoder();
         let buffer = "";
         let finishReason: string | undefined;
+        let sawAnyData = false;
+
+        const emitProviderError = (message: string) => {
+          console.error(`NVIDIA ${model} stream error: ${redactProviderMessage(message).slice(0, 500)}`);
+          emit({ error: `NVIDIA ${model} request failed: ${redactProviderMessage(message)}` });
+          finishReason = "error";
+          emit({ finishReason });
+        };
 
         const consumeLine = (line: string) => {
           if (!line.startsWith("data: ")) return;
           const data = line.slice(6).trim();
           if (!data || data === "[DONE]") return;
+          sawAnyData = true;
 
           try {
             const parsed = JSON.parse(data) as {
@@ -156,7 +165,27 @@ async function callNvidiaModel(
                 finish_reason?: string | null;
               }>;
               usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+              error?: { message?: unknown } | string | unknown;
+              message?: unknown;
             };
+            // NVIDIA can deliver failures as in-stream events on a 200
+            // response (unknown model, quota, key problems). Without this,
+            // they are silently dropped and the client only sees an "empty
+            // response".
+            const providerError = parsed.error ?? parsed.message;
+            if (typeof providerError === "string" && providerError) {
+              emitProviderError(providerError);
+              return;
+            }
+            if (
+              providerError &&
+              typeof providerError === "object" &&
+              typeof (providerError as { message?: unknown }).message === "string" &&
+              (providerError as { message: string }).message
+            ) {
+              emitProviderError((providerError as { message: string }).message);
+              return;
+            }
             const choice = parsed.choices?.[0];
             const content = choice?.delta?.content;
             if (content) emit({ content });
@@ -186,6 +215,10 @@ async function callNvidiaModel(
 
           buffer += decoder.decode();
           if (buffer) consumeLine(buffer);
+          if (!sawAnyData && buffer.trim()) {
+            // The provider answered 200 but sent no stream events at all.
+            emitProviderError(`Unexpected non-streaming response: ${buffer.trim().slice(0, 300)}`);
+          }
           emit({ finishReason: finishReason || "stop" });
           emit({ done: true });
         } finally {

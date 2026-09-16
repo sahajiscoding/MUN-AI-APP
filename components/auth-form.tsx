@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { readJsonResponse } from "@/lib/http";
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -225,8 +226,10 @@ async function captureReferral(code?: string) {
     body: JSON.stringify({ code }),
   });
 
+  const payload = await readJsonResponse<{ error?: string }>(response);
+
   if (!response.ok) {
-    throw new Error("Referral attribution could not be prepared. Please try again.");
+    throw new Error(payload?.error || "Referral attribution could not be prepared. Please try again.");
   }
 }
 

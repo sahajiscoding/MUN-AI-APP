@@ -3,6 +3,7 @@
 import { Check, Crown, Loader2, LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { readJsonResponse } from "@/lib/http";
 import { canonicalPlanId, formatPlanPrice, getPlan, plans } from "@/lib/plans";
 
 type EntitlementData = {
@@ -53,7 +54,7 @@ export function PricingClient() {
           throw new Error("Could not verify access");
         }
 
-        const json = (await response.json()) as EntitlementResponse;
+        const json = (await readJsonResponse<EntitlementResponse>(response)) ?? {};
 
         if (!cancelled) {
           setEntitlement(json.entitlement ?? null);
@@ -100,7 +101,7 @@ export function PricingClient() {
       },
       body: JSON.stringify({ code }),
     });
-    const data = await response.json().catch(() => ({}));
+    const data = (await readJsonResponse<{ error?: string; referral?: { code?: string } }>(response)) ?? {};
 
     if (!response.ok) {
       throw new Error(typeof data.error === "string" ? data.error : "That referral code could not be applied.");
@@ -142,13 +143,16 @@ export function PricingClient() {
         body: JSON.stringify({ planId })
       });
 
-      const data = await res.json();
+      const data = (await readJsonResponse<{ error?: string | { message?: string }; openUrl?: string }>(res)) ?? {};
 
       if (!res.ok) {
+        const errValue: unknown = data.error;
         throw new Error(
-          typeof data.error === "string"
-            ? data.error
-            : data.error?.message || "Failed to create order"
+          typeof errValue === "string"
+            ? errValue
+            : typeof (errValue as { message?: unknown } | null | undefined)?.message === "string"
+              ? String((errValue as { message: string }).message)
+              : "Failed to create order"
         );
       }
 

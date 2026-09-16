@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { NewsItem } from "@/app/api/news/route";
+import { readJsonResponse } from "@/lib/http";
 
 const TABS = [
   { key: "all", label: "For you" },
@@ -75,7 +76,7 @@ export default function DiscoverPage() {
       : "/api/news";
     fetch(url)
       .then(async (res) => {
-        const data = await res.json();
+        const data = (await readJsonResponse<{ news?: NewsItem[]; message?: string; error?: string }>(res)) ?? {};
         if (!res.ok) throw new Error(data.error || "News is temporarily unavailable.");
         return data;
       })

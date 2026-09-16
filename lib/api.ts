@@ -26,6 +26,23 @@ export function jsonError(error: unknown) {
   );
 }
 
+export function methodNotAllowed(allowed: string[]) {
+  return Response.json(
+    { error: "Method not allowed.", code: "method_not_allowed" },
+    {
+      status: 405,
+      headers: { Allow: allowed.join(", ") },
+    }
+  );
+}
+
+export function apiNotFound() {
+  return Response.json(
+    { error: "API route not found.", code: "not_found" },
+    { status: 404 }
+  );
+}
+
 export async function parseJson<T>(request: Request, maxBytes = 512_000): Promise<T> {
   let raw: string;
   try {

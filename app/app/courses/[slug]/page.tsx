@@ -21,6 +21,7 @@ import { ProtectedAppShell } from "@/components/protected-app-shell";
 import { getCourseBySlug, type Lesson, type QuizQuestion } from "@/lib/courses";
 import { buildCourseReviewQuestions, quizzes } from "@/lib/quizzes";
 import { useAuth } from "@/components/auth-provider";
+import { readJsonResponse } from "@/lib/http";
 
 type CheckpointState = "idle" | "correct" | "incorrect";
 
@@ -100,7 +101,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
-        const result = (await response.json()) as { progress?: { completed_lessons?: unknown; quiz_score?: number; quiz_total?: number } | null; error?: string };
+        const result = (await readJsonResponse<{ progress?: { completed_lessons?: unknown; quiz_score?: number; quiz_total?: number } | null; error?: string }>(response)) ?? {};
         if (!response.ok) throw new Error(result.error || "Could not load course progress.");
         if (cancelled || !result.progress) return;
         const savedLessons = Array.isArray(result.progress.completed_lessons)
@@ -151,7 +152,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ course_slug: slug, lesson_index: activeLessonIndex, answer_index: activeAnswer }),
       });
-      const result = (await response.json().catch(() => ({}))) as { correct?: boolean; completed_lessons?: number[]; error?: string };
+      const result = (await readJsonResponse<{ correct?: boolean; completed_lessons?: number[]; error?: string }>(response)) ?? {};
       if (response.status === 422) {
         setCheckpointState("incorrect");
         return;
@@ -198,10 +199,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         },
         body: JSON.stringify({ course_slug: slug, quizAnswers: answers }),
       });
-      const result = (await response.json().catch(() => ({}))) as {
+      const result = (await readJsonResponse<{
         error?: string;
         quiz?: { score: number; total: number; passed: boolean };
-      };
+      }>(response)) ?? {};
       if (!response.ok) throw new Error(result.error || "Could not save your review.");
 
       if (result.quiz) {
@@ -234,7 +235,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         }),
       });
       if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
+        const result = (await readJsonResponse<{ error?: string }>(response.clone())) ?? {};
         throw new Error(result.error || "Could not generate your certificate.");
       }
       const blob = await response.blob();

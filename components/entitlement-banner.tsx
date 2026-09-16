@@ -4,6 +4,7 @@ import { Crown, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { readJsonResponse } from "@/lib/http";
 
 type EntitlementData = {
   status: "inactive" | "active" | "expired";
@@ -39,7 +40,7 @@ export function EntitlementBanner() {
           }
         });
 
-        const json = (await response.json()) as EntitlementResponse;
+        const json = (await readJsonResponse<EntitlementResponse>(response)) ?? {};
 
         if (!cancelled) {
           setData(json.entitlement ?? null);

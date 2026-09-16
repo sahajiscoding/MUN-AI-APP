@@ -6,6 +6,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { PaywallModal } from "@/components/paywall-modal";
+import { readJsonResponse } from "@/lib/http";
 
 type ToolWorkspaceProps = {
   eyebrow: string;
@@ -162,10 +163,10 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         const response = await fetch(`/api/chats/${encodeURIComponent(selectedChatId)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = (await response.json()) as {
+        const data = (await readJsonResponse<{
           chat?: { prompt: string; output: string; model: string; turns?: ConversationTurn[] };
           error?: string;
-        };
+        }>(response)) ?? {};
 
         if (!response.ok || !data.chat) {
           throw new Error(data.error || "That saved chat could not be opened.");
@@ -215,9 +216,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
           headers: { Authorization: `Bearer ${token}` },
         })
       )
-      .then((res) => res.json())
+      .then((res) => readJsonResponse<{ entitlement?: { status?: string } }>(res))
       .then((data) => {
-        setHasAccess(data.entitlement?.status === "active");
+        setHasAccess(data?.entitlement?.status === "active");
       })
       .catch(() => {
         setHasAccess(false);
@@ -311,7 +312,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       setStatus("Waiting for the first token…");
 
       if (!response.ok) {
-        const data = await response.json();
+        const data = (await readJsonResponse<{ code?: string; error?: string }>(response)) ?? {};
         if (data.code === "paid_access_required") {
           rollbackPendingTurn();
           setHasAccess(false);
@@ -378,7 +379,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         }
       } else {
         // Non-streaming fallback
-        const data = await response.json();
+        const data = (await readJsonResponse<{ content?: unknown; chatId?: string }>(response)) ?? {};
         const content = typeof data.content === "string" ? data.content : "";
         if (content) {
           setTurns((current) => [...current, { role: "assistant", content }]);

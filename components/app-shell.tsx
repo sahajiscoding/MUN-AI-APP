@@ -17,6 +17,7 @@ import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { readJsonResponse } from "@/lib/http";
 import { cn } from "@/lib/utils";
 
 type ChatHistoryItem = {
@@ -91,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         const response = await fetch("/api/chats?limit=50", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = (await response.json()) as { chats?: ChatHistoryItem[]; error?: string };
+        const data = (await readJsonResponse<{ chats?: ChatHistoryItem[]; error?: string }>(response)) ?? {};
 
         if (!cancelled) {
           setChats(response.ok ? data.chats ?? [] : []);

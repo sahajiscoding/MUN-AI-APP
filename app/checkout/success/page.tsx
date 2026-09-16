@@ -22,6 +22,7 @@ import {
 
 import { ProtectedAppShell } from "@/components/protected-app-shell";
 import { useAuth } from "@/components/auth-provider";
+import { readJsonResponse } from "@/lib/http";
 
 type PaymentStatus =
   | "checking"
@@ -97,7 +98,7 @@ export default function CheckoutSuccessPage() {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        const data = (await response.json()) as PaymentResponse;
+        const data = (await readJsonResponse<PaymentResponse & { error?: string }>(response)) ?? {};
 
         if (cancelled) return;
 

@@ -10,8 +10,9 @@ export const runtime = "nodejs";
 
 const slugSchema = z.string().trim().min(1).max(120);
 const customizationSchema = z.object({
-  // Extra fields (such as the legacy user-supplied signature) are stripped;
-  // only the student's own name may be customized.
+  // Kept for backwards compatibility with older clients. The submitted name
+  // is intentionally ignored: certificates are identity-bound to the
+  // authenticated account and cannot be relabeled by the request body.
   name: z.string().trim().min(1).max(80).optional(),
 });
 
@@ -42,7 +43,7 @@ function certificateId(uid: string, slug: string) {
 async function generateCertificate(
   request: Request,
   params: Promise<{ slug: string }>,
-  customization: z.infer<typeof customizationSchema> = {}
+  _customization: z.infer<typeof customizationSchema> = {}
 ) {
   const user = await requireUser(request);
   // Bound CPU-heavy PDF rendering: 10 generations per minute per user.
@@ -87,7 +88,9 @@ async function generateCertificate(
     throw new ApiError(403, "course_incomplete", "Complete every lesson and pass the final review before downloading your certificate.");
   }
 
-  const displayName = safePdfText(customization.name || user.name || user.email?.split("@")[0] || "Delegate") || "Delegate";
+  // Identity-bound certificate: never trust a caller-supplied display name.
+  // The authenticated profile name is the only name that may appear.
+  const displayName = safePdfText(user.name || user.email?.split("@")[0] || "Delegate") || "Delegate";
   const signature = "MUN Prep Faculty";
   const courseTitle = safePdfText(course.title);
   const date = formatDate(progress?.completed_at);
@@ -98,8 +101,6 @@ async function generateCertificate(
     course_slug: slug,
   });
   if (trackingError) {
-    // Certificate delivery should remain available if analytics storage is
-    // temporarily unavailable; the admin dashboard can still use completions.
     console.error("Could not record certificate download analytics", trackingError);
   }
 
@@ -161,7 +162,8 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
-    const customization = customizationSchema.parse(await parseJson<unknown>(request));
+    const body = await parseJson<unknown>(request);
+    const customization = customizationSchema.parse(body);
     return await generateCertificate(request, context.params, customization);
   } catch (error) {
     return jsonError(error);

@@ -47,10 +47,15 @@ export async function runMunResearch(input: ResearchInput) {
     // cost and provider context safety.
     max: { maxTokens: 12000, temperature: 0.85 },
   }[mode];
+  // Honor a smaller client-requested budget (the UI advertises Quick as up to
+  // ~1800 tokens). Fewer tokens means the response finishes sooner.
+  const maxTokens = input.maxTokens && input.maxTokens < modeConfig.maxTokens
+    ? input.maxTokens
+    : modeConfig.maxTokens;
   const aiInput = {
     messages,
     temperature: modeConfig.temperature,
-    maxTokens: modeConfig.maxTokens,
+    maxTokens,
   };
 
   // Every mode runs through NVIDIA NIM; only the model differs. Max gets the

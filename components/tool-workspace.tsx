@@ -325,6 +325,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
 
       const contentType = response.headers.get("Content-Type") || "";
       let savedChatId = response.headers.get("X-Chat-Id");
+      let generationSucceeded = false;
 
       if (contentType.includes("text/event-stream") && response.body) {
         // Streaming response
@@ -333,6 +334,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         let buffer = "";
         let fullContent = "";
         let finishReason: string | undefined;
+        let streamError: string | undefined;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -351,6 +353,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 if (typeof parsed.finishReason === "string") {
                   finishReason = parsed.finishReason;
                 }
+                if (typeof parsed.error === "string" && parsed.error) {
+                  streamError = parsed.error;
+                }
                 if (parsed.content) {
                   if (!fullContent) {
                     setStatus(`${activeModel} · ${responseMode} · writing`);
@@ -366,32 +371,44 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         }
 
         const wasLengthLimited = finishReason === "length" || finishReason === "max_tokens";
-        setStatus(
-          wasLengthLimited
-            ? `${activeModel} · ${responseMode} · provider output limit reached`
-            : `${activeModel} · ${responseMode} · complete`
-        );
         if (fullContent) {
           setTurns((current) => [...current, { role: "assistant", content: fullContent }]);
           setOutput("");
+          generationSucceeded = true;
+          setStatus(
+            wasLengthLimited
+              ? `${activeModel} · ${responseMode} · provider output limit reached`
+              : `${activeModel} · ${responseMode} · complete`
+          );
         } else {
           rollbackPendingTurn();
+          throw new Error(streamError || "The AI returned an empty response. Please try again.");
         }
       } else {
         // Non-streaming fallback
-        const data = (await readJsonResponse<{ content?: unknown; chatId?: string }>(response)) ?? {};
+        const data = (await readJsonResponse<{ content?: unknown; chatId?: string; error?: unknown }>(response)) ?? {};
         const content = typeof data.content === "string" ? data.content : "";
         if (content) {
           setTurns((current) => [...current, { role: "assistant", content }]);
+          generationSucceeded = true;
         } else {
           rollbackPendingTurn();
+          throw new Error(
+            typeof data.error === "string" && data.error
+              ? data.error
+              : "The AI returned an empty response. Please try again."
+          );
         }
         setOutput("");
-        savedChatId = data.chatId || savedChatId;
+        savedChatId = typeof data.chatId === "string" ? data.chatId : savedChatId;
         setStatus(`${activeModel} · ${responseMode}`);
       }
 
-      if (savedChatId) {
+      // Only point the URL at the saved chat after content actually exists.
+      // The server persists the chat when the stream ends, so navigating
+      // earlier makes the loader fetch a chat that is not saved yet and
+      // shows a bogus "could not be opened" error.
+      if (generationSucceeded && savedChatId) {
         window.history.replaceState(null, "", `${pathname}?chat=${encodeURIComponent(savedChatId)}`);
         setChatId(savedChatId);
         window.dispatchEvent(new Event("mun:chat-created"));

@@ -21,6 +21,11 @@ const schema = z.object({
   maxTokens: z.number().int().min(256).max(12000).optional(),
   temperature: z.number().min(0).max(1.5).optional(),
   chatId: z.string().uuid().optional(),
+  // Intercepting proxies (e.g., ZAP, corporate gateways) can buffer or
+  // mangle `text/event-stream` bodies while keeping the headers. Clients
+  // that detect a damaged stream retry once with `stream: false` to get
+  // the same answer as plain JSON, which passes through proxies untouched.
+  stream: z.boolean().optional(),
   conversation: z.array(z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().trim().min(1).max(12000),
@@ -99,6 +104,42 @@ export async function POST(request: Request) {
 
     const result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
 
+    if (result.stream && body.data.stream === false) {
+      const collected = await collectStreamContent(result.stream);
+      if (!collected.content) {
+        throw new ApiError(
+          502,
+          "empty_provider_response",
+          collected.streamError || "The AI returned an empty response. Please try again."
+        );
+      }
+      await saveCompletedChat({
+        chatId,
+        uid,
+        tool,
+        provider: result.provider,
+        model: result.model,
+        inputSummary,
+        prompt: body.data.agenda,
+        output: collected.content,
+        turns: priorTurns.concat(
+          { role: "user", content: body.data.agenda },
+          { role: "assistant", content: collected.content }
+        ),
+      });
+      await recordAiUsage(uid, {
+        promptTokens: collected.promptTokens,
+        completionTokens: collected.completionTokens,
+      });
+      return Response.json({
+        content: collected.content,
+        chatId,
+        provider: result.provider,
+        model: result.model,
+        finishReason: collected.finishReason || "stop",
+      });
+    }
+
     if (result.stream) {
       const persistedStream = persistStream(result.stream, {
         chatId,
@@ -144,8 +185,72 @@ export async function POST(request: Request) {
   }
 }
 
-function persistStream(
-  source: ReadableStream<Uint8Array>,
+type CollectedStream = {
+  content: string;
+  finishReason?: string;
+  streamError?: string;
+  promptTokens: number;
+  completionTokens: number;
+};
+
+// Drain a provider SSE stream fully (used by the non-streaming JSON mode).
+async function collectStreamContent(source: ReadableStream<Uint8Array>): Promise<CollectedStream> {
+  const reader = source.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  let finishReason: string | undefined;
+  let streamError: string | undefined;
+  let promptTokens = 0;
+  let completionTokens = 0;
+
+  const consumeLine = (line: string) => {
+    if (!line.startsWith("data: ")) return;
+    const data = line.slice(6).trim();
+    if (data === "[DONE]") return;
+    try {
+      const parsed = JSON.parse(data) as {
+        content?: string;
+        finishReason?: string;
+        error?: string;
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
+      };
+      if (typeof parsed.error === "string" && parsed.error) streamError = parsed.error;
+      if (typeof parsed.finishReason === "string") finishReason = parsed.finishReason;
+      if (parsed.content) content += parsed.content;
+      const usage = parsed.usage;
+      if (usage) {
+        if (Number.isSafeInteger(usage.prompt_tokens) && (usage.prompt_tokens ?? 0) > promptTokens) {
+          promptTokens = usage.prompt_tokens ?? 0;
+        }
+        if (Number.isSafeInteger(usage.completion_tokens) && (usage.completion_tokens ?? 0) > completionTokens) {
+          completionTokens = usage.completion_tokens ?? 0;
+        }
+      }
+    } catch {
+      // Ignore incomplete or provider-specific SSE lines.
+    }
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      lines.forEach(consumeLine);
+    }
+    buffer += decoder.decode();
+    if (buffer) consumeLine(buffer);
+  } finally {
+    reader.releaseLock();
+  }
+
+  return { content, finishReason, streamError, promptTokens, completionTokens };
+}
+
+function persistStream(  source: ReadableStream<Uint8Array>,
   details: StreamPersistenceDetails
 ) {
   const reader = source.getReader();

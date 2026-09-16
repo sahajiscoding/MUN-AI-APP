@@ -37,6 +37,24 @@ function isSafeExternalUrl(value: string) {
   }
 }
 
+// A proxy may buffer an event-stream and re-serve it as plain text with a
+// rewritten content type. Recover the answer from such a body.
+function extractSSEContent(text: string): string {
+  let out = "";
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("data: ")) continue;
+    const data = line.slice(6).trim();
+    if (!data || data === "[DONE]") continue;
+    try {
+      const parsed = JSON.parse(data) as { content?: unknown };
+      if (typeof parsed.content === "string") out += parsed.content;
+    } catch {
+      // Ignore malformed chunks.
+    }
+  }
+  return out;
+}
+
 export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const pathname = usePathname();
@@ -288,44 +306,83 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       const token = await getIdToken();
       const activeModel = responseMode === "max" ? "Kimi K3" : "DeepSeek V4 Flash";
       setStatus(`Connecting to ${activeModel} · ${responseMode}…`);
-      const response = await fetch("/api/ai/research", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
+      const requestPayload = {
+        committee: "General",
+        agenda: prompt,
+        chatId: chatId || undefined,
+        conversation: priorTurns.slice(-12),
+        tool: mode,
+        country: "Any",
+        experienceLevel: "intermediate",
+        responseMode,
+        maxTokens,
+        temperature,
+      };
+      const postResearch = (asStream: boolean) =>
+        fetch("/api/ai/research", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
           signal: controller.signal,
-          body: JSON.stringify({
-            committee: "General",
-            agenda: prompt,
-            chatId: chatId || undefined,
-            conversation: priorTurns.slice(-12),
-            tool: mode,
-          country: "Any",
-          experienceLevel: "intermediate",
-          responseMode,
-          maxTokens,
-          temperature
-        })
-      });
+          body: JSON.stringify(asStream ? requestPayload : { ...requestPayload, stream: false }),
+        });
+
+      let savedChatId: string | null = null;
+      let generationSucceeded = false;
+
+      // Returns true when the paywall was shown (caller must stop).
+      async function handleErrorResponse(res: Response): Promise<boolean> {
+        const errData = (await readJsonResponse<{ code?: string; error?: string }>(res)) ?? {};
+        if (errData.code === "paid_access_required") {
+          rollbackPendingTurn();
+          setHasAccess(false);
+          setShowPaywall(true);
+          return true;
+        }
+        rollbackPendingTurn();
+        throw new Error(errData.error ?? "Failed to generate response.");
+      }
+
+      async function consumeJsonResult(res: Response): Promise<void> {
+        const cloned = res.clone();
+        let data: { content?: unknown; chatId?: string; error?: unknown } = {};
+        try {
+          data = (await readJsonResponse<typeof data>(res)) ?? {};
+        } catch {
+          // Not JSON (a proxy may have rewritten the content type) — fall
+          // through to the SSE-text salvage below.
+        }
+        let content = typeof data.content === "string" ? data.content : "";
+        if (!content) {
+          content = extractSSEContent(await cloned.text().catch(() => ""));
+        }
+        if (!content) {
+          rollbackPendingTurn();
+          throw new Error(
+            typeof data.error === "string" && data.error
+              ? data.error
+              : "The AI returned an empty response. Please try again."
+          );
+        }
+        setTurns((current) => [...current, { role: "assistant", content }]);
+        generationSucceeded = true;
+        setOutput("");
+        if (typeof data.chatId === "string" && data.chatId) savedChatId = data.chatId;
+        setStatus(`${activeModel} · ${responseMode}`);
+      }
+
+      let response = await postResearch(true);
 
       setStatus("Waiting for the first token…");
 
       if (!response.ok) {
-        const data = (await readJsonResponse<{ code?: string; error?: string }>(response)) ?? {};
-        if (data.code === "paid_access_required") {
-          rollbackPendingTurn();
-          setHasAccess(false);
-          setShowPaywall(true);
-          return;
-        }
-        rollbackPendingTurn();
-        throw new Error(data.error ?? "Failed to generate response.");
+        if (await handleErrorResponse(response)) return;
       }
 
       const contentType = response.headers.get("Content-Type") || "";
-      let savedChatId = response.headers.get("X-Chat-Id");
-      let generationSucceeded = false;
+      savedChatId = response.headers.get("X-Chat-Id");
 
       if (contentType.includes("text/event-stream") && response.body) {
         // Streaming response
@@ -380,28 +437,23 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
               ? `${activeModel} · ${responseMode} · provider output limit reached`
               : `${activeModel} · ${responseMode} · complete`
           );
+        } else if (!streamError) {
+          // The stream opened but carried nothing and the provider reported
+          // no failure — typical when an intercepting proxy (ZAP, corporate
+          // gateway) swallows event-stream bodies. Retry once as plain JSON,
+          // which passes through such proxies untouched.
+          setStatus("Live updates were blocked by the network, retrying…");
+          response = await postResearch(false);
+          if (!response.ok) {
+            if (await handleErrorResponse(response)) return;
+          }
+          await consumeJsonResult(response);
         } else {
           rollbackPendingTurn();
-          throw new Error(streamError || "The AI returned an empty response. Please try again.");
+          throw new Error(streamError);
         }
       } else {
-        // Non-streaming fallback
-        const data = (await readJsonResponse<{ content?: unknown; chatId?: string; error?: unknown }>(response)) ?? {};
-        const content = typeof data.content === "string" ? data.content : "";
-        if (content) {
-          setTurns((current) => [...current, { role: "assistant", content }]);
-          generationSucceeded = true;
-        } else {
-          rollbackPendingTurn();
-          throw new Error(
-            typeof data.error === "string" && data.error
-              ? data.error
-              : "The AI returned an empty response. Please try again."
-          );
-        }
-        setOutput("");
-        savedChatId = typeof data.chatId === "string" ? data.chatId : savedChatId;
-        setStatus(`${activeModel} · ${responseMode}`);
+        await consumeJsonResult(response);
       }
 
       // Only point the URL at the saved chat after content actually exists.

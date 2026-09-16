@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, Award, BarChart3, RefreshCw, Users } from "lucide-react";
+import { readJsonResponse } from "@/lib/http";
 
 type CourseMetric = {
   slug: string;
@@ -55,7 +56,7 @@ export function AnalyticsAdminPanel() {
     setError("");
     try {
       const response = await fetch("/api/admin/analytics", { cache: "no-store" });
-      const result = await response.json().catch(() => ({}));
+      const result = (await readJsonResponse<Analytics & { error?: string }>(response)) ?? ({} as Analytics & { error?: string });
       if (!response.ok) throw new Error(result.error || "Could not load analytics.");
       setAnalytics(result);
     } catch (caught) {

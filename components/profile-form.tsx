@@ -3,6 +3,7 @@
 import { Save } from "lucide-react";
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { readJsonResponse } from "@/lib/http";
 
 type ProfileState = {
   school: string;
@@ -44,7 +45,7 @@ export function ProfileForm() {
       const response = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const result = await response.json();
+      const result = (await readJsonResponse<{ error?: string; profile?: ProfileState }>(response)) ?? {};
       if (!response.ok) throw new Error(result.error || "Could not load profile.");
 
       if (!cancelled && result.profile) {
@@ -83,7 +84,7 @@ export function ProfileForm() {
         },
         body: JSON.stringify(profile),
       });
-      const result = await response.json();
+      const result = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(result.error || "Could not save profile.");
 
       setStatus("Profile saved.");

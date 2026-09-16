@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError, jsonError, parseJson } from "@/lib/api";
+import { ApiError, jsonError, methodNotAllowed, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/server/auth";
 import { attachReferralToUser } from "@/lib/referrals";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -38,4 +38,20 @@ export async function PUT(request: Request) {
   } catch (error) {
     return jsonError(error);
   }
+}
+
+export async function GET() {
+  return methodNotAllowed(["PUT"]);
+}
+
+export async function POST() {
+  return methodNotAllowed(["PUT"]);
+}
+
+export async function PATCH() {
+  return methodNotAllowed(["PUT"]);
+}
+
+export async function DELETE() {
+  return methodNotAllowed(["PUT"]);
 }

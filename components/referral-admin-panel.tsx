@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { readJsonResponse } from "@/lib/http";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
 
@@ -94,7 +95,7 @@ export function ReferralAdminPanel() {
     setError("");
     try {
       const response = await fetch("/api/admin/referrals", { cache: "no-store" });
-      const body = (await response.json()) as DashboardData & { error?: string };
+      const body = (await readJsonResponse<DashboardData & { error?: string }>(response)) ?? ({} as DashboardData & { error?: string });
       if (!response.ok) throw new Error(body.error || "Could not load referral data.");
       setData(body);
     } catch (caught) {
@@ -120,7 +121,7 @@ export function ReferralAdminPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, commissionRate: Number(form.commissionRate) }),
       });
-      const body = (await response.json()) as { error?: string };
+      const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not create partner.");
       setForm(emptyForm);
       setMessage("Partner created successfully.");
@@ -142,7 +143,7 @@ export function ReferralAdminPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      const body = (await response.json()) as { error?: string };
+      const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not update partner.");
       setMessage(`${partner.name} is now ${status}.`);
       await load();
@@ -174,7 +175,7 @@ export function ReferralAdminPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      const body = (await response.json()) as { error?: string; link?: string };
+      const body = (await readJsonResponse<{ error?: string; link?: string }>(response)) ?? {};
       if (!response.ok || !body.link) throw new Error(body.error || "Could not prepare the dashboard link.");
       await navigator.clipboard.writeText(body.link);
       setCopiedDashboardId(partner.id);
@@ -190,7 +191,7 @@ export function ReferralAdminPanel() {
   async function loadApplications() {
     try {
       const response = await fetch("/api/admin/referrals/applications", { cache: "no-store" });
-      const body = (await response.json()) as { applications?: Application[]; error?: string };
+      const body = (await readJsonResponse<{ applications?: Application[]; error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not load applications.");
       setApplications(body.applications ?? []);
     } catch (caught) {
@@ -217,7 +218,7 @@ export function ReferralAdminPanel() {
     setMessage("");
     try {
       const response = await fetch(`/api/admin/referrals/applications/${application.id}`, { method: "DELETE" });
-      const body = (await response.json()) as { error?: string };
+      const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not dismiss the application.");
       setApplications((current) => current.filter((item) => item.id !== application.id));
       setMessage(`Application from ${application.name} dismissed.`);
@@ -234,7 +235,7 @@ export function ReferralAdminPanel() {
     setMessage("");
     try {
       const response = await fetch(`/api/admin/referrals/commissions/${commission.id}/pay`, { method: "POST" });
-      const body = (await response.json()) as { error?: string };
+      const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not mark commission as paid.");
       setMessage("Commission marked as paid. No automatic transfer was made.");
       await load();

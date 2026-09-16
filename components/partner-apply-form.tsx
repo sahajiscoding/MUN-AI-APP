@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { readJsonResponse } from "@/lib/http";
 
 export function PartnerApplyForm() {
   const [name, setName] = useState("");
@@ -22,7 +23,7 @@ export function PartnerApplyForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, whatsapp: whatsapp || undefined, note: note || undefined, website: website || undefined }),
       });
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not submit your application. Please try again.");
 
       setName("");

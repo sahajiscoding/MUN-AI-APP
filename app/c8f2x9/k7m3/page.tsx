@@ -21,6 +21,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { readJsonResponse } from "@/lib/http";
 
 type AdminUser = {    uid: string;
     display_name: string;
@@ -116,7 +117,7 @@ export default function AdminDashboardPage() {
         router.push("/c8f2x9");
         return;
       }
-      const data = await res.json();
+      const data = (await readJsonResponse<{ users?: AdminUser[]; error?: string }>(res)) ?? {};
       if (!res.ok) throw new Error(data.error || "Could not load users.");
       setUsers(data.users || []);
     } catch (error) {
@@ -160,7 +161,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = (await readJsonResponse<{ error?: string; message?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(data.error || `Could not ${action} user.`);
       setStatusMessage(data.message || `User ${action}d.`);
       await fetchUsers();
@@ -186,7 +187,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid, planId }),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = (await readJsonResponse<{ error?: string; message?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(data.error || "Could not grant the subscription.");
       setStatusMessage(data.message || "Subscription granted.");
       await fetchUsers();
@@ -213,7 +214,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid, expiresAt: customGrant.date }),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = (await readJsonResponse<{ error?: string; message?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(data.error || "Could not grant the custom pass.");
       setStatusMessage(data.message || "Custom pass granted.");
       setCustomGrant(null);
@@ -236,7 +237,7 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = (await readJsonResponse<{ error?: string; message?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(data.error || "Could not revoke the subscription.");
       setStatusMessage(data.message || "Subscription revoked.");
       await fetchUsers();
@@ -321,7 +322,7 @@ export default function AdminDashboardPage() {
           }
         }
       } else {
-        const data = await res.json().catch(() => ({}));
+        const data = (await readJsonResponse<{ error?: string; content?: string }>(res)) ?? {};
         if (!res.ok) throw new Error(data.error || "The AI request failed.");
         setAiOutput(data.content || "No response");
       }

@@ -2,6 +2,7 @@
 
 import { Globe, Landmark, Newspaper, RefreshCw, ShieldAlert, TrendingUp, Vote } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { readJsonResponse } from "@/lib/http";
 
 type NewsItem = {
   title: string;
@@ -32,9 +33,10 @@ export function DiscoverPanel() {
     if (!silent) setLoading(true);
 
     fetch("/api/news", { cache: "no-store" })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) throw new Error("News request failed");
-        return res.json();
+        const data = (await readJsonResponse<{ news?: NewsItem[] }>(res)) ?? {};
+        return data;
       })
       .then((data) => {
         setNews(Array.isArray(data.news) ? data.news : []);

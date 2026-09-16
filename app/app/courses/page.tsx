@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
 import { categories, courses } from "@/lib/courses";
 import { useAuth } from "@/components/auth-provider";
+import { readJsonResponse } from "@/lib/http";
 
 type ProgressMap = Record<string, { completed: number; total: number; quizScore: number; quizTotal: number }>;
 
@@ -24,7 +25,7 @@ export default function CoursesPage() {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
-        const result = (await response.json()) as { progress?: Array<{ course_slug: string; completed_lessons?: unknown; quiz_score?: number; quiz_total?: number }>; error?: string };
+        const result = (await readJsonResponse<{ progress?: Array<{ course_slug: string; completed_lessons?: unknown; quiz_score?: number; quiz_total?: number }>; error?: string }>(response)) ?? {};
         if (!response.ok) throw new Error(result.error || "Could not load course progress.");
         if (cancelled) return;
         const map: ProgressMap = {};

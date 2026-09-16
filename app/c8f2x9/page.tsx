@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { getSupabase } from "@/lib/supabase/client";
+import { readJsonResponse } from "@/lib/http";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 type MfaMode = "none" | "verify" | "enroll";
@@ -39,7 +40,7 @@ export default function AdminLoginPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await readJsonResponse<{ code?: string; error?: string }>(res)) ?? {};
 
       if (res.ok) {
         router.push("/c8f2x9/k7m3");

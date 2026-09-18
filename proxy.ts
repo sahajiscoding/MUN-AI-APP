@@ -18,7 +18,41 @@ function buildContentSecurityPolicy(nonce: string) {
   ].join("; ");
 }
 
+function isStateChanging(method: string) {
+  return ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
+}
+
+function isSafeOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true; // server-to-server requests commonly omit Origin
+  try {
+    return new URL(origin).origin === request.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 export function proxy(request: NextRequest) {
+  // Explicitly force HTTPS at the application edge. Local development is
+  // allowed to remain HTTP; production requests are redirected.
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (
+    process.env.NODE_ENV === "production" &&
+    forwardedProto &&
+    forwardedProto.split(",")[0].trim().toLowerCase() !== "https"
+  ) {
+    const url = request.nextUrl.clone();
+    url.protocol = "https:";
+    return NextResponse.redirect(url, 308);
+  }
+
+  if (isStateChanging(request.method) && !isSafeOrigin(request)) {
+    return NextResponse.json(
+      { error: "Cross-site request blocked.", code: "csrf_origin_mismatch" },
+      { status: 403 }
+    );
+  }
+
   const nonce = crypto.randomUUID().replaceAll("-", "");
   const contentSecurityPolicy = buildContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
@@ -26,9 +60,7 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
 
   const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
+    request: { headers: requestHeaders },
   });
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
@@ -40,7 +72,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

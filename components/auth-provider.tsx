@@ -24,7 +24,6 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
 const noopAsync = () => Promise.resolve();
 
 const stubValue: AuthContextValue = {
@@ -61,37 +60,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? "",
         }),
       });
-      if (!response.ok) {
-        console.warn("Could not sync Supabase user profile yet.");
-      }
+      if (!response.ok) console.warn("Could not sync Supabase user profile yet.");
     } catch (err) {
       console.warn("Could not sync Supabase user profile yet.", err);
     }
   }, []);
 
-  // Only initialize Supabase client after hydration (client-side only)
   useEffect(() => {
     clientRef.current = getSupabase();
     setHydrated(true);
-
     const client = clientRef.current;
 
     client.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) {
-        void syncUserRecord(session.user);
-      }
+      if (session?.user) void syncUserRecord(session.user);
     });
 
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) {
-        void syncUserRecord(session.user);
-      }
+      if (session?.user) void syncUserRecord(session.user);
     });
 
     return () => subscription.unsubscribe();
@@ -99,7 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     if (!hydrated) return stubValue;
-
     const client = clientRef.current!;
 
     return {
@@ -120,15 +108,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async signUpWithEmail(name, email, password) {
-        const { data, error } = await client.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name },
-          },
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ name, email, password, website: "" }),
         });
-        if (error) throw error;
-        return { sessionCreated: Boolean(data.session) };
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(typeof payload.error === "string" ? payload.error : "Sign up failed.");
+        }
+        return { sessionCreated: Boolean(payload.sessionCreated) };
       },
       async logout() {
         const { error } = await client.auth.signOut();
@@ -137,9 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async getIdToken() {
         const { data } = await client.auth.getSession();
         const token = data.session?.access_token;
-        if (!token) {
-          throw new Error("You need to sign in again.");
-        }
+        if (!token) throw new Error("You need to sign in again.");
         return token;
       },
     };
@@ -150,10 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider.");
-  }
-
+  if (!context) throw new Error("useAuth must be used inside AuthProvider.");
   return context;
 }

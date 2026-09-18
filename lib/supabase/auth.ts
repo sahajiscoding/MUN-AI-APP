@@ -23,6 +23,12 @@ export async function requireUser(request: Request): Promise<VerifiedUser> {
     throw new ApiError(401, "invalid_token", "Your session could not be verified.");
   }
 
+  // Sensitive application routes require a confirmed email. Supabase exposes
+  // the authoritative timestamp on the authenticated user object.
+  if (!user.email_confirmed_at) {
+    throw new ApiError(403, "email_not_verified", "Please verify your email address before continuing.");
+  }
+
   return {
     uid: user.id,
     email: user.email,

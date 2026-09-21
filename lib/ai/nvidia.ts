@@ -2,26 +2,29 @@ import { ApiError } from "@/lib/api";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
-const DEFAULT_DEEPSEEK_MODEL = "deepseek-ai/deepseek-v4-flash-0731";
-const RETIRED_MINIMAX_MODEL = "minimaxai/minimax-m3";
+const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
+const RETIRED_RESEARCH_MODELS = new Set([
+  "deepseek-ai/deepseek-v4-flash-0731",
+  "minimaxai/minimax-m3",
+]);
 
 /** Max mode: the larger reasoning model. */
 export function callNvidiaKimi(input: AICompletionInput) {
   return callNvidiaModel(input, process.env.NVIDIA_KIMI_MODEL || DEFAULT_KIMI_MODEL, "nvidia-kimi");
 }
 
-/**
- * Quick and thorough modes: DeepSeek V4 Flash-0731 through NVIDIA NIM.
- *
- * Keep backward compatibility with the old NVIDIA_MINIMAX_MODEL variable so
- * an existing deployment that still contains the retired MiniMax model value
- * automatically falls back to the current DeepSeek model instead of failing.
- */
+/** Quick and thorough modes: the current NVIDIA research model through NIM. */
 export function callNvidiaDeepSeek(input: AICompletionInput) {
-  const configuredModel = process.env.NVIDIA_DEEPSEEK_MODEL?.trim() || process.env.NVIDIA_MINIMAX_MODEL?.trim();
-  const model = !configuredModel || configuredModel === RETIRED_MINIMAX_MODEL
-    ? DEFAULT_DEEPSEEK_MODEL
-    : configuredModel;
+  const configuredModel =
+    process.env.NVIDIA_RESEARCH_MODEL?.trim() ||
+    process.env.NVIDIA_DEEPSEEK_MODEL?.trim() ||
+    process.env.NVIDIA_MINIMAX_MODEL?.trim();
+
+  // A stale Vercel environment variable must never bring back a retired model.
+  const model =
+    !configuredModel || RETIRED_RESEARCH_MODELS.has(configuredModel)
+      ? DEFAULT_RESEARCH_MODEL
+      : configuredModel;
 
   return callNvidiaModel(input, model, "nvidia");
 }
@@ -86,11 +89,10 @@ async function callNvidiaModel(
     stream: true,
   };
 
-  // DeepSeek V4 Flash defaults to high reasoning effort, which can add a large
-  // time-to-first-token. MUN Quick/Thorough should prioritize responsive output.
-  // Max mode continues to use Kimi K3 for the heavier reasoning path.
-  if (model === DEFAULT_DEEPSEEK_MODEL) {
-    requestBody.reasoning_effort = "none";
+  // GLM-5.3-Flash supports configurable reasoning effort. Keep the research
+  // modes responsive while Kimi K3 remains the heavier Max-mode path.
+  if (model === DEFAULT_RESEARCH_MODEL) {
+    requestBody.reasoning_effort = "low";
   }
 
   if (model !== DEFAULT_KIMI_MODEL) {

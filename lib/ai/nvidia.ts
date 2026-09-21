@@ -2,7 +2,12 @@ import { ApiError } from "@/lib/api";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
-const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
+const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5.3-flash";
+const LEGACY_RESEARCH_MODEL_ALIASES: Record<string, string> = {
+  "z-ai/glm-5-3-flash": DEFAULT_RESEARCH_MODEL,
+  "deepseek-ai/deepseek-v4-flash-0731": DEFAULT_RESEARCH_MODEL,
+  "minimaxai/minimax-m3": DEFAULT_RESEARCH_MODEL,
+};
 
 /** Max mode: the larger reasoning model. */
 export function callNvidiaKimi(input: AICompletionInput) {
@@ -11,7 +16,9 @@ export function callNvidiaKimi(input: AICompletionInput) {
 
 /** Quick and thorough modes: the configured NVIDIA research model through NIM. */
 export function callNvidiaResearch(input: AICompletionInput) {
-  const model = process.env.NVIDIA_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
+  const configuredModel = process.env.NVIDIA_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
+  const model = LEGACY_RESEARCH_MODEL_ALIASES[configuredModel] || configuredModel;
+
   return callNvidiaModel(input, model, "nvidia");
 }
 
@@ -79,6 +86,7 @@ async function callNvidiaModel(
   // modes responsive while Kimi K3 remains the heavier Max-mode path.
   if (model === DEFAULT_RESEARCH_MODEL) {
     requestBody.reasoning_effort = "low";
+    requestBody.clear_thinking = true;
   }
 
   if (model !== DEFAULT_KIMI_MODEL) {

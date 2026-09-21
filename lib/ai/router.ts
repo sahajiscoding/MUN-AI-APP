@@ -58,8 +58,8 @@ export async function runMunResearch(input: ResearchInput) {
     maxTokens,
   };
 
-  // Every mode runs through NVIDIA NIM; only the model differs. Max gets the
-  // larger reasoning model, quick and thorough get DeepSeek V4 Flash.
+  // Every mode runs through NVIDIA NIM; Max uses Kimi K3, while Quick and
+  // Thorough use the current research model.
   if (mode === "max") {
     return callNvidiaKimi(aiInput);
   }

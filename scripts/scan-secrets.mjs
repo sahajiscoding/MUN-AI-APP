@@ -93,7 +93,12 @@ function assignedRealValueFromLine(line, { allowLegacyHistoryFixtures = false } 
     lowered.startsWith("change_");
 
   if (looksLikePlaceholder) return null;
-  if (allowLegacyHistoryFixtures && LEGACY_HISTORY_FIXTURES.has(value)) return null;
+
+  if (allowLegacyHistoryFixtures) {
+    const legacyFixtureLine =
+      /ADMIN_PASSWORD\s*=\s*process\.env\.ADMIN_PASSWORD\s*\|\|\s*["']AGGIN["']\s*;?/.test(line);
+    if (legacyFixtureLine || LEGACY_HISTORY_FIXTURES.has(value)) return null;
+  }
 
   return value;
 }

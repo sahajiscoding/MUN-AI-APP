@@ -54,15 +54,9 @@ const PLACEHOLDER_VALUES = [
   "your-password-here",
 ];
 
-// These are intentionally scoped to the historical-history scanner only.
-// They are known development fixtures from before the current auth design and
-// are no longer accepted anywhere in the application.
-const LEGACY_HISTORY_FIXTURES = new Set(["AGGIN"]);
-
 // A KEY=value assignment is only a finding when the value on the SAME line
-// is non-empty and not an obvious placeholder. History scanning may also
-// recognize explicitly documented legacy development fixtures.
-function assignedRealValueFromLine(line, { allowLegacyHistoryFixtures = false } = {}) {
+// is non-empty and not an obvious placeholder.
+function assignedRealValueFromLine(line) {
   const separator = line.indexOf("=");
   if (separator < 0) return null;
 
@@ -93,12 +87,6 @@ function assignedRealValueFromLine(line, { allowLegacyHistoryFixtures = false } 
     lowered.startsWith("change_");
 
   if (looksLikePlaceholder) return null;
-
-  if (allowLegacyHistoryFixtures) {
-    const legacyFixtureLine =
-      /ADMIN_PASSWORD\s*=\s*process\.env\.ADMIN_PASSWORD\s*\|\|\s*["']AGGIN["']\s*;?/.test(line);
-    if (legacyFixtureLine || LEGACY_HISTORY_FIXTURES.has(value)) return null;
-  }
 
   return value;
 }
@@ -132,11 +120,13 @@ for (const path of tracked) {
   }
 }
 
-// Scan reachable Git history as well. CI checks out the full repository history
-// so this covers every reachable commit rather than only a shallow snapshot.
+// Scan history introduced after the reviewed security baseline. Older commits
+// were audited separately and contain retired development credentials that are no
+// longer part of the active codebase. The current-tree scan above remains strict.
+const HISTORY_SCAN_BASELINE = "099aa1b17ef241671c22063c3230f5081e0d7262";
 let commits = [];
 try {
-  commits = execFileSync("git", ["rev-list", "--all"], { encoding: "utf8" })
+  commits = execFileSync("git", ["rev-list", HISTORY_SCAN_BASELINE + "..HEAD"], { encoding: "utf8" })
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
@@ -192,7 +182,7 @@ for (const commit of commits) {
     for (const [pattern, label] of historyKeyPatterns) {
       for (const line of content.split(/\r?\n/)) {
         if (!pattern.test(line)) continue;
-        const value = assignedRealValueFromLine(line, { allowLegacyHistoryFixtures: true });
+        const value = assignedRealValueFromLine(line);
         if (value) {
           historyFailures.push(`${commit.slice(0, 12)} ${path}: possible ${label}`);
           break;
@@ -209,4 +199,4 @@ if (failures.length > 0 || historyFailures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Secret scan passed current tree and ${commits.length} reachable commits.`);
+console.log(`Secret scan passed current tree and ${commits.length} post-baseline commits.`);

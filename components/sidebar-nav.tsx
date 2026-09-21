@@ -55,7 +55,7 @@ export function SidebarNav({ collapsed }: { collapsed: boolean }) {
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition",
+                      "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition-all duration-150 ease-out will-change-[background-color,transform]",
                       collapsed && "justify-center px-0",
                       active
                         ? "bg-[var(--ink)] text-[var(--paper)]"
@@ -100,7 +100,7 @@ export function MobileNav() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[0.68rem] font-semibold transition",
+                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[0.68rem] font-semibold transition-all duration-150 ease-out",
                   active
                     ? "bg-[var(--ink)] text-[var(--paper)]"
                     : "text-[var(--muted)] hover:bg-black/5"

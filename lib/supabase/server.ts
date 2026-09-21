@@ -22,13 +22,11 @@ export async function createClient() {
       },
       setAll(cookiesToSet) {
         try {
+          // Keep the cookie options supplied by @supabase/ssr intact.
+          // In particular, do not force HttpOnly here: the browser Supabase
+          // client must be able to read/update the auth session cookie.
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, {
-              ...options,
-              httpOnly: true,
-              secure: true,
-              sameSite: "lax",
-            });
+            cookieStore.set(name, value, options);
           });
         } catch {
           // Server Components cannot always modify cookies.

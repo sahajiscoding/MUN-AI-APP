@@ -178,6 +178,21 @@ assert(aiUsage.includes("ai_usage_unavailable"), "AI caps fail open when the led
 const apiLib = await source("lib/api.ts");
 assert(apiLib.includes("payload_too_large"), "JSON bodies have no byte cap");
 assert(news.includes("readCappedText"), "news feed bodies are unbounded");
+const auth = await source("lib/supabase/auth.ts");
+const signupAuthRoute = await source("app/api/auth/signup/route.ts");
+const signinAuthRoute = await source("app/api/auth/signin/route.ts");
+const resetRequestRoute = await source("app/api/auth/reset-request/route.ts");
+const resetPasswordRoute = await source("app/api/auth/reset-password/route.ts");
+assert(auth.includes("email_confirmed_at"), "protected user auth does not enforce verified email");
+assert(signupAuthRoute.includes("checkRateLimit"), "signup is not rate limited");
+assert(signupAuthRoute.includes("website"), "signup honeypot is missing");
+assert(signinAuthRoute.includes("checkRateLimit"), "password login is not rate limited");
+assert(resetRequestRoute.includes("checkRateLimit"), "password reset requests are not rate limited");
+assert(resetPasswordRoute.includes("updateUserById"), "password reset does not update the authenticated user server-side");
+assert(middleware.includes("csrf_origin_mismatch"), "state-changing API requests have no origin check");
+assert(middleware.includes("x-forwarded-proto"), "production HTTPS redirect is missing");
+assert(nextConfig.includes("productionBrowserSourceMaps: false"), "production sourcemaps are not explicitly disabled");
+
 const adminLoginPage = await source("app/c8f2x9/page.tsx");
 assert(adminLoginPage.includes("mfa.verify"), "admin UI has no MFA verification flow");
 assert(adminLoginPage.includes("admin_mfa_required"), "admin UI does not handle the MFA challenge");

@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 // Append-only audit trail for privileged admin actions. Table is service-role
@@ -21,9 +22,10 @@ export async function recordAdminAction(input: {
       metadata: input.metadata ?? {},
     });
     if (error) {
-      console.warn("Admin audit log insert failed:", error.message);
+      throw new ApiError(503, "audit_log_unavailable", "Administrative action could not be recorded.");
     }
   } catch (error) {
-    console.warn("Admin audit log insert failed:", error instanceof Error ? error.message : "unknown error");
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(503, "audit_log_unavailable", "Administrative action could not be recorded.");
   }
 }

@@ -187,7 +187,7 @@ for (const commit of commits) {
     for (const [pattern, label] of historyKeyPatterns) {
       for (const line of content.split(/\r?\n/)) {
         if (!pattern.test(line)) continue;
-        const value = assignedRealValueFromLine(line);
+        const value = assignedRealValueFromLine(line, { allowLegacyHistoryFixtures: true });
         if (value) {
           historyFailures.push(`${commit.slice(0, 12)} ${path}: possible ${label}`);
           break;

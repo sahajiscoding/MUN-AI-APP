@@ -42,11 +42,27 @@ const keyPatterns = [
   [/\bOPENROUTER_API_KEY\s*=/, "openrouter api key assignment"],
 ];
 
-const PLACEHOLDER_VALUES = ["", "xxx", "test", "changeme", "placeholder", "example", "your-key-here"];
+const PLACEHOLDER_VALUES = [
+  "",
+  "xxx",
+  "test",
+  "changeme",
+  "placeholder",
+  "example",
+  "your-key-here",
+  "your-secret-here",
+  "your-password-here",
+];
+
+// These are intentionally scoped to the historical-history scanner only.
+// They are known development fixtures from before the current auth design and
+// are no longer accepted anywhere in the application.
+const LEGACY_HISTORY_FIXTURES = new Set(["AGGIN"]);
 
 // A KEY=value assignment is only a finding when the value on the SAME line
-// is non-empty and not an obvious placeholder.
-function assignedRealValueFromLine(line) {
+// is non-empty and not an obvious placeholder. History scanning may also
+// recognize explicitly documented legacy development fixtures.
+function assignedRealValueFromLine(line, { allowLegacyHistoryFixtures = false } = {}) {
   const separator = line.indexOf("=");
   if (separator < 0) return null;
 
@@ -59,18 +75,25 @@ function assignedRealValueFromLine(line) {
   if (!value) return null;
 
   const lowered = value.toLowerCase();
-  if (
+  const looksLikePlaceholder =
     lowered.startsWith("<") ||
+    lowered.endsWith("...") ||
+    lowered.includes("your_project") ||
+    lowered.includes("your-project") ||
+    lowered.includes("replace_me") ||
+    lowered.includes("replace-me") ||
+    lowered.includes("change_me") ||
+    lowered.includes("change-me") ||
     PLACEHOLDER_VALUES.includes(lowered) ||
     lowered.startsWith("your-") ||
     lowered.startsWith("your_") ||
     lowered.startsWith("replace-") ||
     lowered.startsWith("replace_") ||
     lowered.startsWith("change-") ||
-    lowered.startsWith("change_")
-  ) {
-    return null;
-  }
+    lowered.startsWith("change_");
+
+  if (looksLikePlaceholder) return null;
+  if (allowLegacyHistoryFixtures && LEGACY_HISTORY_FIXTURES.has(value)) return null;
 
   return value;
 }

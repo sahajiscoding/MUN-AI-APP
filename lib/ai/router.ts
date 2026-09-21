@@ -1,4 +1,4 @@
-import { callNvidiaKimi, callNvidiaDeepSeek } from "@/lib/ai/nvidia";
+import { callNvidiaKimi, callNvidiaResearch } from "@/lib/ai/nvidia";
 import { munResearchSystemPrompt } from "@/lib/ai/prompts";
 import type { ChatMessage } from "@/lib/ai/types";
 
@@ -64,5 +64,5 @@ export async function runMunResearch(input: ResearchInput) {
     return callNvidiaKimi(aiInput);
   }
 
-  return callNvidiaDeepSeek(aiInput);
+  return callNvidiaResearch(aiInput);
 }

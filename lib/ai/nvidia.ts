@@ -3,29 +3,15 @@ import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } fro
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
 const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
-const RETIRED_RESEARCH_MODELS = new Set([
-  "deepseek-ai/deepseek-v4-flash-0731",
-  "minimaxai/minimax-m3",
-]);
 
 /** Max mode: the larger reasoning model. */
 export function callNvidiaKimi(input: AICompletionInput) {
   return callNvidiaModel(input, process.env.NVIDIA_KIMI_MODEL || DEFAULT_KIMI_MODEL, "nvidia-kimi");
 }
 
-/** Quick and thorough modes: the current NVIDIA research model through NIM. */
-export function callNvidiaDeepSeek(input: AICompletionInput) {
-  const configuredModel =
-    process.env.NVIDIA_RESEARCH_MODEL?.trim() ||
-    process.env.NVIDIA_DEEPSEEK_MODEL?.trim() ||
-    process.env.NVIDIA_MINIMAX_MODEL?.trim();
-
-  // A stale Vercel environment variable must never bring back a retired model.
-  const model =
-    !configuredModel || RETIRED_RESEARCH_MODELS.has(configuredModel)
-      ? DEFAULT_RESEARCH_MODEL
-      : configuredModel;
-
+/** Quick and thorough modes: the configured NVIDIA research model through NIM. */
+export function callNvidiaResearch(input: AICompletionInput) {
+  const model = process.env.NVIDIA_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
   return callNvidiaModel(input, model, "nvidia");
 }
 

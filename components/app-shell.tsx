@@ -12,6 +12,7 @@ import {
   X
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
@@ -55,11 +56,24 @@ const toolRoutes: Record<string, string> = {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, getIdToken } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [chats, setChats] = useState<ChatHistoryItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
   const [chatError, setChatError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     const storedPreference = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
@@ -124,6 +138,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [getIdToken, user]);
 
+  function startNewChat() {
+    window.dispatchEvent(new Event("mun:new-chat"));
+    setMobileMenuOpen(false);
+
+    if (pathname !== "/app/research") {
+      router.push("/app/research");
+    } else if (window.location.search) {
+      router.replace("/app/research");
+    }
+  }
+
   function getChatTitle(chat: ChatHistoryItem) {
     const summary = chat.input_summary;
     const agenda = summary.agenda?.replace(/\s+/g, " ").trim();
@@ -174,20 +199,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {mobileMenuOpen ? (
-          <div className="fixed inset-0 z-[60] isolate lg:hidden" role="dialog" aria-modal="true" aria-label="Workspace menu">
+          <div className="fixed inset-0 z-[60] isolate h-[100dvh] w-screen max-w-[100vw] overflow-hidden lg:hidden" role="dialog" aria-modal="true" aria-label="Workspace menu">
             <button
               type="button"
-              className="absolute inset-0 bg-black/45"
+              className="mun-mobile-menu-backdrop absolute inset-0 bg-black/45"
               onClick={() => { setMobileMenuOpen(false); }}
               aria-label="Close workspace menu"
             />
-            <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,22rem)] flex-col overflow-hidden border-r border-[var(--line)] bg-[var(--paper-strong)] shadow-2xl">
+            <aside className="mun-mobile-menu-panel fixed inset-y-0 left-0 flex flex-col overflow-hidden border-r border-[var(--line)] bg-[var(--paper-strong)] shadow-2xl">
               <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
                 <span className="text-sm font-bold">Workspace menu</span>
                 <button type="button" onClick={() => { setMobileMenuOpen(false); }} className="rounded-lg p-2 text-[var(--muted)] hover:bg-black/5" aria-label="Close workspace menu"><X className="h-5 w-5" aria-hidden="true" /></button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <Link href="/app/research" onClick={() => { setMobileMenuOpen(false); }} className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold hover:bg-black/5"><Plus className="h-4 w-4" aria-hidden="true" /> New chat</Link>
+              <div className="mun-mobile-menu-content min-h-0 flex-1 overflow-y-auto">
+                <button type="button" onClick={startNewChat} className="mx-3 mt-3 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-left text-sm font-semibold transition hover:bg-black/5" aria-label="Start a new chat"><Plus className="h-4 w-4" aria-hidden="true" /> New chat</button>
                 <SidebarNav collapsed={false} />
                 <div className="border-t border-[var(--line)] p-3">
                   <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Recent chats</p>
@@ -249,17 +274,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             </div>
 
-            <Link
-              href="/app/research"
+            <button
+              type="button"
+              onClick={startNewChat}
               className={cn(
-                "mt-3 flex w-full items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm font-semibold transition hover:bg-black/5",
+                "mt-3 flex w-full items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-left text-sm font-semibold transition hover:bg-black/5",
                 collapsed && "justify-center px-0"
               )}
-              title={collapsed ? "New chat" : undefined}
+              title="New chat"
+              aria-label="Start a new chat"
             >
               <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
               {!collapsed && <span>New chat</span>}
-            </Link>
+            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -364,7 +391,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 h-[calc(100dvh-3.5rem)] overflow-hidden pb-20 lg:h-screen lg:overflow-x-hidden lg:overflow-y-visible lg:pb-0 lg:pl-5">{children}</main>
+        <main className="flex min-h-0 min-w-0 w-full max-w-full flex-1 h-[calc(100dvh-3.5rem)] flex-col overflow-hidden pb-20 lg:h-screen lg:overflow-x-hidden lg:overflow-y-visible lg:pb-0 lg:pl-5">{children}</main>
       </div>
 
       <MobileNav />

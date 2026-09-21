@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/proxy";
 
 function buildContentSecurityPolicy(nonce: string) {
   return [
@@ -32,7 +33,7 @@ function isSafeOrigin(request: NextRequest) {
   }
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Explicitly force HTTPS at the application edge. Local development is
   // allowed to remain HTTP; production requests are redirected.
   const forwardedProto = request.headers.get("x-forwarded-proto");
@@ -57,17 +58,18 @@ export function proxy(request: NextRequest) {
   const contentSecurityPolicy = buildContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
 
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  const response = await updateSession(request, requestHeaders);
 
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
-  if (request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/api/news") {
+  if (
+    request.nextUrl.pathname.startsWith("/api/") &&
+    request.nextUrl.pathname !== "/api/news"
+  ) {
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
     response.headers.set("Vary", "Authorization, Cookie");
   }
+
   return response;
 }
 

@@ -104,7 +104,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async signInWithEmail(email, password) {
-        const { error } = await client.auth.signInWithPassword({ email, password });
+        const response = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ email, password }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.session) {
+          throw new Error(typeof payload.error === "string" ? payload.error : "Authentication failed.");
+        }
+        const { error } = await client.auth.setSession({
+          access_token: payload.session.access_token,
+          refresh_token: payload.session.refresh_token,
+        });
         if (error) throw error;
       },
       async signUpWithEmail(name, email, password) {

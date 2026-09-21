@@ -117,6 +117,27 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
     return () => { window.clearInterval(timer); };
   }, [loading]);
 
+  const handleNewChat = useCallback(() => {
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    setInput("");
+    setTurns([]);
+    setOutput("");
+    setStatus("");
+    setChatLoadError("");
+    setLoading(false);
+    setLoadingSavedChat(false);
+    setStreaming(false);
+
+    // Drop ?chat= from the URL so the old conversation cannot be restored.
+    if (chatId || urlChatId) {
+      window.history.replaceState(null, "", pathname);
+    }
+    setChatId(null);
+    shouldAutoScrollRef.current = true;
+    setShowJumpToLatest(false);
+  }, [chatId, pathname, urlChatId]);
+
   // Keep the selected chat synchronized for deep links, sidebar clicks, and browser back/forward.
   useEffect(() => {
     const syncFromUrl = () => {
@@ -127,15 +148,21 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       if (id) setChatId(id);
     };
 
+    const handleNewChatRequest = () => {
+      handleNewChat();
+    };
+
     syncFromUrl();
     window.addEventListener("popstate", syncFromUrl);
     window.addEventListener("mun:open-chat", handleChatOpen);
+    window.addEventListener("mun:new-chat", handleNewChatRequest);
 
     return () => {
       window.removeEventListener("popstate", syncFromUrl);
       window.removeEventListener("mun:open-chat", handleChatOpen);
+      window.removeEventListener("mun:new-chat", handleNewChatRequest);
     };
-  }, [pathname, urlChatId]);
+  }, [pathname, urlChatId, handleNewChat]);
 
   // Starting a new chat must clear the previous conversation. The sidebar
   // "New chat" entry is a plain navigation to the tool root (it only drops
@@ -242,25 +269,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
         setHasAccess(false);
       });
   }, [user, getIdToken]);
-
-  function handleNewChat() {
-    requestControllerRef.current?.abort();
-    requestControllerRef.current = null;
-    setInput("");
-    setTurns([]);
-    setOutput("");
-    setStatus("");
-    setChatLoadError("");
-    setLoading(false);
-    setLoadingSavedChat(false);
-    setStreaming(false);
-    // Drop ?chat= from the URL so a later sync cannot resurrect the old
-    // conversation from stale search params.
-    if (chatId || urlChatId) {
-      window.history.replaceState(null, "", pathname);
-      setChatId(null);
-    }
-  }
 
   function handleCancel() {
     requestControllerRef.current?.abort();
@@ -480,7 +488,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex min-h-0 h-full w-full min-w-0 flex-1 flex-col">
       <PaywallModal open={showPaywall} onClose={() => { setShowPaywall(false); }} />
 
       {/* Header */}
@@ -499,7 +507,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Messages area */}
-      <div ref={outputRef} onScroll={handleOutputScroll} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div ref={outputRef} onScroll={handleOutputScroll} className="relative min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain">
         {loading && turns.length === 0 && !output ? (
           <div className="flex h-full items-center justify-center px-5 text-center" aria-live="polite">
             <div className="w-full max-w-md">
@@ -639,7 +647,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       </div>
 
       {/* Input area */}
-      <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 backdrop-blur-sm sm:px-5 sm:py-3.5">
+      <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-5 sm:py-3.5 sm:pb-3.5">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
           <div className="flex items-end gap-2 surface rounded-xl border border-[var(--line)] px-4 py-3">
             <textarea

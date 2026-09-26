@@ -84,9 +84,10 @@ async function callNvidiaModel(
 
   // GLM-5.3-Flash supports configurable reasoning effort. Keep the research
   // modes responsive while Kimi K3 remains the heavier Max-mode path.
+  // Note: do NOT send `clear_thinking` — NVIDIA's validator rejects it for
+  // this model (400: unsupported parameter).
   if (model === DEFAULT_RESEARCH_MODEL) {
     requestBody.reasoning_effort = "low";
-    requestBody.clear_thinking = true;
   }
 
   if (model !== DEFAULT_KIMI_MODEL) {

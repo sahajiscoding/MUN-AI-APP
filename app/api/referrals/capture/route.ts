@@ -14,11 +14,12 @@ export async function POST(request: Request) {
     const code = body && typeof body === "object" && "code" in body
       ? (body as { code?: unknown }).code
       : null;
-    if (typeof code !== "string" || code.length > 64) {
+    const normalizedCode = typeof code === "string" ? code.trim().toUpperCase() : "";
+    if (!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(normalizedCode)) {
       throw new ApiError(400, "invalid_referral_code", "That referral code is invalid.");
     }
 
-    const partner = await getReferralPartner(code);
+    const partner = await getReferralPartner(normalizedCode);
     if (!partner) {
       throw new ApiError(404, "referral_not_found", "That referral code is not active.");
     }

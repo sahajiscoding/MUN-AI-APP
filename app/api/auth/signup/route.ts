@@ -40,7 +40,10 @@ export async function POST(request: Request) {
       },
     });
 
-    if (error) throw new ApiError(400, "signup_failed", error.message);
+    if (error) {
+      console.error("Signup failed:", error.message);
+      throw new ApiError(400, "signup_failed", "Could not create account. Please try again.");
+    }
 
     return Response.json({
       ok: true,

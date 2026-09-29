@@ -24,8 +24,11 @@ jobs:
       - name: No dynamic code execution or insecure deserialization
         run: |
           fail() { echo "FAIL: $1"; exit 1; }
-          if grep -rnE "\beval\(|new Function\(" app lib components scripts --include='*.ts' --include='*.tsx' --include='*.mjs'; then fail "dynamic code execution found"; fi
-          if grep -rn "pickle\.loads\|pickle\.load" app lib scripts --include='*.ts' --include='*.mjs'; then fail "pickle deserialization found (use JSON)"; fi
+          # security-matrix.mjs excluded: it contains those substrings only
+          # inside its own gate patterns (its no-eval/no-new-function gates
+          # self-exclude the same way).
+          if grep -rnE "\beval\(|new Function\(" app lib components scripts --include='*.ts' --include='*.tsx' --include='*.mjs' --exclude=security-matrix.mjs; then fail "dynamic code execution found"; fi
+          if grep -rn "pickle\.loads\|pickle\.load" app lib scripts --include='*.ts' --include='*.mjs' --exclude=security-matrix.mjs; then fail "pickle deserialization found (use JSON)"; fi
           if grep -rnE "createHash\(['\"]md5['\"]|createHash\(['\"]sha1['\"]" app lib --include='*.ts'; then fail "weak hash (MD5/SHA-1) found"; fi
           echo "No dangerous primitives OK"
 

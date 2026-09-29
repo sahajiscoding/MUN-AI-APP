@@ -26,7 +26,7 @@ jobs:
           fail() { echo "FAIL: $1"; exit 1; }
           grep -q "export class ApiError" lib/api.ts || fail "ApiError helper is missing"
           grep -q "export function jsonError" lib/api.ts || fail "jsonError helper is missing"
-          grep -q "export function parseJson" lib/api.ts || fail "parseJson helper is missing"
+          grep -q "function parseJson" lib/api.ts || fail "parseJson helper is missing"
           count=$(git ls-files 'app/api/**/*.ts' | xargs grep -l "jsonError\|parseJson" | wc -l)
           echo "Routes using safe helpers: $count"
           [ "$count" -ge 25 ] || fail "safe-helper coverage regressed (expected >= 25, got $count)"

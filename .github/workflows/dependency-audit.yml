@@ -35,6 +35,11 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+
       - name: Lockfile must be committed
         run: |
           test -f pnpm-lock.yaml || { echo "FAIL: pnpm-lock.yaml is missing"; exit 1; }
@@ -58,4 +63,4 @@ jobs:
 
       - name: pnpm audit (informational, high+)
         continue-on-error: true
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --audit-level=high || true

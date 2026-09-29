@@ -3,6 +3,18 @@
 // and are never inspected). Run: node scripts/scan-secrets.mjs
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { resolve, sep } from "node:path";
+import process from "node:process";
+
+const repoRoot = process.cwd();
+
+// git ls-files only ever yields repo-relative paths, but resolve every entry
+// and refuse anything outside the root so a hostile filename can never cause
+// a read elsewhere.
+function withinRoot(relativePath) {
+  const resolved = resolve(repoRoot, relativePath);
+  return resolved === repoRoot || resolved.startsWith(repoRoot + sep);
+}
 
 const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" })
   .split("\n")
@@ -92,6 +104,7 @@ function assignedRealValueFromLine(line) {
 }
 
 for (const path of tracked) {
+  if (!withinRoot(path)) continue;
   const dot = path.lastIndexOf(".");
   const ext = dot >= 0 ? path.slice(dot) : "";
   if (!textExtensions.has(ext) && path !== ".env.example") continue;

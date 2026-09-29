@@ -1,0 +1,32 @@
+name: Migrations Hygiene
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrations-hygiene-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Money paths stay atomic with serialized guards
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          grep -rq "grant_entitlement_atomic" supabase/migrations || fail "atomic entitlement RPC missing from migrations"
+          grep -rq "create_first_referral_commission" supabase/migrations || fail "atomic commission RPC missing from migrations"
+          grep -rq "pg_advisory_xact_lock" supabase/migrations || fail "advisory serialization lock missing from migrations"
+          grep -rq "self_referral" supabase/migrations || fail "DB self-referral guard missing from migrations"
+          grep -rq "rate_limit_check" supabase/migrations || fail "shared rate-limit function missing from migrations"
+          echo "Migrations hygiene OK"

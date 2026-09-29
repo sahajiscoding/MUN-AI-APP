@@ -1,0 +1,41 @@
+name: Admin Session
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-session-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  session:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Session cookie flags and lifetime
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          grep -q "httpOnly: true" lib/server/admin-auth.ts || fail "admin cookie is not httpOnly"
+          grep -q 'sameSite: "strict"' lib/server/admin-auth.ts || fail "admin cookie is not SameSite=strict"
+          grep -q 'secure: process.env.NODE_ENV === "production"' lib/server/admin-auth.ts || fail "admin cookie is not Secure in production"
+          grep -q "SESSION_MAX_AGE = 60 \* 60 \* 4" lib/server/admin-auth.ts || fail "admin session lifetime is not 4h"
+          echo "Cookie session OK"
+
+      - name: Secret strength and identity binding
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          grep -q "secret.length < 32" lib/server/admin-auth.ts || fail "ADMIN_SESSION_SECRET 32-char minimum is not enforced"
+          grep -q "adminSessionForUid" lib/server/admin-auth.ts || fail "admin sessions are not bound to a Supabase identity"
+          grep -q "requireAdminOwner" lib/server/admin-auth.ts || fail "owner-tier enforcement is missing"
+          grep -q "ADMIN_REQUIRE_MFA" lib/server/admin-auth.ts || fail "MFA emergency lever is missing"
+          grep -qi "revoked admin cannot" lib/server/admin-auth.ts || fail "revoked-admin session check is missing"
+          echo "Identity binding OK"

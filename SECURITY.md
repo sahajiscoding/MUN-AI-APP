@@ -420,6 +420,7 @@ node scripts/scan-secrets.mjs   # targeted re-run
 | 2026-09-29 | This file created | Codifies all of the above as durable checks |
 | 2026-09-29 | Contract checks 115 → 129 | 14 new executable asserts: Next ≥16.3.6, eslint-config match, js-yaml override + lockfile pin, lockfile/manifest sync, webhook throttle, XML `processEntities`, dead helper removal, referral normalization, generic signup error, static CSP fallback, bare `.env.*` gitignore |
 | 2026-09-29 | SAST triage (25 findings) | 4 fixed: client UUID gate on admin id interpolation (`components/referral-admin-panel.tsx`), repo-root containment in `security-contract-check.mjs`/`scan-secrets.mjs`/`release.mjs`. Rest are scanner false positives, see §28. `new RegExp` finding already gone ( feed parser uses literal regexes). |
+| 2026-09-29 | Security matrix (100+ checks) | `scripts/security-matrix.mjs` holds 83 independently-visible gates (run: `node scripts/security-matrix.mjs --all`); `.github/workflows/security-matrix.yml` fans each out as its own check with `fail-fast: false`. |
 
 ---
 

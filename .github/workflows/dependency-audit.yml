@@ -1,0 +1,61 @@
+name: Dependency Audit
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly Monday 06:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Lockfile must be committed
+        run: |
+          test -f pnpm-lock.yaml || { echo "FAIL: pnpm-lock.yaml is missing"; exit 1; }
+          git ls-files | grep -qx "pnpm-lock.yaml" || { echo "FAIL: pnpm-lock.yaml is not tracked"; exit 1; }
+          echo "Lockfile OK"
+
+      - name: No floating version ranges in production deps
+        run: |
+          if node -e "const p=require('./package.json'); const all={...p.dependencies}; const bad=Object.entries(all).filter(([,v])=>/[\^~]/.test(v)); if(bad.length){console.error('Floating ranges:',bad.map(([k,v])=>k+'@'+v).join(', '));process.exit(1)}"; then
+            echo "Pinned versions OK"
+          else
+            echo "FAIL: floating (^/~) ranges in dependencies"
+            exit 1
+          fi
+
+      - name: Known CVE override present (js-yaml)
+        run: |
+          grep -q "js-yaml: 4.3.2" pnpm-workspace.yaml || { echo "FAIL: js-yaml 4.3.2 override missing"; exit 1; }
+          grep -q '"packageManager": "pnpm@' package.json || { echo "FAIL: packageManager pin missing"; exit 1; }
+          echo "Overrides OK"
+
+      - name: pnpm audit (informational, high+)
+        continue-on-error: true
+        run: pnpm audit --audit-level=high

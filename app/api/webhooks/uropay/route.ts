@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
 import { grantEntitlement } from "@/lib/server/entitlements";
 import { processReferralCommission } from "@/lib/referrals";
+import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,14 @@ export async function POST(
 ) {
   let claimedEventId: string | null = null;
   try {
+    const ip = getClientIp(request);
+    if (!(await checkRateLimit(`webhook-uropay:${ip}`, 60, 60_000))) {
+      return Response.json(
+        { ok: false, error: "rate_limited" },
+        { status: 429 }
+      );
+    }
+
     const rawBody = await request.text();
 
     const headers: Record<string, string> = {};

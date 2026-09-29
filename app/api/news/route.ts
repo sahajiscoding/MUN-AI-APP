@@ -43,6 +43,7 @@ const rssParser = new XMLParser({
   ignoreAttributes: false,
   cdataPropName: "__cdata",
   trimValues: true,
+  processEntities: false,
 });
 
 function asText(value: unknown): string {
@@ -124,12 +125,6 @@ function parseRSS(xml: string, category: string): NewsItem[] {
       imageKind: image?.kind,
     }];
   });
-}
-
-function extractTag(block: string, tag: string): string {
-  const regex = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?</${tag}>`, "s");
-  const match = block.match(regex);
-  return match?.[1]?.trim() ?? "";
 }
 
 function decodeHTMLEntities(str: string): string {

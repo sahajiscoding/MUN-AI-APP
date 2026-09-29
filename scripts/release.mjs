@@ -72,7 +72,12 @@ function resolvePackageManager() {
 }
 
 function runCheck(check, root) {
-  const binary = path.join(root, check.bin);
+  // check.bin entries are hardcoded literals in CHECKS below. Normalize and
+  // refuse anything resolving outside the repo root regardless.
+  const binary = path.normalize(path.join(root, check.bin));
+  if (binary !== root && !binary.startsWith(root + path.sep)) {
+    throw new Error(`Refusing to run check binary outside repo root: ${check.bin}`);
+  }
 
   if (existsSync(binary)) {
     return run(process.execPath, [binary, ...check.args], { cwd: root });

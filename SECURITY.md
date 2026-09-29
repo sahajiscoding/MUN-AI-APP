@@ -419,6 +419,32 @@ node scripts/scan-secrets.mjs   # targeted re-run
 | 2026-09-29 | Lockfile fix `27d3935` | `pnpm-lock.yaml` synced to 16.3.6; Vercel `--frozen-lockfile` unblocked |
 | 2026-09-29 | This file created | Codifies all of the above as durable checks |
 | 2026-09-29 | Contract checks 115 → 129 | 14 new executable asserts: Next ≥16.3.6, eslint-config match, js-yaml override + lockfile pin, lockfile/manifest sync, webhook throttle, XML `processEntities`, dead helper removal, referral normalization, generic signup error, static CSP fallback, bare `.env.*` gitignore |
+| 2026-09-29 | SAST triage (25 findings) | 4 fixed: client UUID gate on admin id interpolation (`components/referral-admin-panel.tsx`), repo-root containment in `security-contract-check.mjs`/`scan-secrets.mjs`/`release.mjs`. Rest are scanner false positives, see §28. `new RegExp` finding already gone ( feed parser uses literal regexes). |
+
+---
+
+## 28. External SAST triage log (false-positive dispositions)
+
+Naive scanners flag identifier substrings and dialect-specific SQL. Do not
+"fix" these by renaming — each was verified by reading the code:
+
+* `pnpm-lock.yaml` "hardcoded tokens" (`js-tokens`, `comma-separated-tokens`,
+  `space-separated-tokens`) — npm package names, not credentials.
+* `dashboard_token` / `dashboard_token_expires_at` — DB column names; the
+  stored value is always `hashDashboardToken(...)`, never the raw bearer.
+* `total_tokens`, `p_tokens`, `max_tokens` — AI usage counters, not secrets.
+* `access_token` / `refresh_token` in `components/auth-provider.tsx` —
+  Supabase session field names, never hardcoded values.
+* `supabase/schema.sql` + `supabase/migrations/*` SQL "compatibility" findings
+  (`RETURN`, `$$`, `$`, `SET QUOTED_IDENTIFIER`) — the scanner parsed
+  PostgreSQL/plpgsql as T-SQL/ANSI. The files deploy via Supabase; do not
+  "fix" valid plpgsql to satisfy a wrong dialect.
+* `apply-patch-fixes.ps1` `$matches` — PowerShell automatic variable.
+* `lifecycle-pages.tsx` "object injection" — static-literal lookup keyed by a
+  string-union type; no dynamic property access.
+* `fetch(/api/.../${id})` in admin components — same-origin relative URLs
+  (not SSRF); every id is UUID-gated client-side (`adminResourcePath`) and
+  `z.string().uuid()` server-side.
 
 ---
 

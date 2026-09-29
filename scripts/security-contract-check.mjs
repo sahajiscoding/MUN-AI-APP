@@ -1,11 +1,15 @@
 import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 async function source(relativePath) {
-  return readFile(resolve(root, relativePath), "utf8");
+  const resolved = resolve(root, relativePath);
+  if (resolved !== root && !resolved.startsWith(root + sep)) {
+    throw new Error(`Security contract failed: path escapes repo root: ${relativePath}`);
+  }
+  return readFile(resolved, "utf8");
 }
 
 // Applied migrations are intentionally removed from the repo once they have
@@ -230,6 +234,18 @@ const gitignore = await source(".gitignore");
 const gitignoreLines = gitignore.split("\n").map((line) => line.trim());
 assert(gitignoreLines.includes(".env.production"), "bare .env.production is committable");
 assert(gitignoreLines.includes(".env.development"), "bare .env.development is committable");
+
+// SAST remediation invariants: admin id interpolation is UUID-gated and the
+// repo scripts refuse paths outside the repo root.
+const adminPanel = await source("components/referral-admin-panel.tsx");
+assert(adminPanel.includes("adminResourcePath"), "admin panel interpolates raw ids into fetch URLs");
+assert(adminPanel.includes("UUID_PATTERN"), "admin panel UUID gate is missing");
+const contractSelf = await source("scripts/security-contract-check.mjs");
+assert(contractSelf.includes("root + sep"), "contract reader has no repo-root containment");
+const secretScanner = await source("scripts/scan-secrets.mjs");
+assert(secretScanner.includes("withinRoot"), "secret scanner reads paths without root containment");
+const releaseGate = await source("scripts/release.mjs");
+assert(releaseGate.includes("outside repo root"), "release gate runs binaries without root containment");
 
 const skippedMigrations = [migration, migration2, migration3, migration4].filter((file) => file === null).length;
 if (skippedMigrations > 0) {

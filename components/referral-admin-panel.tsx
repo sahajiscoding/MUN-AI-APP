@@ -7,6 +7,16 @@ import { readJsonResponse } from "@/lib/http";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Row ids come from the admin API as UUIDs (each route enforces
+// z.string().uuid()). Refuse anything else before it reaches a URL path so a
+// malformed id can never escape its route segment.
+function adminResourcePath(segment: string, id: string, suffix = ""): string {
+  if (!UUID_PATTERN.test(id)) throw new Error("That record could not be updated.");
+  return `/api/admin/referrals/${segment}/${id}${suffix}`;
+}
+
 type Partner = {
   id: string;
   name: string;
@@ -138,7 +148,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(`/api/admin/referrals/partners/${partner.id}`, {
+      const response = await fetch(adminResourcePath("partners", partner.id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -171,7 +181,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(`/api/admin/referrals/partners/${partner.id}/dashboard-link`, {
+      const response = await fetch(adminResourcePath("partners", partner.id, "/dashboard-link"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -217,7 +227,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(`/api/admin/referrals/applications/${application.id}`, { method: "DELETE" });
+      const response = await fetch(adminResourcePath("applications", application.id), { method: "DELETE" });
       const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not dismiss the application.");
       setApplications((current) => current.filter((item) => item.id !== application.id));
@@ -234,7 +244,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(`/api/admin/referrals/commissions/${commission.id}/pay`, { method: "POST" });
+      const response = await fetch(adminResourcePath("commissions", commission.id, "/pay"), { method: "POST" });
       const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not mark commission as paid.");
       setMessage("Commission marked as paid. No automatic transfer was made.");

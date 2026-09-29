@@ -41,7 +41,8 @@ jobs:
           )
           failed=0
           for f in $(git ls-files 'app/api/**/route.ts'); do
-            if echo "$public" | grep -qx "$f"; then continue; fi
+            # -F: paths contain regex chars ([...notFound]) — match literally.
+            if echo "$public" | grep -qxF "$f"; then continue; fi
             if ! grep -qE "requireUser|requireAdmin" "$f"; then
               echo "FAIL: $f has no requireUser/requireAdmin/requireAdminOwner gate"
               failed=1

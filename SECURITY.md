@@ -418,6 +418,7 @@ node scripts/scan-secrets.mjs   # targeted re-run
 | 2026-09-29 | Urgent fixes `a8fee17` | Next 16.3.6, generic signup error, `.gitignore` bare-env, webhook 60/min throttle, XML `processEntities:false`, strict referral regex, static CSP fallback |
 | 2026-09-29 | Lockfile fix `27d3935` | `pnpm-lock.yaml` synced to 16.3.6; Vercel `--frozen-lockfile` unblocked |
 | 2026-09-29 | This file created | Codifies all of the above as durable checks |
+| 2026-09-29 | Contract checks 115 → 129 | 14 new executable asserts: Next ≥16.3.6, eslint-config match, js-yaml override + lockfile pin, lockfile/manifest sync, webhook throttle, XML `processEntities`, dead helper removal, referral normalization, generic signup error, static CSP fallback, bare `.env.*` gitignore |
 
 ---
 

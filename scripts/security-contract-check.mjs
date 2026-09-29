@@ -197,6 +197,40 @@ const adminLoginPage = await source("app/c8f2x9/page.tsx");
 assert(adminLoginPage.includes("mfa.verify"), "admin UI has no MFA verification flow");
 assert(adminLoginPage.includes("admin_mfa_required"), "admin UI does not handle the MFA challenge");
 
+// Sep-2026 audit remediation invariants: every fix from the full-tree
+// audit and urgent hardening batch must hold or the build fails.
+const packageJson = JSON.parse(await source("package.json"));
+const nextParts = packageJson.dependencies.next.split(".").map(Number);
+assert(
+  nextParts[0] > 16 ||
+    (nextParts[0] === 16 && (nextParts[1] > 3 || (nextParts[1] === 3 && nextParts[2] >= 6))),
+  "next is below the patched 16.3.6 (GHSA-vcvr-r3jv-pc5j ImageResponse RCE)"
+);
+assert(
+  packageJson.devDependencies["eslint-config-next"] === packageJson.dependencies.next,
+  "eslint-config-next does not match the next version"
+);
+const workspaceYaml = await source("pnpm-workspace.yaml");
+assert(workspaceYaml.includes("js-yaml: 4.3.2"), "js-yaml security override is missing (CVE-2026-84375)");
+const lockfile = await source("pnpm-lock.yaml");
+assert(lockfile.includes("js-yaml@4.3.2"), "lockfile does not pin the patched js-yaml 4.3.2");
+assert(
+  lockfile.includes(`next@${packageJson.dependencies.next}`),
+  "lockfile is out of sync with the next version in package.json (Vercel frozen-lockfile would fail)"
+);
+const webhookRoute = await source("app/api/webhooks/uropay/route.ts");
+assert(webhookRoute.includes("checkRateLimit"), "uropay webhook is not rate limited");
+assert(webhookRoute.includes("webhook-uropay:"), "uropay webhook throttle is not keyed by client IP");
+assert(news.includes("processEntities"), "news XML parser does not disable entity processing");
+assert(!news.includes("extractTag"), "dead regex-based XML helper is still present");
+assert(captureRoute.includes("normalizedCode"), "referral capture does not normalize codes before lookup");
+assert(signupAuthRoute.includes("Could not create account"), "signup leaks provider error text (user enumeration)");
+assert(nextConfig.includes("Content-Security-Policy"), "static CSP fallback is missing for proxy-excluded paths");
+const gitignore = await source(".gitignore");
+const gitignoreLines = gitignore.split("\n").map((line) => line.trim());
+assert(gitignoreLines.includes(".env.production"), "bare .env.production is committable");
+assert(gitignoreLines.includes(".env.development"), "bare .env.development is committable");
+
 const skippedMigrations = [migration, migration2, migration3, migration4].filter((file) => file === null).length;
 if (skippedMigrations > 0) {
   console.log(`Note: ${skippedMigrations} applied migration file(s) were removed from the repo after being run; their content assertions were skipped.`);

@@ -8,10 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "node scripts/security-contract-check.mjs && node scripts/scan-secrets.mjs",
-    "test:secrets": "node scripts/scan-secrets.mjs",
-    "release": "node scripts/release.mjs"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",

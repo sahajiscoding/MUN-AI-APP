@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
@@ -232,7 +233,7 @@ export async function bumpAdminSessionVersion(uid: string): Promise<void> {
  */
 export async function assertAdminMfaEnrolled(uid: string): Promise<void> {
   if (process.env.ADMIN_REQUIRE_MFA === "false") {
-    console.error(
+    logger.error(
       "ADMIN_REQUIRE_MFA is disabled: administrator sessions are single-factor. Re-enable immediately."
     );
     return;

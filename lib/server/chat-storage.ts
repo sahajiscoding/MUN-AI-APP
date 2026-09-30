@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 const CHAT_BUCKET = "chat-history";
 
@@ -81,7 +82,7 @@ async function ensureChatBucket() {
   const { data, error } = await supabaseAdmin().storage.getBucket(CHAT_BUCKET);
   if (data && data.public === false) return true;
 
-  console.error(
+  logger.error(
     "Chat-history Storage is unavailable or not private. Apply the Supabase migration before serving chat history.",
     error?.message || "bucket configuration mismatch"
   );
@@ -107,7 +108,7 @@ export async function saveChatTranscript(transcript: ChatTranscript) {
     );
 
   if (error) {
-    console.warn("Could not save chat transcript to Supabase Storage.", error.message);
+    logger.warn("Could not save chat transcript to Supabase Storage.", error.message);
     return false;
   }
 
@@ -157,7 +158,7 @@ export async function listChatTranscripts(uid: string, limit: number) {
     });
 
   if (error) {
-    console.warn("Could not list chat transcripts from Supabase Storage.", error.message);
+    logger.warn("Could not list chat transcripts from Supabase Storage.", error.message);
     return null;
   }
 

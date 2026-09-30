@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { canonicalPlanId, getPlan } from "@/lib/plans";
 import { isUserAdmin } from "@/lib/server/admin-auth";
@@ -136,7 +137,7 @@ export async function grantEntitlement(
   });
 
   if (error) {
-    console.error("Atomic entitlement grant failed:", error.message);
+    logger.error("Atomic entitlement grant failed:", error.message);
 
     throw new ApiError(
       500,

@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { logger } from "@/lib/server/secure-logger";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
@@ -143,7 +144,9 @@ async function callNvidiaModel(
         let sawAnyData = false;
 
         const emitProviderError = (message: string) => {
-          console.error(`NVIDIA ${model} stream error: ${redactProviderMessage(message).slice(0, 500)}`);
+          logger.error(`NVIDIA ${model} stream error`, {
+            detail: redactProviderMessage(message).slice(0, 500),
+          });
           emit({ error: `NVIDIA ${model} request failed: ${redactProviderMessage(message)}` });
           finishReason = "error";
           emit({ finishReason });

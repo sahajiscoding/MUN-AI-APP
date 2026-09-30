@@ -4,6 +4,7 @@ import {
 } from "@/lib/payments/uropay";
 
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 import { getPlan } from "@/lib/plans";
 import { grantEntitlement } from "@/lib/server/entitlements";
 import { processReferralCommission } from "@/lib/referrals";
@@ -85,7 +86,7 @@ export async function POST(
     });
 
     if (!verifyWebhookSignature(headers, rawBody)) {
-      console.error(
+      logger.error(
         "UroPay webhook rejected: invalid signature."
       );
 
@@ -129,7 +130,7 @@ export async function POST(
       !tenantOrderRef ||
       !webhookStatus
     ) {
-      console.error(
+      logger.error(
         "UroPay webhook rejected: missing or invalid fields."
       );
 
@@ -151,7 +152,7 @@ export async function POST(
       .maybeSingle();
 
     if (paymentLookupError) {
-      console.error(
+      logger.error(
         "Payment lookup failed:",
         paymentLookupError
       );
@@ -163,7 +164,7 @@ export async function POST(
     }
 
     if (!payment) {
-      console.error(
+      logger.error(
         "UroPay webhook: unknown order reference:",
         tenantOrderRef
       );
@@ -178,7 +179,7 @@ export async function POST(
       payment.uropay_order_id &&
       payment.uropay_order_id !== orderId
     ) {
-      console.error(
+      logger.error(
         "UroPay webhook rejected: order ID mismatch.",
         {
           expected: payment.uropay_order_id,
@@ -198,7 +199,7 @@ export async function POST(
       String(payment.environment).toLowerCase() !==
         String(event.environment).toLowerCase()
     ) {
-      console.error(
+      logger.error(
         "UroPay webhook rejected: environment mismatch."
       );
 
@@ -211,7 +212,7 @@ export async function POST(
     const authoritativeOrder = await getOrderStatus(orderId);
 
     if (!authoritativeOrder) {
-      console.error(
+      logger.error(
         "UroPay authoritative order lookup returned no data."
       );
 
@@ -226,7 +227,7 @@ export async function POST(
     );
 
     if (!authoritativeStatus) {
-      console.error(
+      logger.error(
         "Unknown UroPay authoritative status:",
         authoritativeOrder.status
       );
@@ -238,7 +239,7 @@ export async function POST(
     }
 
     if (authoritativeStatus !== webhookStatus) {
-      console.error(
+      logger.error(
         "UroPay status mismatch.",
         {
           webhookStatus,
@@ -257,7 +258,7 @@ export async function POST(
     );
 
     if (!Number.isFinite(authoritativeAmount)) {
-      console.error(
+      logger.error(
         "UroPay order has invalid amount."
       );
 
@@ -270,7 +271,7 @@ export async function POST(
     const expectedAmountRupees = Number(payment.amount) / 100;
 
     if (authoritativeAmount !== expectedAmountRupees) {
-      console.error(
+      logger.error(
         "UroPay amount mismatch.",
         {
           expectedAmountRupees,
@@ -326,7 +327,7 @@ export async function POST(
         .eq("status", "pending");
 
       if (updateError) {
-        console.error(
+        logger.error(
           "Failed to update non-paid payment:",
           updateError
         );
@@ -365,7 +366,7 @@ export async function POST(
         .maybeSingle();
 
       if (entitlementLookupError) {
-        console.error(
+        logger.error(
           "Failed to inspect entitlement for paid payment:",
           entitlementLookupError
         );
@@ -399,7 +400,7 @@ export async function POST(
       const plan = getPlan(payment.plan_id);
 
       if (!plan) {
-        console.error(
+        logger.error(
           "Paid payment references unknown plan:",
           payment.plan_id
         );
@@ -459,7 +460,7 @@ export async function POST(
       .maybeSingle();
 
     if (paymentUpdateError) {
-      console.error(
+      logger.error(
         "Failed to mark payment paid:",
         paymentUpdateError
       );
@@ -482,7 +483,7 @@ export async function POST(
     const plan = getPlan(payment.plan_id);
 
     if (!plan) {
-      console.error(
+      logger.error(
         "Paid payment references unknown plan:",
         payment.plan_id
       );
@@ -510,9 +511,12 @@ export async function POST(
     await markWebhookEventProcessed(admin, eventId);
     claimedEventId = null;
 
-    console.log(
-      `UroPay payment confirmed: ${plan.name} for user ${payment.uid}`
-    );
+    // Log correlation IDs only — the logger truncates the UID prefix and
+    // never stores full PII (SEC-LOG-01).
+    logger.info("UroPay payment confirmed", {
+      plan: plan.name,
+      uid: payment.uid,
+    });
 
     return Response.json({
       ok: true,
@@ -523,7 +527,7 @@ export async function POST(
     if (claimedEventId) {
       await supabaseAdmin().from("webhook_events").delete().eq("event_id", claimedEventId);
     }
-    console.error(
+    logger.error(
       "UroPay webhook processing error:",
       error instanceof Error ? error.message : "unknown error"
     );

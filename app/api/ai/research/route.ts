@@ -8,6 +8,7 @@ import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 import { assertAiUsageAllowed, recordAiUsage } from "@/lib/server/ai-usage";
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -395,6 +396,6 @@ async function saveCompletedChat(details: GenerationDetails) {
   }, { onConflict: "id" });
 
   if (error) {
-    console.error("Failed to index generation in Supabase:", error.message);
+    logger.error("Failed to index generation in Supabase:", error.message);
   }
 }

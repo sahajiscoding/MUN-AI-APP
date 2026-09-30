@@ -2,6 +2,7 @@ import { ApiError, jsonError } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isOwnerAdmin, requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit } from "@/lib/server/rate-limit";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     if (partnersError) {
       // Referral setup is supplemental to user management. Keep the admin
       // dashboard usable if an older database has not applied referral tables.
-      console.error("Referral partner lookup failed:", partnersError.message);
+      logger.error("Referral partner lookup failed:", partnersError.message);
     }
 
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, "");

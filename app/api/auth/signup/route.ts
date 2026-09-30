@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
+import { logger } from "@/lib/server/secure-logger";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error("Signup failed:", error.message);
+      logger.error("Signup failed:", error.message);
       throw new ApiError(400, "signup_failed", "Could not create account. Please try again.");
     }
 

@@ -1,10 +1,10 @@
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { logger } from "@/lib/server/secure-logger";
 
 const API_BASE = "https://api.uropai.in";
 
-const API_KEY = process.env.UROPAY_API_KEY;
-const API_SECRET = process.env.UROPAY_API_SECRET;
-const WEBHOOK_SECRET = process.env.UROPAY_WEBHOOK_SECRET;
+// Read credentials lazily (per call, never cached at module load) so key
+// rotation takes effect without a code change (SEC-ENV-08).
 
 function requireCredential(
   value: string | undefined,
@@ -26,9 +26,9 @@ function signRequest(
   query: string,
   body: string
 ): Record<string, string> {
-  const apiKey = requireCredential(API_KEY, "UROPAY_API_KEY");
+  const apiKey = requireCredential(process.env.UROPAY_API_KEY, "UROPAY_API_KEY");
   const apiSecret = requireCredential(
-    API_SECRET,
+    process.env.UROPAY_API_SECRET,
     "UROPAY_API_SECRET"
   );
 
@@ -156,10 +156,9 @@ export function verifyWebhookSignature(
   headers: Record<string, string>,
   rawBody: string
 ): boolean {
-  if (!WEBHOOK_SECRET) {
-    console.error(
-      "UROPAY_WEBHOOK_SECRET is not configured."
-    );
+  const webhookSecret = process.env.UROPAY_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    logger.error("UROPAY_WEBHOOK_SECRET is not configured.");
 
     return false;
   }
@@ -196,9 +195,7 @@ export function verifyWebhookSignature(
     Math.abs(now - timestampNumber) >
     MAX_AGE_SECONDS
   ) {
-    console.error(
-      "UroPay webhook rejected: timestamp outside replay window."
-    );
+    logger.error("UroPay webhook rejected: timestamp outside replay window.");
 
     return false;
   }
@@ -214,7 +211,7 @@ export function verifyWebhookSignature(
 
   const expectedSignature = createHmac(
     "sha256",
-    WEBHOOK_SECRET
+    webhookSecret
   )
     .update(canonical)
     .digest("hex");
@@ -250,9 +247,11 @@ export function verifyWebhookSignature(
     return false;
   }
 
+  // Compare as plain byte views: timing-safe, and independent of Node's
+  // Buffer typings (which drift across @types/node majors).
   return timingSafeEqual(
-    expectedBuffer,
-    receivedBuffer
+    new Uint8Array(expectedBuffer),
+    new Uint8Array(receivedBuffer)
   );
 }
 

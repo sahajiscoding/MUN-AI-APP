@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 import { getPlan } from "@/lib/plans";
 import { grantEntitlement } from "@/lib/server/entitlements";
 import { processReferralCommission } from "@/lib/referrals";
@@ -47,7 +48,7 @@ export async function reconcilePaidPayments(
     .limit(limit);
 
   if (paymentError) {
-    console.error(
+    logger.error(
       "Failed to load paid payments:",
       paymentError
     );
@@ -94,7 +95,7 @@ export async function reconcilePaidPayments(
           paymentAmountPaise: Number(payment.amount),
         });
       } catch (error) {
-        console.error(
+        logger.error(
           "Referral commission reconciliation failed:",
           {
             paymentId: payment.id,
@@ -126,7 +127,7 @@ export async function reconcilePaidPayments(
         .maybeSingle();
 
       if (entitlementError) {
-        console.error(
+        logger.error(
           "Failed to check entitlement:",
           {
             paymentId: payment.id,
@@ -206,16 +207,14 @@ export async function reconcilePaidPayments(
           "Premium entitlement repaired.",
       });
 
-      console.log(
-        "Reconciled paid payment:",
-        {
-          paymentId: payment.id,
-          uid: payment.uid,
-          planId: payment.plan_id,
-        }
-      );
+      // Correlation IDs only — UIDs are truncated by the logger (SEC-LOG-01).
+      logger.info("Reconciled paid payment", {
+        paymentId: payment.id,
+        uid: payment.uid,
+        planId: payment.plan_id,
+      });
     } catch (error) {
-      console.error(
+      logger.error(
         "Failed to reconcile payment:",
         {
           paymentId: payment.id,

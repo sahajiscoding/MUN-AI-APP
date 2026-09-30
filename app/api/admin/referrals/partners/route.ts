@@ -4,6 +4,7 @@ import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createPartnerDashboardToken, dashboardTokenExpiryDate, hashDashboardToken } from "@/lib/referrals";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 
     if (error) {
       if (error.code === "23505") throw new ApiError(409, "referral_code_taken", "That referral code is already in use.");
-      console.error("Partner creation failed:", error.message);
+      logger.error("Partner creation failed:", error.message);
       throw new ApiError(500, "partner_create_failed", "Could not create partner.");
     }
     await recordAdminAction({

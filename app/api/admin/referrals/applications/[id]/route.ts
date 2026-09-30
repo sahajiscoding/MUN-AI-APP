@@ -3,6 +3,7 @@ import { ApiError, jsonError } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function DELETE(
       .eq("id", id.data);
 
     if (error) {
-      console.error("Partner application delete failed:", error.message);
+      logger.error("Partner application delete failed:", error.message);
       throw new ApiError(500, "application_delete_failed", "Could not dismiss that application.");
     }
 

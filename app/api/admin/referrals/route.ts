@@ -2,6 +2,7 @@ import { ApiError, jsonError } from "@/lib/api";
 import { isOwnerAdmin, requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     ]);
 
     if (partnersResult.error || referralsResult.error || commissionsResult.error) {
-      console.error("Referral dashboard query failed:", partnersResult.error?.message || referralsResult.error?.message || commissionsResult.error?.message);
+      logger.error("Referral dashboard query failed:", partnersResult.error?.message || referralsResult.error?.message || commissionsResult.error?.message);
       throw new ApiError(500, "referral_dashboard_unavailable", "Could not load referral data.");
     }
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     ]);
 
     if (customersError || paymentsError) {
-      console.error("Referral dashboard enrichment failed:", customersError?.message || paymentsError?.message);
+      logger.error("Referral dashboard enrichment failed:", customersError?.message || paymentsError?.message);
       throw new ApiError(500, "referral_dashboard_unavailable", "Could not load referral data.");
     }
 

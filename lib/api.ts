@@ -1,3 +1,5 @@
+import { logger } from "@/lib/server/secure-logger";
+
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -19,7 +21,9 @@ export function jsonError(error: unknown) {
     );
   }
 
-  console.error(error);
+  // Server logs only: sanitize through the secure logger so a thrown error
+  // carrying PII or credential text never lands verbatim in log storage.
+  logger.error("Unhandled API error", { error });
   return Response.json(
     { error: "Something went wrong. Please try again.", code: "internal_error" },
     { status: 500 }

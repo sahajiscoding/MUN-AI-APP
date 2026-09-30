@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { HomeLanding } from "@/components/home-landing";
 import { ReferralCookieCapture } from "@/components/referral-cookie-capture";
 import { getReferralPartner } from "@/lib/referrals";
+import { logger } from "@/lib/server/secure-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function ReferralLandingPage({
   try {
     partner = await getReferralPartner(candidate);
   } catch (error) {
-    console.error("Referral landing lookup unavailable:", error instanceof Error ? error.message : "unknown error");
+    logger.error("Referral landing lookup unavailable:", error instanceof Error ? error.message : "unknown error");
   }
 
   if (!partner) {

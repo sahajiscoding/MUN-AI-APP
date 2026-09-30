@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -15,13 +16,13 @@ function getSafeNext(value: string | null, origin: string) {
 }
 
 function failureRedirect(origin: string, reason: string) {
-  console.error("OAuth callback failed:", { reason });
+  logger.error("OAuth callback failed:", { reason });
   return NextResponse.redirect(new URL("/auth/signin?error=oauth_callback_failed", origin));
 }
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-  console.info("OAuth callback reached:", { hasCode: Boolean(requestUrl.searchParams.get("code")) });
+  logger.info("OAuth callback reached:", { hasCode: Boolean(requestUrl.searchParams.get("code")) });
 
   const oauthError = requestUrl.searchParams.get("error");
   if (oauthError) {
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     if (error) return failureRedirect(requestUrl.origin, `exchange:${error.message.slice(0, 160)}`);
 
     const destination = getSafeNext(requestUrl.searchParams.get("next"), requestUrl.origin);
-    console.info("OAuth callback exchange succeeded:", { destination });
+    logger.info("OAuth callback exchange succeeded:", { destination });
     return NextResponse.redirect(new URL(destination, requestUrl.origin));
   } catch (error) {
     return failureRedirect(requestUrl.origin, error instanceof Error ? error.message.slice(0, 160) : "unexpected_error");

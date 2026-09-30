@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 // DB-backed rate limiting. In-memory state is only a fallback so the app can
 // still function when the database is unreachable (e.g. local development);
@@ -47,13 +48,13 @@ export async function checkRateLimit(
     });
 
     if (error) {
-      console.warn("DB rate limit check failed, falling back to memory:", error.message);
+      logger.warn("DB rate limit check failed, falling back to memory:", error.message);
       return memoryCheck(key, maxAttempts, windowMs);
     }
 
     return data === true;
   } catch (error) {
-    console.warn("DB rate limit unavailable, falling back to memory:", error instanceof Error ? error.message : "unknown error");
+    logger.warn("DB rate limit unavailable, falling back to memory:", error instanceof Error ? error.message : "unknown error");
     return memoryCheck(key, maxAttempts, windowMs);
   }
 }

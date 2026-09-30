@@ -3,6 +3,7 @@ import { ApiError, jsonError } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ export async function POST(
       .maybeSingle();
 
     if (error) {
-      console.error("Commission settlement failed:", error.message);
+      logger.error("Commission settlement failed:", error.message);
       throw new ApiError(500, "commission_update_failed", "Could not mark commission as paid.");
     }
 
@@ -48,7 +49,7 @@ export async function POST(
       .eq("id", id.data)
       .maybeSingle();
     if (lookupError) {
-      console.error("Commission status lookup failed:", lookupError.message);
+      logger.error("Commission status lookup failed:", lookupError.message);
       throw new ApiError(500, "commission_lookup_failed", "Could not verify commission status.");
     }
     if (!existing) throw new ApiError(404, "commission_not_found", "Commission not found.");

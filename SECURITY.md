@@ -304,6 +304,7 @@ Implementation: DB-backed `rpc(rate_limit_check)` + `getClientIp` (prefers `x-ve
 * **SEC-ERR-02:** Full error details go to server logs only. Auth failures MUST NOT distinguish "email not found" vs "wrong password" beyond what is unavoidable; signup MUST NOT echo provider text.
 * **SEC-ERR-03:** Debug/dev error pages MUST be off in production (`productionBrowserSourceMaps:false`).
 * **SEC-LOG-01:** Logs MUST NOT contain secrets, raw bodies, tokens, or full PII. NVIDIA redaction is mandatory. Webhook logs print hostnames/statuses, never keys.
+* **SEC-LOG-02:** Server code (`app/api/*`, `lib/server/*`, `lib/payments/*`, `lib/ai/*`, `lib/referrals.ts`) MUST log through `logger` from `@/lib/server/secure-logger` — never bare `console.*`. The logger redacts credential patterns (`Bearer`, `nvapi-`, live keys, private keys), masks emails, truncates opaque IDs (uid/order/payment/event refs) to 8-char prefixes, drops secret/PII-named fields, and caps line length. Client code (`components/`, `lib/http.ts`) keeps plain `console` for metadata-only messages. (Rotation posture is SEC-ENV-08: `lib/payments/uropay.ts` reads all three UroPay credentials per call, and `ADMIN_SESSION_SECRET` / `NVIDIA_API_KEY` are likewise read per request.)
 * **Verification:** `grep -rn "stack\|sql\|\\.db\|node_modules" app/api --include="*.ts" | grep -i "Response.json\|return.*json"` must show no leakage paths.
 
 ---
@@ -421,6 +422,7 @@ node scripts/scan-secrets.mjs   # targeted re-run
 | 2026-09-29 | Contract checks 115 → 129 | 14 new executable asserts: Next ≥16.3.6, eslint-config match, js-yaml override + lockfile pin, lockfile/manifest sync, webhook throttle, XML `processEntities`, dead helper removal, referral normalization, generic signup error, static CSP fallback, bare `.env.*` gitignore |
 | 2026-09-29 | SAST triage (25 findings) | 4 fixed: client UUID gate on admin id interpolation (`components/referral-admin-panel.tsx`), repo-root containment in `security-contract-check.mjs`/`scan-secrets.mjs`/`release.mjs`. Rest are scanner false positives, see §28. `new RegExp` finding already gone ( feed parser uses literal regexes). |
 | 2026-09-29 | Security matrix (100+ checks) | `scripts/security-matrix.mjs` holds 83 independently-visible gates (run: `node scripts/security-matrix.mjs --all`); `.github/workflows/security-matrix.yml` fans each out as its own check with `fail-fast: false`. |
+| 2026-09-30 | Secure-logging overhaul | New `lib/server/secure-logger.ts` (SEC-LOG-02: secret/PII redaction, ID truncation, line caps); all server `console.*` in `app/api`, `lib/server`, `lib/payments`, `lib/ai`, `lib/referrals.ts` migrated to it; UroPay credentials switched to lazy per-call reads (SEC-ENV-08); fixed 2 pre-existing `Buffer` type errors (certificate PDF body, webhook `timingSafeEqual` views). Gates green: typecheck, lint, contract check, secret scan (28 post-baseline commits), matrix 83/83. |
 
 ---
 
@@ -463,7 +465,7 @@ grep -rn "origin.*\*.*credentials\|Access-Control-Allow-Origin.*\*" app lib prox
 
 * Edge: `proxy.ts` (CSP nonce, CSRF, HTTPS, cache) · `next.config.ts` (headers + static CSP fallback)
 * Auth: `lib/supabase/auth.ts` · `lib/server/auth.ts` · `lib/supabase/server.ts` · `lib/supabase/proxy.ts` · `lib/server/admin-auth.ts`
-* Guardrails: `lib/api.ts` (errors + body cap) · `lib/server/rate-limit.ts` (limits + IP) · `lib/server/ai-usage.ts` (daily caps)
+* Guardrails: `lib/api.ts` (errors + body cap) · `lib/server/rate-limit.ts` (limits + IP) · `lib/server/ai-usage.ts` (daily caps) · `lib/server/secure-logger.ts` (redacted server logging)
 * Money: `lib/payments/uropay.ts` · `app/api/webhooks/uropay/route.ts` · `lib/server/entitlements.ts` · `lib/server/payment-reconciliation.ts` · `lib/referrals.ts`
 * AI: `lib/ai/nvidia.ts` · `lib/ai/router.ts` · `app/api/ai/research/route.ts`
 * Data: `supabase/schema.sql` · `supabase/migrations/*` · `lib/server/chat-storage.ts` · `lib/server/course-progress.ts`

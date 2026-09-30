@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
 
@@ -35,7 +36,7 @@ export async function getReferralPartner(referralCode: string): Promise<Referral
     .maybeSingle();
 
   if (error) {
-    console.error("Referral partner lookup failed:", error.message);
+    logger.error("Referral partner lookup failed:", error.message);
     return null;
   }
 
@@ -86,7 +87,7 @@ export async function applyReferralCodeToUser(uid: string, referralCode: string,
     .maybeSingle();
 
   if (existingError) {
-    console.error("Existing referral lookup failed:", existingError.message);
+    logger.error("Existing referral lookup failed:", existingError.message);
     return null;
   }
   if (existing) return existing as ReferralAttribution;
@@ -97,7 +98,7 @@ export async function applyReferralCodeToUser(uid: string, referralCode: string,
     .eq("uid", uid)
     .maybeSingle();
   if (userError) {
-    console.error("Referral self-check lookup failed:", userError.message);
+    logger.error("Referral self-check lookup failed:", userError.message);
     return null;
   }
   const customerEmail = verifiedEmail?.trim() || userData?.email?.trim() || "";
@@ -123,7 +124,7 @@ export async function applyReferralCodeToUser(uid: string, referralCode: string,
         .maybeSingle();
       return (firstTouch as ReferralAttribution | null) ?? null;
     }
-    console.error("Referral creation failed:", error.message);
+    logger.error("Referral creation failed:", error.message);
     return null;
   }
 
@@ -261,7 +262,7 @@ export async function mintPartnerDashboardToken(partnerId: string): Promise<stri
     .eq("id", partnerId);
 
   if (error) {
-    console.error("Dashboard token minting failed:", error.message);
+    logger.error("Dashboard token minting failed:", error.message);
     return null;
   }
   return rawToken;
@@ -290,7 +291,9 @@ export async function recordReferralClick(partnerId: string) {
       })
       .eq("id", partnerId);
   } catch (error) {
-    console.error("Referral click tracking failed:", error);
+    // Never log the raw error object — it can carry request/row data.
+    // The logger keeps only the message and redacts PII-shaped fields.
+    logger.error("Referral click tracking failed", { error });
   }
 }
 
@@ -345,7 +348,7 @@ export async function getPartnerDashboard(token: string): Promise<PartnerDashboa
     .eq("dashboard_token", hashDashboardToken(normalized))
     .maybeSingle();
   if (partnerError) {
-    console.error("Partner dashboard lookup failed:", partnerError.message);
+    logger.error("Partner dashboard lookup failed:", partnerError.message);
     return null;
   }
   if (!partner) return null;
@@ -373,7 +376,7 @@ export async function getPartnerDashboard(token: string): Promise<PartnerDashboa
   ]);
 
   if (referralsResult.error || commissionsResult.error) {
-    console.error(
+    logger.error(
       "Partner dashboard data load failed:",
       referralsResult.error?.message || commissionsResult.error?.message
     );

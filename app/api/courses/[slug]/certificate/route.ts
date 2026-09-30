@@ -5,6 +5,7 @@ import { getCourseBySlug } from "@/lib/courses";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/server/auth";
 import { checkRateLimit } from "@/lib/server/rate-limit";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -101,7 +102,7 @@ async function generateCertificate(
     course_slug: slug,
   });
   if (trackingError) {
-    console.error("Could not record certificate download analytics", trackingError);
+    logger.error("Could not record certificate download analytics", trackingError);
   }
 
   const pdf = await PDFDocument.create();
@@ -143,7 +144,9 @@ async function generateCertificate(
   page.drawText("MUN Prep · Learn, practise, lead", { x: 514, y: 94, size: 10, font: italic, color: patina });
 
   const pdfBytes = await pdf.save();
-  return new Response(Buffer.from(pdfBytes), {
+  // pdf.save() already yields exact-size bytes; copy into a plain view so the
+  // Response body type-checks without Node's Buffer typings.
+  return new Response(new Uint8Array(pdfBytes), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="mun-prep-${slug}-certificate.pdf"`,

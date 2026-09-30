@@ -8,6 +8,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { createUropayOrder } from "@/lib/payments/uropay";
 import { getPlan } from "@/lib/plans";
 import { attachReferralToUser } from "@/lib/referrals";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -70,7 +71,7 @@ function assertSafeCheckoutUrl(value: unknown): string {
     url.protocol !== "https:" ||
     !ALLOWED_CHECKOUT_HOSTS.includes(url.hostname.toLowerCase())
   ) {
-    console.error(
+    logger.error(
       "UroPay returned an unexpected checkout host:",
       url.hostname
     );
@@ -213,7 +214,7 @@ export async function POST(
       paymentInsertError ||
       !payment
     ) {
-      console.error(
+      logger.error(
         "Payment creation DB error:",
         paymentInsertError
       );
@@ -258,7 +259,7 @@ export async function POST(
         openUrl: assertSafeCheckoutUrl(uropayOrder.openUrl),
       };
     } catch (error) {
-      console.error(
+      logger.error(
         "UroPay order creation failed:",
         error
       );
@@ -316,7 +317,7 @@ export async function POST(
     if (
       paymentUpdateError
     ) {
-      console.error(
+      logger.error(
         "Failed to save UroPay order ID:",
         paymentUpdateError
       );

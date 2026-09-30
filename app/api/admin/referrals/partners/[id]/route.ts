@@ -3,6 +3,7 @@ import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { recordAdminAction } from "@/lib/server/admin-audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -43,7 +44,7 @@ export async function PATCH(
       .select("id, name, email, whatsapp, referral_code, status, commission_rate, notes, created_at, updated_at")
       .maybeSingle();
     if (error) {
-      console.error("Partner update failed:", error.message);
+      logger.error("Partner update failed:", error.message);
       throw new ApiError(500, "partner_update_failed", "Could not update partner.");
     }
     if (!data) throw new ApiError(404, "partner_not_found", "Partner not found.");

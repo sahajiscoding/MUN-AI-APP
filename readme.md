@@ -51,6 +51,26 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 There is **no shared admin password**. Administrators sign in with their own Supabase account, and only accounts present in the `admin_users` table receive an admin session. A stranger who finds the admin URL still cannot escalate: they would need their account approved by the owner first, and account-granting is owner-only.
 
+## Security
+
+The full policy lives in [`SECURITY.md`](./SECURITY.md); the per-task non-negotiables live in [`AGENTS.md`](./AGENTS.md). Read both before changing any API route, migration, payment code, secret, or dependency. Summary of the enforced posture:
+
+- **Secrets are server-only.** Provider, payment, and service-role keys are read from `process.env` in server code only (`app/api/*`, `lib/server/*`, `lib/payments/*`, `lib/ai/*`), lazily per request so rotation never needs a code change. Nothing secret goes in `NEXT_PUBLIC_*`, client components, logs, or chat.
+- **Server logging is redacted.** Server code logs through `logger` from `@/lib/server/secure-logger`, which strips credential patterns, masks emails, truncates opaque IDs (UIDs, order/payment/event refs) to short prefixes, and caps line length. Never `console.log` UIDs, emails, tokens, webhook bodies, or raw error objects from server code; client code (`components/`, `lib/http.ts`) keeps plain `console` for metadata-only messages.
+- **Auth first, ownership second.** Protected routes call `requireUser()`/`requireAdmin()` before any work (401 when anonymous); ID lookups additionally scope to the caller (anti-IDOR); owner-only mutations require `requireAdminOwner` (403 otherwise). Admin sessions are HttpOnly `SameSite=Strict` cookies with mandatory TOTP MFA and live `session_version` revocation.
+- **Money is verified, not trusted.** The UroPay webhook verifies HMAC-SHA256 with `timingSafeEqual`, a 5-minute replay window, and atomic event claims; amounts and statuses are cross-checked against the authoritative order API; entitlements and first-purchase commissions are granted by atomic database functions only.
+- **Defense in depth.** RLS deny-by-default on every table, zod validation + 512KB body caps on input, per-endpoint rate limits, nonce CSP + CSRF origin checks + HTTPS enforcement at the edge (`proxy.ts`), generic production error responses, and pinned exact dependencies with a committed lockfile.
+
+Verify with the automated gates (all must stay green; never weaken a gate to make CI pass):
+
+```bash
+node node_modules/typescript/bin/tsc --noEmit   # or: pnpm typecheck
+node scripts/security-contract-check.mjs        # or: pnpm test (contract + secret scan)
+node scripts/scan-secrets.mjs
+node node_modules/eslint/bin/eslint.js app lib proxy.ts  # or: pnpm lint
+node scripts/security-matrix.mjs --all          # 83 independent gates
+```
+
 ## Supabase Auth
 
 Enable Email/Password and, if desired, Google in **Authentication → Providers**. Configure the production site URL and the following redirect URLs in Supabase and Google OAuth settings:
@@ -93,6 +113,14 @@ Set the provider key only as a server-side Vercel Environment Variable. A single
 ## Pre-deployment checklist
 
 Before a production release, run the lint, typecheck, build, and frozen-lockfile checks. Apply and verify Supabase migrations first. Confirm that `/api/chats`, `/api/progress`, `/api/me/entitlement`, `/api/payments/status`, and administrator endpoints return `401` without credentials. With a dedicated test account, generate a response, list Recent chats, open the transcript, verify a non-owner cannot open it, and confirm the mobile composer remains above the fixed navigation. For payments, use UroPay test mode and replay the same webhook event to verify it is acknowledged without a duplicate entitlement grant.
+
+Security release gates (see [`SECURITY.md`](./SECURITY.md) §21–§22):
+
+- `pnpm test`, `pnpm typecheck`, and `pnpm lint` are green; `scripts/security-matrix.mjs --all` passes 83/83; `pnpm-lock.yaml` is in sync with `package.json`.
+- RLS verification queries (§8) pass on production; migrations applied in order including `20260827_security_hardening.sql`.
+- `ADMIN_REQUIRE_MFA=true` in Vercel; `ADMIN_SESSION_SECRET` is ≥32 random characters and distinct from `SUPABASE_SECRET_KEY`.
+- No secret was pasted into chat, docs, or commits during this release — if one was, rotate it first (Supabase, NVIDIA, UroPay, admin secret), verify the old value is dead, and purge it from history per the §24 playbook. A green secret scan covers tracked files and post-baseline history only; pre-baseline history is treated as compromised until rotated and purged.
+- Server logs reviewed for PII/secrets: all server logging goes through `@/lib/server/secure-logger`; no `console.log` of UIDs, emails, tokens, or raw bodies remains in `app/api`, `lib/server`, `lib/payments`, or `lib/ai`.
 
 
 ## Referral partners and commissions

@@ -8,6 +8,7 @@ import { getEntitlement, grantEntitlement } from "@/lib/server/entitlements";
 import { canonicalPlanId } from "@/lib/plans";
 import { getOrderStatus } from "@/lib/payments/uropay";
 import { processReferralCommission } from "@/lib/referrals";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -99,7 +100,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (paymentError) {
-      console.error("Payment status lookup failed:", paymentError);
+      logger.error("Payment status lookup failed:", paymentError);
       throw new ApiError(
         500,
         "payment_lookup_failed",
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
         );
 
         if (!authoritativeStatus) {
-          console.error(
+          logger.error(
             "UroPay returned an unknown order status:",
             authoritativeOrder?.status
           );
@@ -152,7 +153,7 @@ export async function GET(request: Request) {
             !Number.isFinite(authoritativeAmount) ||
             authoritativeAmount !== expectedAmountRupees
           ) {
-            console.error(
+            logger.error(
               "UroPay authoritative amount mismatch:",
               {
                 orderRef: payment.order_ref,
@@ -181,7 +182,7 @@ export async function GET(request: Request) {
               .eq("uid", user.uid);
 
             if (updateError) {
-              console.error(
+              logger.error(
                 "Failed to reconcile payment status:",
                 updateError
               );
@@ -202,7 +203,7 @@ export async function GET(request: Request) {
           throw error;
         }
 
-        console.error(
+        logger.error(
           "UroPay authoritative status check failed:",
           error
         );
@@ -238,7 +239,7 @@ export async function GET(request: Request) {
             orderId: payment.uropay_order_id ?? payment.order_ref,
           });
         } catch (error) {
-          console.error(
+          logger.error(
             "Paid payment entitlement recovery failed:",
             error
           );
@@ -280,7 +281,7 @@ export async function GET(request: Request) {
           paymentAmountPaise: Number(payment.amount),
         });
       } catch (error) {
-        console.error(
+        logger.error(
           "Referral commission after confirmed payment failed:",
           error
         );

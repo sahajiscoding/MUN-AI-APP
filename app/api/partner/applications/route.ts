@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error("Partner application insert failed:", error.message);
+      logger.error("Partner application insert failed:", error.message);
       throw new ApiError(500, "application_failed", "Could not submit your application. Please try again.");
     }
 

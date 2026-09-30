@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { XMLParser } from "fast-xml-parser";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -259,7 +260,7 @@ export async function GET(request: Request) {
       message: allItems.length === 0 ? "News is temporarily unavailable. Please try again." : undefined,
     });
   } catch (error) {
-    console.error("News fetch error:", error instanceof Error ? error.message : "unknown error");
+    logger.error("News fetch error:", error instanceof Error ? error.message : "unknown error");
     return newsResponse({ news: [], error: "Failed to fetch news" }, 500);
   }
 }

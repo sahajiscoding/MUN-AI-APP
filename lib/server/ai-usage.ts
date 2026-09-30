@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 // Per-user daily AI usage ledger. Backed by the shared `ai_usage` table so
@@ -77,7 +78,7 @@ async function readUsage(uid: string, day: string): Promise<UsageRead> {
 
   if (error) {
     // Loud: ledger failure directly affects billing-adjacent enforcement.
-    console.error("AI usage lookup failed:", error.message);
+    logger.error("AI usage lookup failed:", error.message);
     return { ok: false };
   }
 
@@ -175,10 +176,10 @@ export async function recordAiUsage(
 
     // 42883 = undefined_function: migration not applied yet. Anything else is
     // also survivable for metering, but logged loudly.
-    console.error("AI usage atomic increment failed, using legacy path:", error.message);
+    logger.error("AI usage atomic increment failed, using legacy path:", error.message);
     await recordAiUsageLegacy(uid, requests, tokens);
   } catch (error) {
-    console.error("AI usage record failed:", error instanceof Error ? error.message : "unknown error");
+    logger.error("AI usage record failed:", error instanceof Error ? error.message : "unknown error");
   }
 }
 
@@ -202,11 +203,11 @@ async function recordAiUsageLegacy(uid: string, requests: number, tokens: number
       );
 
     if (error) {
-      console.error("AI usage record failed:", error.message);
+      logger.error("AI usage record failed:", error.message);
     } else {
       writeCache(next);
     }
   } catch (error) {
-    console.error("AI usage record failed:", error instanceof Error ? error.message : "unknown error");
+    logger.error("AI usage record failed:", error instanceof Error ? error.message : "unknown error");
   }
 }

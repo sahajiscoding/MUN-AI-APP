@@ -1,6 +1,7 @@
 import { ApiError, jsonError } from "@/lib/api";
 import { requireAdminOwner } from "@/lib/server/admin-auth";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export async function GET() {
       .limit(100);
 
     if (error) {
-      console.error("Partner applications lookup failed:", error.message);
+      logger.error("Partner applications lookup failed:", error.message);
       throw new ApiError(500, "applications_unavailable", "Could not load partner applications.");
     }
 

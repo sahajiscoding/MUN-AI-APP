@@ -40,8 +40,9 @@ export type AiUsageReservation = {
  * ledger errors fail closed; there is deliberately no read-then-write fallback.
  */
 export async function reserveAiUsage(uid: string, reservedTokens: number): Promise<AiUsageReservation> {
-  const safeReservation = Math.max(0, Math.floor(reservedTokens));
-  if (!uid || safeReservation > 1_000_000) {
+  const safeReservation = Math.floor(reservedTokens);
+  // Mirrors reserve_ai_usage: the reservation ledger requires 1..1,000,000 tokens.
+  if (!uid || !Number.isSafeInteger(safeReservation) || safeReservation < 1 || safeReservation > 1_000_000) {
     throw new ApiError(400, "invalid_ai_usage_reservation", "AI usage could not be reserved.");
   }
 

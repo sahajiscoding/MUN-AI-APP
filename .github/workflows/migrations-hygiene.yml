@@ -37,4 +37,16 @@ jobs:
           # AI quota reservation/settlement RPCs.
           grep -rq "reserve_ai_usage" supabase/migrations || fail "AI reservation RPC missing"
           grep -rq "settle_ai_usage" supabase/migrations || fail "AI settlement RPC missing"
+          # The RPCs must use the ledger 20260826_ai_usage_daily.sql already created
+          # (usage_date / actual_tokens / status). A later `create table if not exists`
+          # with other column names is a silent no-op on an existing database while the
+          # functions still assume it, which leaves them broken in production.
+          ledger=supabase/migrations/20261001_ai_usage_reservations.sql
+          [ -f "$ledger" ] || fail "AI reservation migration missing"
+          for col in usage_date actual_tokens status; do
+            grep -v '^[[:space:]]*--' "$ledger" | grep -Eq "\b${col}\b" || fail "AI reservation RPCs do not use existing ledger column ${col}"
+          done
+          if grep -v '^[[:space:]]*--' "$ledger" | grep -Eq '\b(usage_day|settled_tokens)\b'; then
+            fail "AI reservation migration references ledger columns that do not exist in deployed databases"
+          fi
           echo "Migrations hygiene OK"

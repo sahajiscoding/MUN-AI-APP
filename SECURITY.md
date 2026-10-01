@@ -171,7 +171,7 @@ node -e "console.log(process.env.ADMIN_SESSION_SECRET?.length >= 32 ? 'secret le
 * **SEC-DB-02:** NEVER `USING (true)` or bare `FOR ALL` without a `WHERE` condition.
 * **SEC-DB-03:** Owner-readable tables use `USING (auth.uid() = uid)` for SELECT only; all writes go through service-role server routes. Tables `admin_users`, `webhook_events`, `rate_limits`, `ai_usage`, `ai_usage_reservations`, `entitlement_payment_grants`, `admin_audit_log`, `referral_*`, `certificate_downloads`, `partner_applications` have **no client policies** (service role only).
 * **SEC-DB-04:** `SECURITY DEFINER` functions MUST set `search_path` (`public, pg_temp` or empty) and `REVOKE … FROM anon, authenticated`.
-* **SEC-DB-05:** Money/commission/entitlement mutations MUST be atomic RPCs: `grant_entitlement_atomic` (advisory lock, `FOR UPDATE`/`FOR SHARE` reads, payment-eligibility guard, and a durable `entitlement_payment_grants` row so each provider payment can extend access at most once), `create_first_referral_commission` (row `FOR UPDATE` lock + converted-status guard + `uid = p_uid` binding). App code MUST NOT write `referral_commissions`/`entitlements`/`entitlement_payment_grants` directly. AI budget enforcement uses `reserve_ai_usage`/`settle_ai_usage` (atomic check-and-reserve; serverless-safe).
+* **SEC-DB-05:** Money/commission/entitlement mutations MUST be atomic RPCs: `grant_entitlement_atomic` (advisory lock, `FOR UPDATE`/`FOR SHARE` reads, payment-eligibility guard, and a durable `entitlement_payment_grants` row so each provider payment can extend access at most once), `create_first_referral_commission` (row `FOR UPDATE` lock + converted-status guard + `uid = p_uid` binding). App code MUST NOT write `referral_commissions`/`entitlements`/`entitlement_payment_grants` directly. AI budget enforcement uses `reserve_ai_usage`/`settle_ai_usage` (atomic check-and-reserve; serverless-safe). They keep per-day counters in `ai_usage` (`reserved_tokens` added by `20261001_ai_usage_reservations.sql`) and one row per request in the `ai_usage_reservations` ledger that `20260826_ai_usage_daily.sql` already created (`usage_date`, `actual_tokens`, `status`: `pending` → `settled`); that migration adopts the existing table rather than redefining it, refuses to run (and rolls back) if the ledger lacks those columns, and CI (`migrations-hygiene.yml`) rejects a column set that differs from the deployed one. The older `ai_usage_daily` table and `reserve_ai_tokens`/`reconcile_ai_tokens`/`release_ai_tokens` functions are not called by the application and are not part of the live accounting path.
 * **SEC-DB-06:** Apply migrations in order; never bootstrap a fresh DB from `schema.sql` alone. (The payments RLS enable/policy ordering defect in `schema.sql` was fixed 2026-10-01, but migrations are still the source of truth for new objects.)
 
 ### Verification (run in Supabase SQL editor)
@@ -188,6 +188,19 @@ select * from pg_policies where qual = 'true' or with_check = 'true';
 select tablename, count(*) from pg_policies
 where tablename in ('admin_users','webhook_events','rate_limits','ai_usage','admin_audit_log')
 group by 1; -- expect: 0 rows
+-- 4. AI reservation RPCs installed, service-role only, ledger closed to clients?
+select p.proname,
+       has_function_privilege('anon', p.oid, 'execute')          as anon,
+       has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
+       has_function_privilege('service_role', p.oid, 'execute')  as service_role
+  from pg_proc p
+ where p.pronamespace = 'public'::regnamespace
+   and p.proname in ('reserve_ai_usage', 'settle_ai_usage');
+-- expect: 2 rows, each anon=false, authenticated=false, service_role=true
+-- (0 rows means 20261001_ai_usage_reservations.sql is not applied: the AI route fails closed with 503)
+select has_table_privilege('anon', 'public.ai_usage_reservations', 'select')          as anon,
+       has_table_privilege('authenticated', 'public.ai_usage_reservations', 'select') as authenticated;
+-- expect: false, false
 ```
 
 ---
@@ -444,6 +457,7 @@ git ls-files | grep -E "^\.env"   # expect: .env.example only
 | 2026-09-29 | Security matrix (100+ checks) | `scripts/security-matrix.mjs` holds 83 independently-visible gates (run: `node scripts/security-matrix.mjs --all`); `.github/workflows/security-matrix.yml` fans each out as its own check with `fail-fast: false`. |
 | 2026-10-01 | Remediation of 2026-10-01 audit findings (F-01…F-09) | Admin promotion now requires current-session AAL2 and revocation is tombstoned (`20261001_admin_revocation_tombstones.sql`); per-payment entitlement ledger + eligibility guard (`20261001_payment_entitlement_grants.sql`); quiz answer keys moved to `lib/server/quiz-answer-keys.ts` and the client ships answer-free questions; AI quota is atomic check-and-reserve with settle-on-every-path and provider abort on disconnect (`20261001_ai_usage_reservations.sql`); streamed byte-accurate request caps incl. webhook; rate-limit retention sweep + production error logging; `brace-expansion` 1.1.21/5.0.12 overrides; `pnpm audit` full + prod clean; CI contract workflows updated to assert all of the above. |
 | 2026-10-01 | Doc drift fix | `SECURITY.md`/`readme.md` rewritten to describe the workflows that actually exist; references to non-existent `pnpm test` / `scripts/*.mjs` / `security.yml` replaced with the real gates. |
+| 2026-10-01 | AI reservation ledger reconciliation | `20261001_ai_usage_reservations.sql` declared `ai_usage_reservations` with `usage_day`/`settled_tokens`, but `20260826_ai_usage_daily.sql` had already created it with `usage_date`/`actual_tokens`/`status`; `create table if not exists` is a no-op on an existing table, so the migration failed on a fresh chain and would have left the RPCs incompatible on a live database. The migration now adopts the existing ledger (no renames, no changes to existing rows/constraints/indexes), rejects zero-token reservations to match the ledger's `reserved_tokens > 0` check (`reserveAiUsage` validates the same range), takes a bounded `lock_timeout`, and aborts with a full rollback if the ledger lacks the expected columns. `migrations-hygiene.yml` asserts the column names. Verified on PostgreSQL 17 against a production-like database: only `ai_usage.reserved_tokens` and the two RPCs are added; re-runnable; concurrent reservations never exceed a cap and settlements never double-charge. |
 | 2026-09-30 | Secure-logging overhaul | New `lib/server/secure-logger.ts` (SEC-LOG-02: secret/PII redaction, ID truncation, line caps); all server `console.*` in `app/api`, `lib/server`, `lib/payments`, `lib/ai`, `lib/referrals.ts` migrated to it; UroPay credentials switched to lazy per-call reads (SEC-ENV-08); fixed 2 pre-existing `Buffer` type errors (certificate PDF body, webhook `timingSafeEqual` views). Gates green: typecheck, lint, contract check, secret scan (28 post-baseline commits), matrix 83/83. |
 
 ---

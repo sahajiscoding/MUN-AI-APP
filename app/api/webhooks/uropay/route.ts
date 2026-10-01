@@ -3,6 +3,7 @@ import {
   getOrderStatus,
 } from "@/lib/payments/uropay";
 
+import { ApiError, readRequestText } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { logger } from "@/lib/server/secure-logger";
 import { getPlan } from "@/lib/plans";
@@ -77,7 +78,17 @@ export async function POST(
       );
     }
 
-    const rawBody = await request.text();
+    let rawBody: string;
+    try {
+      // Bounded read: the signature must cover the exact raw bytes, and an
+      // oversized body is rejected before it is fully buffered.
+      rawBody = await readRequestText(request, 256_000);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return Response.json({ ok: false, error: "payload_too_large" }, { status: error.status });
+      }
+      return Response.json({ ok: false, error: "invalid_body" }, { status: 400 });
+    }
 
     const headers: Record<string, string> = {};
 

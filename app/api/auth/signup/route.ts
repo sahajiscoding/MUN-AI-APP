@@ -3,6 +3,7 @@ import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { logger } from "@/lib/server/secure-logger";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { resolveSiteOrigin } from "@/lib/server/site-origin";
 
 export const runtime = "nodejs";
 
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       password: body.data.password,
       options: {
         data: { full_name: body.data.name },
-        emailRedirectTo: `${new URL(request.url).origin}/auth/callback`,
+        emailRedirectTo: `${resolveSiteOrigin(request)}/auth/callback`,
       },
     });
 

@@ -28,7 +28,14 @@ jobs:
             fail "NVIDIA_API_KEY reachable from client code"
           fi
           grep -q "redactProviderMessage" lib/ai/nvidia.ts || fail "provider error redaction is missing"
-          grep -q "assertAiUsageAllowed" app/api/ai/research/route.ts || fail "AI route does not enforce daily usage allowance"
-          grep -q "recordAiUsage" app/api/ai/research/route.ts || fail "AI route does not record usage"
+          # Quota enforcement must be an atomic check-and-reserve, and every
+          # terminal path (success, provider error, client cancel) must settle
+          # the reservation instead of silently skipping metering.
+          grep -q "reserveAiUsage" app/api/ai/research/route.ts || fail "AI route does not reserve daily usage atomically"
+          grep -q "settleAiUsage" app/api/ai/research/route.ts || fail "AI route does not settle usage on completion/cancel"
+          grep -q "assertAiUsageAllowed" app/api/ai/research/route.ts && fail "stale non-atomic usage pre-check still present"
+          grep -rq "reserve_ai_usage" supabase/migrations || fail "atomic reservation RPC missing from migrations"
+          grep -rq "reserved_tokens" supabase/migrations || fail "reservation ledger column missing from migrations"
+          grep -q "upstream.abort" lib/ai/nvidia.ts || fail "client cancellation is not propagated to the provider request"
           grep -q "getClientIp" app/api/ai/research/route.ts || fail "AI route does not use server-resolved client IP"
           echo "AI safety OK"

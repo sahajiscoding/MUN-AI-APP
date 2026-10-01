@@ -25,6 +25,14 @@ jobs:
         run: |
           fail() { echo "FAIL: $1"; exit 1; }
           grep -q "quiz_verified_at" "app/api/courses/[slug]/certificate/route.ts" || fail "certificate route does not require a verified quiz pass"
-          grep -q "buildCourseReviewQuestions" app/api/progress/route.ts || fail "progress does not grade against canonical questions"
+          grep -q "buildTrustedCourseReviewQuestions" app/api/progress/route.ts || fail "progress does not grade against server-only answer keys"
           grep -q "quizAnswers" app/api/progress/route.ts || fail "progress does not accept server-graded quiz submissions"
+          # Answer keys must live in the server-only module and must not appear
+          # in the module the client course page imports.
+          grep -q "quizAnswerKeys" lib/server/quiz-answer-keys.ts || fail "server-only answer key module is missing"
+          grep -rq "quiz-answer-keys" lib/server/course-progress.ts || fail "server grading does not use the server-only answer keys"
+          if grep -q "correct:" lib/quizzes.ts; then fail "lib/quizzes.ts ships answer keys to the client"; fi
+          if grep -rn "quiz-answer-keys" app components --include='*.ts' --include='*.tsx' | grep -v "app/api"; then
+            fail "answer keys imported outside server routes"
+          fi
           echo "Certificate integrity OK"

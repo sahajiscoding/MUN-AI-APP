@@ -42,11 +42,12 @@ function getSessionSecret() {
  * requireUser against the access token), not from a shared password. A user
  * who is not in admin_users can never obtain an admin session.
  */
-export async function adminSessionForUid(uid: string): Promise<AdminSession> {
+export async function adminSessionForUid(uid: string, accessToken: string): Promise<AdminSession> {
   const { data: adminRow, error: adminLookupError } = await supabaseAdmin()
     .from("admin_users")
-    .select("uid, approved_at, session_version")
+    .select("uid, approved_at, session_version, revoked_at")
     .eq("uid", uid)
+    .is("revoked_at", null)
     .maybeSingle();
 
   if (adminLookupError || !adminRow) {
@@ -68,7 +69,7 @@ export async function adminSessionForUid(uid: string): Promise<AdminSession> {
     );
   }
 
-  await assertAdminMfaEnrolled(uid);
+  await assertAdminMfaCompleted(uid, accessToken);
 
   return {
     uid,
@@ -130,8 +131,9 @@ export async function getAdminSession(): Promise<AdminSession | null> {
 
     const { data: adminRow, error: adminError } = await supabaseAdmin()
       .from("admin_users")
-      .select("uid, session_version")
+      .select("uid, session_version, revoked_at")
       .eq("uid", payload.uid)
+      .is("revoked_at", null)
       .maybeSingle();
     if (adminError || !adminRow || Number(adminRow.session_version ?? 1) !== payload.sessionVersion) return null;
 
@@ -173,6 +175,7 @@ export async function isOwnerAdmin(uid: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin()
     .from("admin_users")
     .select("uid")
+    .is("revoked_at", null)
     .order("approved_at", { ascending: true })
     .limit(1);
 
@@ -209,51 +212,49 @@ export async function clearAdminSession() {
  * admin's devices are signed out of the panel together.
  */
 export async function bumpAdminSessionVersion(uid: string): Promise<void> {
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("admin_users")
-    .select("session_version")
-    .eq("uid", uid)
-    .maybeSingle();
-  if (error || !data) return;
-  await admin
-    .from("admin_users")
-    .update({ session_version: Number(data.session_version ?? 1) + 1 })
-    .eq("uid", uid);
+  const { error } = await supabaseAdmin().rpc("bump_admin_session_version", { p_uid: uid });
+  if (error) {
+    logger.error("Admin session revocation failed:", error.message);
+    throw new ApiError(503, "admin_session_revocation_failed", "Administrator session could not be revoked.");
+  }
 }
 
 /**
- * Administrator accounts are the highest-privilege sessions in the app, so a
- * password (or OAuth) alone is not enough: the account must have at least one
- * verified MFA factor enrolled. Enrollment/verification happens in the admin
- * sign-in UI before the session is promoted.
- *
- * Emergency lever: set ADMIN_REQUIRE_MFA=false to bypass (logs loudly).
- * Default is enforced.
+ * Admin promotion requires both an enrolled TOTP factor and proof that this
+ * exact Supabase access-token session completed the MFA challenge. Factor
+ * inventory alone is not authentication assurance.
  */
-export async function assertAdminMfaEnrolled(uid: string): Promise<void> {
-  if (process.env.ADMIN_REQUIRE_MFA === "false") {
-    logger.error(
-      "ADMIN_REQUIRE_MFA is disabled: administrator sessions are single-factor. Re-enable immediately."
-    );
-    return;
+export async function assertAdminMfaCompleted(uid: string, accessToken: string): Promise<void> {
+  const admin = supabaseAdmin();
+  const { data: factors, error: factorsError } = await admin.auth.admin.mfa.listFactors({ userId: uid });
+  if (factorsError) {
+    logger.error("Could not inspect administrator MFA factors:", factorsError.message);
+    throw new ApiError(503, "admin_not_configured", "Administrator access is not configured.");
   }
 
-  const { data, error } = await supabaseAdmin().auth.admin.mfa.listFactors({ userId: uid });
-  if (error) {
-    throw new ApiError(
-      503,
-      "admin_not_configured",
-      "Administrator access is not configured."
-    );
-  }
-
-  const hasVerifiedFactor = (data?.factors ?? []).some((factor) => factor.status === "verified");
-  if (!hasVerifiedFactor) {
+  const hasVerifiedTotp = (factors?.factors ?? []).some(
+    (factor) => factor.status === "verified" && factor.factor_type === "totp"
+  );
+  if (!hasVerifiedTotp) {
     throw new ApiError(
       403,
       "admin_mfa_required",
-      "Protect this administrator account with two-factor authentication, then sign in again."
+      "Protect this administrator account with a verified authenticator app, then sign in again."
+    );
+  }
+
+  const { data: assurance, error: assuranceError } =
+    await admin.auth.mfa.getAuthenticatorAssuranceLevel(accessToken);
+  if (assuranceError) {
+    logger.error("Could not verify administrator session assurance:", assuranceError.message);
+    throw new ApiError(503, "admin_mfa_unavailable", "Administrator MFA could not be verified.");
+  }
+
+  if (assurance?.currentLevel !== "aal2") {
+    throw new ApiError(
+      403,
+      "admin_mfa_required",
+      "Complete the authenticator challenge before opening the administrator panel."
     );
   }
 }
@@ -263,6 +264,7 @@ export async function isUserAdmin(uid: string): Promise<boolean> {
     .from("admin_users")
     .select("uid")
     .eq("uid", uid)
+    .is("revoked_at", null)
     .limit(1);
 
   return !error && !!data?.length;

@@ -230,6 +230,40 @@ export async function GET(request: Request) {
         canonicalPlanId(entitlement.planId) === canonicalPlanId(payment.plan_id);
 
       if (!entitlementMatchesPayment) {
+        // Durable per-payment redemption check: once a payment has extended
+        // access, it may never do so again — even if a newer payment has since
+        // replaced the entitlement's latest_payment_id pointer.
+        const { data: existingGrant, error: grantLookupError } = await supabaseAdmin()
+          .from("entitlement_payment_grants")
+          .select("payment_id")
+          .eq("payment_id", payment.id)
+          .maybeSingle();
+
+        if (grantLookupError) {
+          logger.error("Payment grant ledger lookup failed:", grantLookupError.message);
+        } else if (existingGrant) {
+          if (entitlement.status === "active") {
+            return Response.json({
+              ok: true,
+              status: "paid",
+              reason: "payment_already_redeemed",
+              orderRef: payment.order_ref,
+              planId: payment.plan_id,
+              expiresAt: entitlement.expiresAt ?? null,
+            });
+          }
+          logger.error("Redeemed payment has no active entitlement:", {
+            paymentId: payment.id,
+          });
+          return Response.json({
+            ok: true,
+            status: "pending",
+            reason: "payment_confirmed_access_processing",
+            orderRef: payment.order_ref,
+            planId: payment.plan_id,
+          });
+        }
+
         try {
           entitlement = await grantEntitlement({
             uid: user.uid,

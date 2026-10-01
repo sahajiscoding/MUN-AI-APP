@@ -5,7 +5,22 @@ import { logger } from "@/lib/server/secure-logger";
 // still function when the database is unreachable (e.g. local development);
 // production must rely on the shared Supabase table, which survives Vercel
 // serverless instance churn.
+//
+// The fallback is process-local, so during a ledger outage limits become
+// approximate (per instance, reset on cold start). That is deliberate — auth
+// already requires Supabase, so a database outage fails closed on protected
+// routes — but it is logged at error level in production so an extended
+// outage is visible instead of silently weakening enforcement (SEC-RL-03).
 const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function logFallback(message: string, detail: string) {
+  const line = `${message}: ${detail}`;
+  if (process.env.NODE_ENV === "production") {
+    logger.error(line);
+  } else {
+    logger.warn(line);
+  }
+}
 
 function memoryCheck(key: string, maxAttempts: number, windowMs: number): boolean {
   const now = Date.now();
@@ -48,13 +63,16 @@ export async function checkRateLimit(
     });
 
     if (error) {
-      logger.warn("DB rate limit check failed, falling back to memory:", error.message);
+      logFallback("DB rate limit check failed, falling back to memory", error.message);
       return memoryCheck(key, maxAttempts, windowMs);
     }
 
     return data === true;
   } catch (error) {
-    logger.warn("DB rate limit unavailable, falling back to memory:", error instanceof Error ? error.message : "unknown error");
+    logFallback(
+      "DB rate limit unavailable, falling back to memory",
+      error instanceof Error ? error.message : "unknown error"
+    );
     return memoryCheck(key, maxAttempts, windowMs);
   }
 }

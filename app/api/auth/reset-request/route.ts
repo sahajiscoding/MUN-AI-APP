@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
+import { resolveSiteOrigin } from "@/lib/server/site-origin";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(body.data.email, {
-      redirectTo: `${new URL(request.url).origin}/auth/reset-password`,
+      redirectTo: `${resolveSiteOrigin(request)}/auth/reset-password`,
     });
 
     if (error) throw new ApiError(400, "reset_request_failed", "We could not start password recovery.");

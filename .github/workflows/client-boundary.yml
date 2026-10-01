@@ -41,6 +41,17 @@ jobs:
           fi
           echo "NEXT_PUBLIC allowlist OK"
 
+      - name: Quiz answer keys stay out of the client graph
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          if grep -q "correct:" lib/quizzes.ts; then
+            fail "lib/quizzes.ts contains answer keys (must be answer-free)"
+          fi
+          if grep -rn "quiz-answer-keys\|server/course-progress" app components --include='*.ts' --include='*.tsx' | grep -vE "^app/api/"; then
+            fail "server-only grading modules are imported outside API routes"
+          fi
+          echo "Answer-key boundary OK"
+
       - name: No unsanitized HTML rendering
         run: |
           if grep -rn "dangerouslySetInnerHTML\|innerHTML" app components lib --include='*.ts' --include='*.tsx'; then

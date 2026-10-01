@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
-import { getCourseBySlug, type Lesson, type QuizQuestion } from "@/lib/courses";
-import { buildCourseReviewQuestions, quizzes } from "@/lib/quizzes";
+import { getCourseBySlug, type Lesson } from "@/lib/courses";
+import { buildCourseReviewQuestions, quizzes, type PublicQuizQuestion } from "@/lib/quizzes";
 import { useAuth } from "@/components/auth-provider";
 import { readJsonResponse } from "@/lib/http";
 
@@ -41,11 +41,10 @@ function isSafeExternalUrl(value: string) {
   }
 }
 
-function makeFallbackQuestion(lesson: Lesson): QuizQuestion {
+function makeFallbackQuestion(lesson: Lesson): PublicQuizQuestion {
   return {
     question: `Which topic is the focus of the lesson “${lesson.title}”?`,
     options: [lesson.title, "A completely unrelated topic", "A private social event", "An optional bonus activity"],
-    correct: 0,
   };
 }
 

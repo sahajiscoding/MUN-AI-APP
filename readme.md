@@ -57,19 +57,22 @@ The full policy lives in [`SECURITY.md`](./SECURITY.md); the per-task non-negoti
 
 - **Secrets are server-only.** Provider, payment, and service-role keys are read from `process.env` in server code only (`app/api/*`, `lib/server/*`, `lib/payments/*`, `lib/ai/*`), lazily per request so rotation never needs a code change. Nothing secret goes in `NEXT_PUBLIC_*`, client components, logs, or chat.
 - **Server logging is redacted.** Server code logs through `logger` from `@/lib/server/secure-logger`, which strips credential patterns, masks emails, truncates opaque IDs (UIDs, order/payment/event refs) to short prefixes, and caps line length. Never `console.log` UIDs, emails, tokens, webhook bodies, or raw error objects from server code; client code (`components/`, `lib/http.ts`) keeps plain `console` for metadata-only messages.
-- **Auth first, ownership second.** Protected routes call `requireUser()`/`requireAdmin()` before any work (401 when anonymous); ID lookups additionally scope to the caller (anti-IDOR); owner-only mutations require `requireAdminOwner` (403 otherwise). Admin sessions are HttpOnly `SameSite=Strict` cookies with mandatory TOTP MFA and live `session_version` revocation.
+- **Auth first, ownership second.** Protected routes call `requireUser()`/`requireAdmin()` before any work (401 when anonymous); ID lookups additionally scope to the caller (anti-IDOR); owner-only mutations require `requireAdminOwner` (403 otherwise). Admin sessions are HttpOnly `SameSite=Strict` cookies that require the current session to have completed MFA (`aal2`), with live `session_version` + `revoked_at` revocation.
 - **Money is verified, not trusted.** The UroPay webhook verifies HMAC-SHA256 with `timingSafeEqual`, a 5-minute replay window, and atomic event claims; amounts and statuses are cross-checked against the authoritative order API; entitlements and first-purchase commissions are granted by atomic database functions only.
 - **Defense in depth.** RLS deny-by-default on every table, zod validation + 512KB body caps on input, per-endpoint rate limits, nonce CSP + CSRF origin checks + HTTPS enforcement at the edge (`proxy.ts`), generic production error responses, and pinned exact dependencies with a committed lockfile.
 
 Verify with the automated gates (all must stay green; never weaken a gate to make CI pass):
 
 ```bash
-node node_modules/typescript/bin/tsc --noEmit   # or: pnpm typecheck
-node scripts/security-contract-check.mjs        # or: pnpm test (contract + secret scan)
-node scripts/scan-secrets.mjs
-node node_modules/eslint/bin/eslint.js app lib proxy.ts  # or: pnpm lint
-node scripts/security-matrix.mjs --all          # 83 independent gates
+corepack pnpm install --frozen-lockfile   # lockfile sync (SEC-DEP-03)
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm audit                                # full tree; must be clean
+pnpm audit --prod                         # production tree; must be clean
 ```
+
+The per-area security contracts are `.github/workflows/*.yml` checks (grep-based tripwires for auth, admin MFA/revocation, AI quota reservation, certificate integrity, payments, RLS, headers, etc.). Run the relevant workflow's `grep` lines locally against a change; there is no `pnpm test` runner in this repository.
 
 ## Supabase Auth
 
@@ -94,7 +97,7 @@ Apply the canonical schema reference for a new project, then apply every migrati
 
 The server writes transcript objects under `<uid>/<chat-id>.json`. Browser users never receive direct Storage access to another user’s folder. The application retains a Storage-backed listing fallback, but the database index should still be applied and monitored because it supports efficient pagination and recovery.
 
-Run migrations through the Supabase SQL editor or the Supabase CLI connected to the correct project. Verify tables, columns, indexes, RLS policies, and the bucket before enabling real payments. The newer `20260827_security_hardening.sql` migration is also required before deploying the payment webhook changes: it installs the service-role-only atomic entitlement and referral-commission functions. The existing unique payment constraint blocks duplicate delivery of one payment, while the locked referral status prevents a second first-purchase commission for the same customer. After running it, use Supabase’s schema-cache reload or wait for the cache to refresh before testing.
+Run migrations through the Supabase SQL editor or the Supabase CLI connected to the correct project. Apply **all** migrations in `supabase/migrations/` in filename order before deploying code that depends on them (the 2026-10-01 set adds the per-payment entitlement ledger, admin revocation tombstones, AI quota reservations, and rate-limit retention). Verify tables, columns, indexes, RLS policies, and the bucket before enabling real payments. The newer `20260827_security_hardening.sql` migration is also required before deploying the payment webhook changes: it installs the service-role-only atomic entitlement and referral-commission functions. The existing unique payment constraint blocks duplicate delivery of one payment, while the locked referral status prevents a second first-purchase commission for the same customer. After running it, use Supabase’s schema-cache reload or wait for the cache to refresh before testing.
 
 ## UroPay
 
@@ -116,9 +119,9 @@ Before a production release, run the lint, typecheck, build, and frozen-lockfile
 
 Security release gates (see [`SECURITY.md`](./SECURITY.md) §21–§22):
 
-- `pnpm test`, `pnpm typecheck`, and `pnpm lint` are green; `scripts/security-matrix.mjs --all` passes 83/83; `pnpm-lock.yaml` is in sync with `package.json`.
-- RLS verification queries (§8) pass on production; migrations applied in order including `20260827_security_hardening.sql`.
-- `ADMIN_REQUIRE_MFA=true` in Vercel; `ADMIN_SESSION_SECRET` is ≥32 random characters and distinct from `SUPABASE_SECRET_KEY`.
+- `pnpm lint`, `pnpm typecheck`, and `pnpm build` are green; `pnpm audit` and `pnpm audit --prod` are clean; `pnpm-lock.yaml` is in sync with `package.json`. The per-area contract checks under `.github/workflows/` are grep-based tripwires, not runtime tests — no `pnpm test` script or `scripts/*.mjs` runners exist in this repository.
+- RLS verification queries (§8) pass on production; migrations applied in order including `20260827_security_hardening.sql` and the 2026-10-01 hardening set (`20261001_payment_entitlement_grants.sql`, `20261001_admin_revocation_tombstones.sql`, `20261001_ai_usage_reservations.sql`, `20261001_rate_limit_retention.sql`).
+- `ADMIN_SESSION_SECRET` is ≥32 random characters and distinct from `SUPABASE_SECRET_KEY`; every approved administrator has a verified TOTP factor, and the admin login path requires the session to have completed the MFA challenge (AAL2). `ADMIN_REQUIRE_MFA` is no longer used and can be deleted from Vercel.
 - No secret was pasted into chat, docs, or commits during this release — if one was, rotate it first (Supabase, NVIDIA, UroPay, admin secret), verify the old value is dead, and purge it from history per the §24 playbook. A green secret scan covers tracked files and post-baseline history only; pre-baseline history is treated as compromised until rotated and purged.
 - Server logs reviewed for PII/secrets: all server logging goes through `@/lib/server/secure-logger`; no `console.log` of UIDs, emails, tokens, or raw bodies remains in `app/api`, `lib/server`, `lib/payments`, or `lib/ai`.
 

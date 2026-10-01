@@ -62,6 +62,16 @@ export async function reconcilePaidPayments(
     return results;
   }
 
+  const { data: grantRows, error: grantLookupError } = await admin
+    .from("entitlement_payment_grants")
+    .select("payment_id")
+    .in("payment_id", payments.map((payment) => payment.id));
+  if (grantLookupError) {
+    logger.error("Failed to load payment grant ledger:", grantLookupError.message);
+    throw new Error("Could not load payment grant ledger for reconciliation.");
+  }
+  const alreadyGranted = new Set((grantRows ?? []).map((row) => row.payment_id));
+
   for (const payment of payments) {
     try {
       const plan = getPlan(
@@ -102,6 +112,17 @@ export async function reconcilePaidPayments(
             error,
           }
         );
+      }
+
+      if (alreadyGranted.has(payment.id)) {
+        results.push({
+          paymentId: payment.id,
+          uid: payment.uid,
+          planId: payment.plan_id,
+          repaired: false,
+          reason: "Payment entitlement was already redeemed.",
+        });
+        continue;
       }
 
       // Check whether the user already has an active entitlement.

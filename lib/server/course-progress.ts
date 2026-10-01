@@ -1,5 +1,6 @@
-import { getCourseBySlug, type Lesson, type QuizQuestion } from "@/lib/courses";
+import { getCourseBySlug, type Course, type Lesson, type QuizQuestion } from "@/lib/courses";
 import { quizzes } from "@/lib/quizzes";
+import { quizAnswerKeys } from "@/lib/server/quiz-answer-keys";
 
 export function getTrustedCourse(slug: string) {
   return getCourseBySlug(slug);
@@ -9,7 +10,26 @@ export function getTrustedQuestions(slug: string): QuizQuestion[] {
   const course = getCourseBySlug(slug);
   if (!course) return [];
   const courseQuiz = quizzes[slug] || [];
-  const questions = course.lessons.map((lesson, index) => courseQuiz[index] || makeFallbackQuestion(lesson));
+  const answerKey = quizAnswerKeys[slug] || [];
+  return course.lessons.map((lesson, index) => {
+    const question = courseQuiz[index];
+    return question
+      ? { ...question, correct: answerKey[index] ?? 0 }
+      : makeFallbackQuestion(lesson);
+  });
+}
+
+/** Server-only final-review list, paired with the answer-free client questions. */
+export function buildTrustedCourseReviewQuestions(course: Course): QuizQuestion[] {
+  const courseQuiz = quizzes[course.slug] ?? [];
+  const answerKey = quizAnswerKeys[course.slug] ?? [];
+  const questions: QuizQuestion[] = courseQuiz.map((question, index) => ({
+    ...question,
+    correct: answerKey[index] ?? 0,
+  }));
+  course.lessons.forEach((lesson, index) => {
+    if (!courseQuiz[index]) questions.push(makeFallbackQuestion(lesson));
+  });
   return questions;
 }
 

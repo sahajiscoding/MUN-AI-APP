@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/server/auth";
 import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
-import { assertAiUsageAllowed, recordAiUsage } from "@/lib/server/ai-usage";
+import { estimateAiTokens, reserveAiUsage, settleAiUsage } from "@/lib/server/ai-usage";
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { logger } from "@/lib/server/secure-logger";
@@ -37,6 +37,18 @@ const schema = z.object({
   }).optional(),
 });
 
+// Mirrors lib/ai/router.ts mode ceilings so the reservation covers the
+// worst-case completion the provider is allowed to generate.
+const MODE_COMPLETION_CEILINGS = { quick: 4096, thorough: 8000, max: 12000 } as const;
+
+function completionTokenCeiling(
+  mode: keyof typeof MODE_COMPLETION_CEILINGS,
+  requested?: number
+): number {
+  const ceiling = MODE_COMPLETION_CEILINGS[mode];
+  return requested && requested < ceiling ? requested : ceiling;
+}
+
 type GenerationDetails = {
   chatId: string;
   uid: string;
@@ -49,7 +61,10 @@ type GenerationDetails = {
   turns: ChatTurn[];
 };
 
-type StreamPersistenceDetails = Omit<GenerationDetails, "output">;
+type StreamPersistenceDetails = Omit<GenerationDetails, "output"> & {
+  reservationId: string;
+  promptEstimate: number;
+};
 
 export async function POST(request: Request) {
   try {
@@ -83,8 +98,6 @@ export async function POST(request: Request) {
       checkRateLimit(`ai-user:${uid}`, 12, 60_000),
       checkRateLimit(`ai-ip:${ip}`, 30, 60_000),
       body.data.chatId ? loadOwnedChat(uid, body.data.chatId) : Promise.resolve(null),
-      // Enforce the per-user daily AI budget before spending provider tokens.
-      assertAiUsageAllowed(uid).then(() => true),
     ]);
     if (!userAllowed || !ipAllowed) {
       throw new ApiError(429, "rate_limited", "Too many AI requests. Please wait a minute and try again.");
@@ -101,37 +114,73 @@ export async function POST(request: Request) {
       country: body.data.country,
       agenda: body.data.agenda.slice(0, 500),
     };
-    await recordAiUsage(uid, { requests: 1 });
 
-    const result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
+    // Check-and-reserve is a single atomic RPC: the request budget and the
+    // worst-case prompt+completion tokens are claimed before any provider
+    // spend, so concurrent requests cannot each pass a stale reading.
+    const promptEstimate = estimateAiTokens(
+      [body.data.agenda, ...priorTurns.map((turn) => turn.content)].join("\n")
+    );
+    const completionCeiling = completionTokenCeiling(body.data.responseMode, body.data.maxTokens);
+    const reservation = await reserveAiUsage(uid, promptEstimate + completionCeiling);
+
+    let result: Awaited<ReturnType<typeof runMunResearch>>;
+    try {
+      result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
+    } catch (error) {
+      // Provider work never started or failed outright: release the budget.
+      await settleAiUsage(reservation.id, 0);
+      throw error;
+    }
+
+    // Belt-and-braces abort: the platform usually cancels the response stream
+    // on disconnect (which propagates through persistStream), but the request
+    // signal fires even in cases where the body is never consumed.
+    if (typeof result.cancel === "function") {
+      if (request.signal.aborted) {
+        result.cancel();
+      } else {
+        request.signal.addEventListener("abort", () => result.cancel?.(), { once: true });
+      }
+    }
 
     if (result.stream && body.data.stream === false) {
       const collected = await collectStreamContent(result.stream);
+      const collectedTokens = collected.promptTokens + collected.completionTokens;
       if (!collected.content) {
+        await settleAiUsage(
+          reservation.id,
+          collectedTokens > 0 ? collectedTokens : promptEstimate
+        );
         throw new ApiError(
           502,
           "empty_provider_response",
           collected.streamError || "The AI returned an empty response. Please try again."
         );
       }
-      await saveCompletedChat({
-        chatId,
-        uid,
-        tool,
-        provider: result.provider,
-        model: result.model,
-        inputSummary,
-        prompt: body.data.agenda,
-        output: collected.content,
-        turns: priorTurns.concat(
-          { role: "user", content: body.data.agenda },
-          { role: "assistant", content: collected.content }
-        ),
-      });
-      await recordAiUsage(uid, {
-        promptTokens: collected.promptTokens,
-        completionTokens: collected.completionTokens,
-      });
+      try {
+        await saveCompletedChat({
+          chatId,
+          uid,
+          tool,
+          provider: result.provider,
+          model: result.model,
+          inputSummary,
+          prompt: body.data.agenda,
+          output: collected.content,
+          turns: priorTurns.concat(
+            { role: "user", content: body.data.agenda },
+            { role: "assistant", content: collected.content }
+          ),
+        });
+      } finally {
+        await settleAiUsage(
+          reservation.id,
+          collectedTokens > 0
+            ? collectedTokens
+            : promptEstimate + estimateAiTokens(collected.content)
+        );
+      }
       return Response.json({
         content: collected.content,
         chatId,
@@ -151,6 +200,8 @@ export async function POST(request: Request) {
         inputSummary,
         prompt: body.data.agenda,
         turns: priorTurns.concat({ role: "user", content: body.data.agenda }),
+        reservationId: reservation.id,
+        promptEstimate,
       });
 
       return new Response(persistedStream, {
@@ -165,20 +216,28 @@ export async function POST(request: Request) {
     }
 
     const output = result.content || "";
-    await saveCompletedChat({
-      chatId,
-      uid,
-      tool,
-      provider: result.provider,
-      model: result.model,
-      inputSummary,
-      prompt: body.data.agenda,
-      output,
-      turns: priorTurns.concat(
-        { role: "user", content: body.data.agenda },
-        { role: "assistant", content: output }
-      ),
-    });
+    const reportedTokens = (result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0);
+    try {
+      await saveCompletedChat({
+        chatId,
+        uid,
+        tool,
+        provider: result.provider,
+        model: result.model,
+        inputSummary,
+        prompt: body.data.agenda,
+        output,
+        turns: priorTurns.concat(
+          { role: "user", content: body.data.agenda },
+          { role: "assistant", content: output }
+        ),
+      });
+    } finally {
+      await settleAiUsage(
+        reservation.id,
+        reportedTokens > 0 ? reportedTokens : promptEstimate + estimateAiTokens(output)
+      );
+    }
 
     return Response.json({ ...result, chatId });
   } catch (error) {
@@ -303,21 +362,38 @@ function persistStream(  source: ReadableStream<Uint8Array>,
         if (buffer) consumeLine(buffer);
         if (!cancelled && content) {
           await saveCompletedChat({
-            ...details,
+            chatId: details.chatId,
+            uid: details.uid,
+            tool: details.tool,
+            provider: details.provider,
+            model: details.model,
+            inputSummary: details.inputSummary,
+            prompt: details.prompt,
             output: content,
             turns: details.turns.concat({ role: "assistant", content }),
           });
-          await recordAiUsage(details.uid, { promptTokens, completionTokens });
         }
         if (!cancelled) controller.close();
       } catch (error) {
         if (!cancelled) controller.error(error);
       } finally {
         reader.releaseLock();
+        // Settle exactly once, even when the client cancelled mid-stream or
+        // persistence failed. Provider-reported usage is authoritative;
+        // otherwise fall back to a conservative estimate of what was streamed.
+        // (This is what keeps cancelled generations from being free.)
+        const observedTokens = promptTokens + completionTokens;
+        await settleAiUsage(
+          details.reservationId,
+          observedTokens > 0
+            ? observedTokens
+            : details.promptEstimate + estimateAiTokens(content)
+        );
       }
     },
     async cancel(reason) {
       cancelled = true;
+      // Propagate the disconnect upstream so the provider stops generating.
       await reader.cancel(reason);
     },
   });

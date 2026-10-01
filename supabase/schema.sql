@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS public.research_notes (
 CREATE TABLE IF NOT EXISTS public.admin_users (
   uid         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   approved_at TIMESTAMPTZ DEFAULT NOW(),
-  approved_by TEXT DEFAULT 'system'
+  approved_by TEXT DEFAULT 'system',
+  revoked_at  TIMESTAMPTZ
 );
 
 -- Webhook events (idempotency tracking for UroPay)
@@ -92,7 +93,6 @@ CREATE TABLE IF NOT EXISTS public.webhook_events (
 ALTER TABLE public.users              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.delegate_profiles  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entitlements       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payments           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_generations     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.research_notes     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_users       ENABLE ROW LEVEL SECURITY;
@@ -108,8 +108,9 @@ CREATE POLICY "delegate_profiles_select_own" ON public.delegate_profiles FOR SEL
 -- Entitlements: owner can read only (writes are server-side via service role)
 CREATE POLICY "entitlements_select_own" ON public.entitlements FOR SELECT USING (auth.uid() = uid);
 
--- Payments: owner can read only
-CREATE POLICY "payments_select_own" ON public.payments FOR SELECT USING (auth.uid() = uid);
+-- Payments table is created later in this file (section "PAYMENTS TABLE");
+-- its RLS enable + policy live next to the CREATE TABLE so a fresh database
+-- can bootstrap in a single pass.
 
 -- AI generations: owner can read only
 CREATE POLICY "ai_generations_select_own" ON public.ai_generations FOR SELECT USING (auth.uid() = uid);

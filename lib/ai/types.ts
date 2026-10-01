@@ -40,4 +40,6 @@ export type AICompletionResult = {
   content?: string;
   usage?: AIUsage;
   stream?: ReadableStream<Uint8Array>;
+  /** Abort provider work that is still in flight (client disconnected). */
+  cancel?: (reason?: unknown) => void;
 };

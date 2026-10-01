@@ -22,10 +22,7 @@ export async function POST(request: Request) {
       throw new ApiError(400, "cannot_revoke_self", "You cannot revoke your own administrator access.");
     }
 
-    const { error } = await supabaseAdmin()
-      .from("admin_users")
-      .delete()
-      .eq("uid", uid);
+    const { error } = await supabaseAdmin().rpc("revoke_admin_user", { p_uid: uid });
 
     if (error) throw error;
 

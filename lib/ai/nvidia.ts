@@ -99,9 +99,17 @@ async function callNvidiaModel(
   // the Next.js route send SSE headers immediately. The upstream NVIDIA request
   // starts when the stream is consumed, so the UI no longer sits on "Connecting"
   // while waiting for NVIDIA response headers.
+  //
+  // `upstream` lets the route abort provider work when the client disconnects;
+  // the per-attempt timeout is combined with it inside start() so cancelling a
+  // stream also stops billable generation instead of leaving it running.
+  const upstream = new AbortController();
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const encoder = new TextEncoder();
+      const timeoutSignal = AbortSignal.timeout(timeoutMs);
+      const requestSignal = AbortSignal.any([upstream.signal, timeoutSignal]);
       let closed = false;
 
       const emit = (payload: Record<string, unknown>) => {
@@ -117,7 +125,7 @@ async function callNvidiaModel(
             "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(timeoutMs),
+          signal: requestSignal,
         });
 
         if (!response.ok) {
@@ -237,7 +245,12 @@ async function callNvidiaModel(
         }
       }
     },
+    async cancel(reason) {
+      // The consumer went away (client disconnect or an aborted 95s/240s
+      // window). Abort the upstream request so the provider stops generating.
+      upstream.abort(reason instanceof Error ? reason : new Error("client_cancelled"));
+    },
   });
 
-  return { provider, model, stream };
+  return { provider, model, stream, cancel: () => upstream.abort(new Error("client_cancelled")) };
 }

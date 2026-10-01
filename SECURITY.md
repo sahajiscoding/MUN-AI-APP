@@ -3,7 +3,9 @@
 > **Status:** living document. Update it whenever a control changes, a new route/table/secret is added, or an incident teaches us something.
 > **Stack:** Next.js 16 + React 19 + Supabase (`@supabase/ssr`, `supabase-js`) + NVIDIA NIM + UroPay. Package manager `pnpm@11.19.0`.
 > **Companion rules:** `AGENTS.md` (non-negotiable per-task rules) is the law; this file is the *how* — the full check inventory, the rationale, and the copy-paste verification commands.
-> **Automated gates:** `scripts/security-contract-check.mjs` + `scripts/scan-secrets.mjs` (run via `pnpm test`), `pnpm typecheck`, `.github/workflows/security.yml` on every push/PR to `main`.
+> **Automated gates:** `.github/workflows/*.yml` contract checks (grep-based, one workflow per control area) + `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm audit` in `.github/workflows/main.yml` / `dependency-audit.yml` on every push/PR to `main`.
+>
+> **Doc-drift note (2026-10-01):** earlier revisions referenced `pnpm test`, `scripts/security-contract-check.mjs`, `scripts/scan-secrets.mjs`, `scripts/security-matrix.mjs`, and `.github/workflows/security.yml`. Those scripts/workflow do not exist in this repository — the checks live in the per-area workflows under `.github/workflows/`. Anything below that still names them is describing intent, not a runnable gate; the workflow files are the source of truth.
 
 ---
 
@@ -12,7 +14,7 @@
 1. **Before writing any code**, read the section that matches your change (API route → §8 + §10; DB migration → §9; payment code → §16; new secret → §4; new dependency → §19).
 2. **Before opening a PR**, run the full gate in §20 and tick the PR checklist in §25.
 3. **Before deploying**, run the Vercel checklist in §21.
-4. **After any incident**, follow §23, then add the regression check here and to `scripts/security-contract-check.mjs`.
+4. **After any incident**, follow §23, then add the regression check here and to the matching `.github/workflows/*.yml` contract check.
 
 Check IDs (`SEC-ENV-01`, `SEC-AUTH-04`, …) are stable references — cite them in PR reviews (`"violates SEC-API-02"`).
 
@@ -31,7 +33,7 @@ Check IDs (`SEC-ENV-01`, `SEC-AUTH-04`, …) are stable references — cite them
 
 | Branch / tag | Status | Notes |
 |---|---|---|
-| `main` (HEAD) | ✅ Supported | Only deployable branch. Every push runs `.github/workflows/security.yml`. |
+| `main` (HEAD) | ✅ Supported | Only deployable branch. Every push runs the per-area contract workflows plus lint/typecheck/build and dependency audit. |
 | Older commits | ❌ Unsupported | May contain remediated issues (see §22 history). Upgrade to HEAD. |
 
 ---
@@ -55,7 +57,7 @@ Check IDs (`SEC-ENV-01`, `SEC-AUTH-04`, …) are stable references — cite them
 
 ### 4.1 Rules
 
-* **SEC-ENV-01:** NEVER commit `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.test`, or any `*.local` file. Only `.env.example` (empty placeholders) may be tracked. Enforced by `.gitignore` + `scripts/scan-secrets.mjs:17-21`.
+* **SEC-ENV-01:** NEVER commit `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.test`, or any `*.local` file. Only `.env.example` (empty placeholders) may be tracked. Enforced by `.gitignore` + `git ls-files | grep -E "^\.env"` review (see §4.2).
 * **SEC-ENV-02:** NEVER put secrets in `NEXT_PUBLIC_*`, `VITE_*`, or `REACT_APP_*` variables — these are bundled into client JS. Only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL` may be public.
 * **SEC-ENV-03:** NEVER hardcode credentials in source. All secrets come from `process.env` read **server-side only** (`app/api/*`, `lib/server/*`, `lib/payments/*`, `lib/ai/*`).
 * **SEC-ENV-04:** NEVER log secrets — no `console.log(apiKey)`, no raw webhook bodies/headers/signatures in logs. NVIDIA layer must call `redactProviderMessage()` (`lib/ai/nvidia.ts:25-30`).
@@ -70,7 +72,8 @@ Check IDs (`SEC-ENV-01`, `SEC-AUTH-04`, …) are stable references — cite them
 # Only .env.example may be tracked
 git ls-files | grep -E "^\.env"   # expect: .env.example only
 # No secret assignments with real values in tracked files
-node scripts/scan-secrets.mjs
+# No secret-scanner script exists in this repo. The tracked-file check is:
+git grep -nE "(SUPABASE_SECRET_KEY|NVIDIA_API_KEY|UROPAY_API_SECRET|UROPAY_WEBHOOK_SECRET|ADMIN_SESSION_SECRET)=" -- . ':!*.md' ':!.env.example'   # expect: no output
 # No NEXT_PUBLIC secret plumbing
 grep -rn "NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*PRIVATE\|SUPABASE_SECRET" app components lib --include="*.ts" --include="*.tsx" | grep -v "server.ts\|SETUP\|AGENTS\|SECURITY"
 # Confirm client bundle boundary: must print nothing
@@ -80,7 +83,7 @@ grep -rln "supabase/server\|payments/uropay\|ai/nvidia\|server/admin-auth" compo
 ### 4.3 Adding a new secret (procedure)
 
 1. Add `NAME=` (empty) to `.env.example` with a comment saying server-only.
-2. Add the `NAME\s*=` pattern to `scripts/scan-secrets.mjs` `keyPatterns` if it is a high-value credential.
+2. Add the `NAME=` pattern to the tracked-file check in §4.2 if it is a high-value credential, and rely on GitHub secret scanning for history.
 3. Read it only in server code; add a `getRequiredEnv()` fail-closed helper call.
 4. Set the real value in Vercel env (all environments that need it), never in chat.
 5. Tick §25 PR checklist.
@@ -95,7 +98,8 @@ grep -rln "supabase/server\|payments/uropay\|ai/nvidia\|server/admin-auth" compo
 * **SEC-AUTH-02:** Unauthenticated requests to protected endpoints MUST return **401** (`invalid_token`). Never 200 with an error flag, never redirect from an API.
 * **SEC-AUTH-03:** `requireUser` MUST verify server-side: `Authorization: Bearer` → `supabaseAdmin().auth.getUser(token)`; else cookie `createClient().auth.getUser()`. Never trust a client-supplied `uid`.
 * **SEC-AUTH-04:** Email verification MUST be enforced: `!user.email_confirmed_at` → 403, and login (`app/api/auth/signin/route.ts:27-29`) must reject unverified users.
-* **SEC-AUTH-05:** OAuth callback MUST use `exchangeCodeForSession`, a same-origin `getSafeNext()` check, and a generic `?error=oauth_callback_failed` redirect. No open redirects, no provider error text to the client. (`app/auth/callback/route.ts:6-44`.)
+* **SEC-AUTH-05:** OAuth callback MUST use `exchangeCodeForSession`, a same-origin `getSafeNext()` check, and a generic `?error=oauth_callback_failed` redirect. No open redirects, no provider error text to the client. (`app/auth/callback/route.ts`.)
+* **SEC-AUTH-09:** Out-of-band auth links (signup verification, password reset) MUST be built from the canonical `NEXT_PUBLIC_SITE_URL` via `resolveSiteOrigin()` (`lib/server/site-origin.ts`), never from a request Host header. The OAuth callback intentionally stays on the request origin because the session cookie is bound to that origin.
 * **SEC-AUTH-06:** Login/signup/reset endpoints MUST be rate-limited (see §15) and MUST NOT leak whether an email exists beyond what is unavoidable. Signup MUST return a generic failure (`app/api/auth/signup/route.ts:43`).
 * **SEC-AUTH-07:** Password hashing is delegated to Supabase Auth (`signUp`, `signInWithPassword`, `admin.updateUserById`). NEVER implement custom password storage; NEVER use MD5/SHA-1/plain SHA-256 for passwords.
 * **SEC-AUTH-08:** Client components (`components/auth-provider.tsx`, `components/protected-route.tsx`) are UX guards only. Real enforcement is always API-side.
@@ -118,18 +122,21 @@ grep -rn "error.message" app/api/auth/  # expect: only console.error lines
 * **SEC-ADM-01:** Admin identity comes ONLY from the `admin_users` table + live Supabase user lookup (`adminSessionForUid`, `lib/server/admin-auth.ts:44-78`). No shared passwords — `ADMIN_PASSWORD` must not appear in app code (contract asserts this).
 * **SEC-ADM-02:** `ADMIN_SESSION_SECRET` MUST be ≥32 random chars, MUST fail closed when missing/short, and MUST NOT fall back to `SUPABASE_SECRET_KEY` (cryptographic separation).
 * **SEC-ADM-03:** Admin cookie MUST be `httpOnly:true, secure:(NODE_ENV==production), sameSite:"strict", maxAge:4h, path:/`, host-only (no `Domain`). Clearing MUST re-assert path.
-* **SEC-ADM-04:** Every admin request MUST re-validate JWT (issuer/audience) AND the live `admin_users.session_version`. Revoked/deleted admins → `null` → 401. (`getAdminSession:111-146`.)
-* **SEC-ADM-05:** Admin promotion (`app/api/c8f2x9/login/route.ts`) requires `requireUser` + `adminSessionForUid` (approved row + MFA). Logout MUST bump session version + clear cookie.
-* **SEC-ADM-06:** MFA is mandatory: `assertAdminMfaEnrolled` requires a `verified` TOTP factor; bypass ONLY via `ADMIN_REQUIRE_MFA=false` which MUST `console.error` loudly. Never set false except a live emergency.
-* **SEC-ADM-07:** Owner-only mutations (grants, revokes, partner management, commission payout, payment reconcile) MUST use `requireAdminOwner` → 403 `admin_owner_required` for non-owners. (`isOwnerAdmin` = `ADMIN_OWNER_UIDS` allowlist, else first-approved bootstrap owner.)
+* **SEC-ADM-04:** Every admin request MUST re-validate JWT (issuer/audience), the live `admin_users.session_version`, AND the `revoked_at` tombstone. Revoked/deleted admins → `null` → 401. (`getAdminSession`.)
+* **SEC-ADM-05:** Admin promotion (`app/api/c8f2x9/login/route.ts`) requires `requireUser` + `adminSessionForUid(uid, accessToken)` (approved row + **current-session** MFA, see SEC-ADM-06). Logout MUST bump session version + clear cookie.
+* **SEC-ADM-06:** MFA is mandatory and MUST be proven for the requesting session, not merely enrolled: `assertAdminMfaCompleted` requires a `verified` TOTP factor **and** `auth.mfa.getAuthenticatorAssuranceLevel(accessToken).currentLevel === "aal2"`. A first-factor-only (aal1) session is rejected with `403 admin_mfa_required`. There is no bypass flag — `ADMIN_REQUIRE_MFA` was removed 2026-10-01; disabling MFA now requires a code change and review.
+* **SEC-ADM-07:** Owner-only mutations (grants, revokes, partner management, commission payout, payment reconcile) MUST use `requireAdminOwner` → 403 `admin_owner_required` for non-owners. (`isOwnerAdmin` = `ADMIN_OWNER_UIDS` allowlist, else first-approved non-revoked bootstrap owner.)
 * **SEC-ADM-08:** Destructive admin actions MUST be audit-logged (`admin_audit_log`) and MUST guard self-revoke and scope (e.g. revoke only `source=admin` entitlements).
 * **SEC-ADM-09:** PII in admin APIs MUST be owner-gated: non-owners get masked emails / blanked contact fields (`maskEmail`, blanked `customer_email`/whatsapp/notes).
+* **SEC-ADM-10:** Revocation MUST be monotonic. `revoke_admin_user(uid)` (service-role RPC) sets `revoked_at` + bumps `session_version` instead of deleting the row, so re-approving an account cannot resurrect an unexpired version-1 cookie within the 4h window. `bump_admin_session_version` is used by logout and is also an RPC.
 
 ### 6.2 Verification
 
 ```bash
 grep -rn "requireAdminOwner" app/api/admin app/api/c8f2x9 | wc -l   # expect: >0, every mutating admin route
-grep -rn "ADMIN_PASSWORD" app lib | grep -v scripts/               # expect: no output
+grep -rn "ADMIN_PASSWORD" app lib                                  # expect: no output
+grep -n "getAuthenticatorAssuranceLevel\|currentLevel !== \"aal2\"" lib/server/admin-auth.ts  # expect: both hit
+grep -n "revoked_at" lib/server/admin-auth.ts supabase/migrations/*.sql
 node -e "console.log(process.env.ADMIN_SESSION_SECRET?.length >= 32 ? 'secret length OK' : 'SECRET MISSING/SHORT')"
 ```
 
@@ -162,10 +169,10 @@ node -e "console.log(process.env.ADMIN_SESSION_SECRET?.length >= 32 ? 'secret le
 
 * **SEC-DB-01:** RLS MUST be enabled on EVERY table before deployment. Default policy: **deny all**. (`supabase/schema.sql:92-99` + every migration.)
 * **SEC-DB-02:** NEVER `USING (true)` or bare `FOR ALL` without a `WHERE` condition.
-* **SEC-DB-03:** Owner-readable tables use `USING (auth.uid() = uid)` for SELECT only; all writes go through service-role server routes. Tables `admin_users`, `webhook_events`, `rate_limits`, `ai_usage`, `admin_audit_log`, `referral_*`, `certificate_downloads`, `partner_applications` have **no client policies** (service role only).
+* **SEC-DB-03:** Owner-readable tables use `USING (auth.uid() = uid)` for SELECT only; all writes go through service-role server routes. Tables `admin_users`, `webhook_events`, `rate_limits`, `ai_usage`, `ai_usage_reservations`, `entitlement_payment_grants`, `admin_audit_log`, `referral_*`, `certificate_downloads`, `partner_applications` have **no client policies** (service role only).
 * **SEC-DB-04:** `SECURITY DEFINER` functions MUST set `search_path` (`public, pg_temp` or empty) and `REVOKE … FROM anon, authenticated`.
-* **SEC-DB-05:** Money/commission/entitlement mutations MUST be atomic RPCs (`grant_entitlement_atomic` with `pg_advisory_xact_lock`, `create_first_referral_commission` with row `FOR UPDATE` lock + converted-status guard + `uid = p_uid` binding). App code MUST NOT write `referral_commissions`/`entitlements` directly.
-* **SEC-DB-06:** Apply migrations in order; never bootstrap a fresh DB from `schema.sql` alone (it has known ordering footnotes — see audit).
+* **SEC-DB-05:** Money/commission/entitlement mutations MUST be atomic RPCs: `grant_entitlement_atomic` (advisory lock, `FOR UPDATE`/`FOR SHARE` reads, payment-eligibility guard, and a durable `entitlement_payment_grants` row so each provider payment can extend access at most once), `create_first_referral_commission` (row `FOR UPDATE` lock + converted-status guard + `uid = p_uid` binding). App code MUST NOT write `referral_commissions`/`entitlements`/`entitlement_payment_grants` directly. AI budget enforcement uses `reserve_ai_usage`/`settle_ai_usage` (atomic check-and-reserve; serverless-safe).
+* **SEC-DB-06:** Apply migrations in order; never bootstrap a fresh DB from `schema.sql` alone. (The payments RLS enable/policy ordering defect in `schema.sql` was fixed 2026-10-01, but migrations are still the source of truth for new objects.)
 
 ### Verification (run in Supabase SQL editor)
 
@@ -188,7 +195,7 @@ group by 1; -- expect: 0 rows
 ## 9. Input validation
 
 * **SEC-IN-01:** ALL user input MUST be validated server-side with `zod` `safeParse` (`trim/min/max/uuid/email/enum`) or an equivalently strict manual check. Client validation is UX only.
-* **SEC-IN-02:** JSON bodies MUST go through `parseJson` (512KB cap, `lib/api.ts:46-57`).
+* **SEC-IN-02:** JSON bodies MUST go through `parseJson`, which reads the stream through `readRequestText` with a hard byte cap (512KB default; 256KB for the UroPay webhook) and cancels the stream as soon as the cap is exceeded. The cap is byte-accurate (`Content-Length` pre-check + streamed byte counting), never JS string length.
 * **SEC-IN-03:** IDs in URLs MUST be format-checked (`UUID_PATTERN`, `/^[a-zA-Z0-9-]+$/` + length caps) before DB use.
 * **SEC-IN-04:** Numeric pagination/sizes MUST be `Number()`-parsed and clamped.
 * **SEC-IN-05:** Webhook payloads MUST be shape-checked (`trim/normalizeStatus/toNumberOrNull`) AND re-verified against the authoritative provider API — never trust webhook amounts/status alone.
@@ -263,7 +270,7 @@ grep -rn "dangerouslySetInnerHTML\|innerHTML\|__html" app components lib --inclu
 
 ## 17. Rate limiting
 
-Implementation: DB-backed `rpc(rate_limit_check)` + `getClientIp` (prefers `x-vercel-forwarded-for`/`x-real-ip`, else LAST `XFF` — never the spoofable head). In-memory `Map` is dev fallback only.
+Implementation: DB-backed `rpc(rate_limit_check)` + `getClientIp` (prefers `x-vercel-forwarded-for`/`x-real-ip`, else LAST `XFF` — never the spoofable head). In-memory `Map` is dev fallback only. `rate_limit_check` performs a bounded, probabilistic sweep of expired rows (≈1 call in 200, ≤500 rows older than 1 day) so the shared table stays bounded without a per-request delete cost (migration `20261001_rate_limit_retention.sql`).
 
 | Endpoint | Bucket | Limit |
 |---|---|---|
@@ -282,14 +289,14 @@ Implementation: DB-backed `rpc(rate_limit_check)` + `getClientIp` (prefers `x-ve
 
 * **SEC-RL-01:** Login/register/reset/password/admin/AI/payment/webhook/partner/news endpoints MUST have limits. Read-only authed lists SHOULD have light buckets where enumeration matters.
 * **SEC-RL-02:** NEVER trust `X-Forwarded-For` head for limiting. NEVER trust it for auth decisions.
-* **SEC-RL-03:** Production MUST rely on the shared Supabase table (survives serverless churn); treat memory fallback as dev-only and alert if it engages in prod.
+* **SEC-RL-03:** Production MUST rely on the shared Supabase table (survives serverless churn). The in-memory fallback is process-local and therefore approximate; when it engages in production the server logs at **error** level (`logFallback` in `lib/server/rate-limit.ts`) so an outage is alertable. Protected routes still fail closed because `requireUser`/`requireAdmin` need Supabase anyway; only public buckets (news, webhook, partner applications, referral capture) degrade to per-instance limits.
 
 ---
 
 ## 18. Payments (UroPay) — webhook & lifecycle
 
 * **SEC-PAY-01:** Webhook MUST verify HMAC-SHA256 over the raw body with `timingSafeEqual`, require `x-timestamp/x-nonce/x-signature`, enforce a 5-min replay window, fail closed when the secret is missing. Reject → 401. (`lib/payments/uropay.ts:155-257`, `route.ts:78-87`.)
-* **SEC-PAY-02:** Idempotency MUST be atomic: insert `webhook_events(event_id PK)` first; `23505` → `already_processed`; delete the claim on exception; guard payment writes with `.eq("status","pending")`; entitlements via `grant_entitlement_atomic` same-payment guard.
+* **SEC-PAY-02:** Idempotency MUST be durable and per-payment, not per-entitlement-pointer: insert `webhook_events(event_id PK)` first; `23505` → `already_processed`; delete the claim on exception; guard payment writes with `.eq("status","pending")`; entitlements via `grant_entitlement_atomic`, which claims a `entitlement_payment_grants(payment_id PK)` row before touching `entitlements` and verifies the payment is owned by the same user, matches the plan, and is `paid`. A later grant therefore cannot erase the fact that an older payment was already redeemed (the previous `latest_payment_id` guard could). Reconciliation skips payments already in the ledger.
 * **SEC-PAY-03:** NEVER trust webhook amounts/status. MUST cross-check via authoritative `getOrderStatus`, verify order-ID, environment, and `amount` equality; mismatch → 409, unknown → 502.
 * **SEC-PAY-04:** Handle the FULL lifecycle: `paid` (grant + commission + recovery when paid-but-entitlement-missing), `failed`/`expired` (record, no grant). Unknown statuses → 502.
 * **SEC-PAY-05:** Checkout URLs MUST pass `assertSafeCheckoutUrl` (`https:` + `UROPAY_ALLOWED_HOSTS`). No blind redirects.
@@ -309,29 +316,39 @@ Implementation: DB-backed `rpc(rate_limit_check)` + `getClientIp` (prefers `x-ve
 
 ---
 
+### 19.1 Deletion & retention (SEC-PRV-01)
+
+* User-initiated deletion is handled by support (the privacy page documents the process). On request, delete in this order: Storage `chats/<uid>/`, `ai_generations`, `course_progress`, `certificate_downloads`, `delegate_profiles`, `referrals` (as customer), `users`, then the Supabase auth user. Confirm the profile and transcripts are gone.
+* Payment, entitlement, commission, and audit rows are retained for accounting/dispute/audit obligations; do not delete `payments`, `entitlements`, `entitlement_payment_grants`, `referral_commissions`, or `admin_audit_log` as part of a user deletion — anonymize PII fields instead when required.
+* The privacy page in `lib/site-pages.ts` is still a working draft; the operational process above is the source of truth until it is finalised and reviewed.
+
+---
+
 ## 20. Dependencies & supply chain
 
 * **SEC-DEP-01:** Verify a package exists on the official registry with history before installing.
 * **SEC-DEP-02:** Pin EXACT versions (no `^`/`~`). `packageManager: pnpm@11.19.0`. Commit `pnpm-lock.yaml`.
 * **SEC-DEP-03:** NEVER commit with a stale lockfile — Vercel builds with `--frozen-lockfile` and FAILS the deploy (learned Sep 2026: `next` bump without lockfile broke the build). Always `pnpm install` (or `--lockfile-only`) after touching `package.json`.
-* **SEC-DEP-04:** Triage Dependabot alerts promptly. Known case: `next 16.3.5` RCE (GHSA-vcvr-r3jv-pc5j) → fixed at `16.3.6`. `fast-xml-parser 5.11.0` is NOT affected by CVE-2026-73569 (<5.10.1).
+* **SEC-DEP-04:** Triage Dependabot alerts promptly. Known cases: `next 16.3.5` RCE (GHSA-vcvr-r3jv-pc5j) → fixed at `16.3.6`; `brace-expansion` DoS (GHSA-6j4f-fj2g-mc7p / GHSA-qhr7-859c-m2p7 / GHSA-q2hr-2g5m-vwhr) → pinned 1.1.21 / 5.0.12 via `pnpm-workspace.yaml` overrides; `js-yaml <4.3.2` merge-key DoS (CVE-2026-84375) → pinned 4.3.2. `fast-xml-parser 5.11.0` is NOT affected by CVE-2026-73569 (<5.10.1).
+* **SEC-DEP-06:** `pnpm audit` must be clean for both the full tree and `--prod`; `.github/workflows/dependency-audit.yml` fails on regressions and asserts the override pins above are present. Do not re-add `continue-on-error` to those steps.
 * **SEC-DEP-05:** Prefer Excel-2007-era formula functions in any spreadsheet logic; LibreOffice-evaluable only (project-specific guard from `xlsx` skill, kept for completeness).
-* **Verification:** `pnpm audit`, `node scripts/scan-secrets.mjs`, `pnpm typecheck`, `pnpm lint`.
+* **Verification:** `pnpm audit`, `pnpm audit --prod`, `pnpm typecheck`, `pnpm lint`, plus the §4.2 tracked-file check.
 
 ---
 
 ## 21. CI gates (must stay green)
 
-`.github/workflows/security.yml` runs on push/PR to `main`: checkout (full history) → `corepack enable` → `pnpm install --frozen-lockfile` → `pnpm typecheck` → `pnpm test` (= contract check + secret scan).
+`.github/workflows/main.yml` runs on push/PR to `main`: `corepack enable` → `pnpm install --frozen-lockfile` → `pnpm lint` → `pnpm typecheck` → `pnpm build`. `.github/workflows/dependency-audit.yml` runs `pnpm audit` (full tree) and `pnpm audit --prod` and must stay clean. The per-area workflows (`admin-session.yml`, `ai-safety.yml`, `certificate-integrity.yml`, `payments.yml`, `migrations-hygiene.yml`, `rls-policies.yml`, …) are grep-based contract checks; they are fast tripwires, not runtime tests.
 
 ```bash
 pnpm typecheck
-pnpm test            # security-contract-check.mjs + scan-secrets.mjs
+corepack pnpm install --frozen-lockfile
 pnpm lint
-node scripts/scan-secrets.mjs   # targeted re-run
+git ls-files | grep -E "^\.env"   # expect: .env.example only
 ```
 
-* **SEC-CI-01:** NEVER weaken a gate to make CI pass. If `security-contract-check` fails, fix the code, not the assertion.
+* **SEC-CI-01:** NEVER weaken a gate to make CI pass. If a contract workflow (e.g. `ai-safety.yml`, `certificate-integrity.yml`, `admin-session.yml`) fails, fix the code, not the assertion.
+* **Known gap (2026-10-01):** the contract workflows are source-pattern checks, not runtime tests. There is still no behavioural test runner (no `pnpm test`, no `node --test` suite) covering MFA/quote/payment flows; adding one is the top follow-up from the 2026-10-01 audit. Until then, green CI proves the patterns are present, not that the controls execute correctly at runtime.
 * **SEC-CI-02:** The secret scanner covers tracked files + post-baseline history. It does NOT absolve old history — see §22.
 
 ---
@@ -339,11 +356,13 @@ node scripts/scan-secrets.mjs   # targeted re-run
 ## 22. Vercel deployment checklist
 
 - [ ] `pnpm-lock.yaml` in sync with `package.json` (else `--frozen-lockfile` fails the build).
-- [ ] Env set in Vercel (not in repo): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWKS_URL`, `NVIDIA_API_KEY`, `NVIDIA_KIMI_MODEL`, `NVIDIA_RESEARCH_MODEL`, `ADMIN_SESSION_SECRET` (≥32 chars), `ADMIN_REQUIRE_MFA=true`, `UROPAY_API_KEY/SECRET/WEBHOOK_SECRET/ENVIRONMENT/ALLOWED_HOSTS`, `NEXT_PUBLIC_SITE_URL` (prod origin).
-- [ ] `ADMIN_REQUIRE_MFA` is `true`; `ADMIN_OWNER_UIDS` set for multi-admin setups.
+- [ ] Env set in Vercel (not in repo): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWKS_URL`, `NVIDIA_API_KEY`, `NVIDIA_KIMI_MODEL`, `NVIDIA_RESEARCH_MODEL`, `ADMIN_SESSION_SECRET` (≥32 chars), `UROPAY_API_KEY/SECRET/WEBHOOK_SECRET/ENVIRONMENT/ALLOWED_HOSTS`, `NEXT_PUBLIC_SITE_URL` (prod origin).
+- [ ] `ADMIN_OWNER_UIDS` set for multi-admin setups. (`ADMIN_REQUIRE_MFA` is no longer read — MFA is unconditionally required; remove the stale variable.)
+- [ ] Supabase Auth MFA (TOTP) enabled for the project, and every approved admin has a verified factor.
+- [ ] Migrations applied in order **including** `20261001_ai_usage_reservations.sql`, `20261001_payment_entitlement_grants.sql`, `20261001_admin_revocation_tombstones.sql`, `20261001_rate_limit_retention.sql`.
 - [ ] Supabase Auth → Google provider enabled with matching client ID/secret.
-- [ ] Migrations applied in order; RLS verification queries in §8 pass on prod.
-- [ ] `pnpm test` + `pnpm typecheck` green; Dependabot alerts triaged.
+- [ ] RLS verification queries in §8 pass on prod.
+- [ ] `pnpm lint` + `pnpm typecheck` + `pnpm build` green; `pnpm audit` clean; Dependabot alerts triaged.
 
 ---
 
@@ -353,7 +372,7 @@ node scripts/scan-secrets.mjs   # targeted re-run
 * **Lesson 2026-09 (hardcoded `ADMIN_PASSWORD` fallbacks + passwords in commit messages):** remediated in tree (only detector patterns remain). ACTION: never reuse either password; purge history.
 * **Lesson 2026-09 (NVIDIA key pasted in chat, noted `SETUP.md:131`):** ACTION: rotate `NVIDIA_API_KEY`, delete chat copy.
 * **Lesson 2026-09 (Next 16.3.5 RCE + stale lockfile breaking Vercel):** ACTION done in tree (`16.3.6` + lockfile). Keep Dependabot triage in §20.
-* **SEC-HIST-01:** `scripts/scan-secrets.mjs` baseline covers recent history only — a green scan does NOT mean old history is clean. Treat pre-baseline secrets as compromised until rotated + purged.
+* **SEC-HIST-01:** There is no in-repo history scanner; GitHub secret scanning is the detection layer and it may not cover historical commits. A green CI run does NOT mean old history is clean. Treat pre-2026-09-29 secrets as compromised until rotated and purged (see §24).
 
 ---
 
@@ -363,7 +382,7 @@ node scripts/scan-secrets.mjs   # targeted re-run
 2. **Assess:** `git log -S '<secret>'`, Vercel + Supabase logs for anomalous use (new admins, grants, payouts, AI spend spikes).
 3. **Eradicate:** purge history (BFG/`filter-repo`), force-push with team coordination, delete chat/doc copies.
 4. **Recover:** re-deploy, re-run §8 RLS queries + §21 gates, monitor 48h.
-5. **Learn:** add a regression assertion to `scripts/security-contract-check.mjs` + a row here in §27.
+5. **Learn:** add a regression assertion to the matching `.github/workflows/*.yml` check + a row here in §27.
 
 ---
 
@@ -376,7 +395,7 @@ node scripts/scan-secrets.mjs   # targeted re-run
 - [ ] Rate limit present or N/A justified (SEC-RL-01)
 - [ ] No secrets/PII in code, logs, or responses (SEC-ENV-01..05, SEC-ERR-01)
 - [ ] RLS/migration implications reviewed; verification queries pass (SEC-DB-01..04)
-- [ ] `pnpm test`, `pnpm typecheck`, `pnpm lint` green; lockfile in sync (SEC-CI-01, SEC-DEP-03)
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm build` green; `pnpm audit` clean; lockfile in sync (SEC-CI-01, SEC-DEP-03)
 
 ---
 
@@ -401,12 +420,13 @@ node scripts/scan-secrets.mjs   # targeted re-run
 
 - [ ] `requireAdmin` minimum; `requireAdminOwner` for grants/money/partners/reconcile.
 - [ ] Audit log write; self-revoke blocked; PII masked for non-owners.
-- [ ] MFA path untouched; no `ADMIN_REQUIRE_MFA=false` outside emergency.
+- [ ] MFA path untouched; promotion still requires current-session AAL2 (SEC-ADM-06) and revocation stays tombstoned (SEC-ADM-10).
 
 ### AI feature authoring
 
 - [ ] Server-only provider key, fixed endpoint, `redactProviderMessage` on errors.
-- [ ] `assertPaidAccess` + per-user/IP limit + daily ledger check before spend.
+- [ ] `assertPaidAccess` + per-user/IP limit + `reserveAiUsage` (atomic request+token reservation) before spend; settle on success **and** on error/cancel (`settleAiUsage`).
+- [ ] Client disconnect propagates to the provider (`AbortSignal`/`cancel`), and cancelled streams still settle metering.
 - [ ] Output rendered only via sanitized `Streamdown` path.
 
 ---
@@ -422,6 +442,8 @@ node scripts/scan-secrets.mjs   # targeted re-run
 | 2026-09-29 | Contract checks 115 → 129 | 14 new executable asserts: Next ≥16.3.6, eslint-config match, js-yaml override + lockfile pin, lockfile/manifest sync, webhook throttle, XML `processEntities`, dead helper removal, referral normalization, generic signup error, static CSP fallback, bare `.env.*` gitignore |
 | 2026-09-29 | SAST triage (25 findings) | 4 fixed: client UUID gate on admin id interpolation (`components/referral-admin-panel.tsx`), repo-root containment in `security-contract-check.mjs`/`scan-secrets.mjs`/`release.mjs`. Rest are scanner false positives, see §28. `new RegExp` finding already gone ( feed parser uses literal regexes). |
 | 2026-09-29 | Security matrix (100+ checks) | `scripts/security-matrix.mjs` holds 83 independently-visible gates (run: `node scripts/security-matrix.mjs --all`); `.github/workflows/security-matrix.yml` fans each out as its own check with `fail-fast: false`. |
+| 2026-10-01 | Remediation of 2026-10-01 audit findings (F-01…F-09) | Admin promotion now requires current-session AAL2 and revocation is tombstoned (`20261001_admin_revocation_tombstones.sql`); per-payment entitlement ledger + eligibility guard (`20261001_payment_entitlement_grants.sql`); quiz answer keys moved to `lib/server/quiz-answer-keys.ts` and the client ships answer-free questions; AI quota is atomic check-and-reserve with settle-on-every-path and provider abort on disconnect (`20261001_ai_usage_reservations.sql`); streamed byte-accurate request caps incl. webhook; rate-limit retention sweep + production error logging; `brace-expansion` 1.1.21/5.0.12 overrides; `pnpm audit` full + prod clean; CI contract workflows updated to assert all of the above. |
+| 2026-10-01 | Doc drift fix | `SECURITY.md`/`readme.md` rewritten to describe the workflows that actually exist; references to non-existent `pnpm test` / `scripts/*.mjs` / `security.yml` replaced with the real gates. |
 | 2026-09-30 | Secure-logging overhaul | New `lib/server/secure-logger.ts` (SEC-LOG-02: secret/PII redaction, ID truncation, line caps); all server `console.*` in `app/api`, `lib/server`, `lib/payments`, `lib/ai`, `lib/referrals.ts` migrated to it; UroPay credentials switched to lazy per-call reads (SEC-ENV-08); fixed 2 pre-existing `Buffer` type errors (certificate PDF body, webhook `timingSafeEqual` views). Gates green: typecheck, lint, contract check, secret scan (28 post-baseline commits), matrix 83/83. |
 
 ---
@@ -454,7 +476,7 @@ Naive scanners flag identifier substrings and dialect-specific SQL. Do not
 ## Appendix A — One-command verification suite
 
 ```bash
-pnpm typecheck && pnpm test && pnpm lint
+pnpm typecheck && pnpm lint && pnpm build && pnpm audit
 git ls-files | grep -E "^\.env"          # expect: .env.example only
 grep -rn "ADMIN_PASSWORD" app lib | grep -v scripts/   # expect: empty
 grep -rn "dangerouslySetInnerHTML" app components lib  # expect: empty
@@ -469,4 +491,4 @@ grep -rn "origin.*\*.*credentials\|Access-Control-Allow-Origin.*\*" app lib prox
 * Money: `lib/payments/uropay.ts` · `app/api/webhooks/uropay/route.ts` · `lib/server/entitlements.ts` · `lib/server/payment-reconciliation.ts` · `lib/referrals.ts`
 * AI: `lib/ai/nvidia.ts` · `lib/ai/router.ts` · `app/api/ai/research/route.ts`
 * Data: `supabase/schema.sql` · `supabase/migrations/*` · `lib/server/chat-storage.ts` · `lib/server/course-progress.ts`
-* Gates: `scripts/security-contract-check.mjs` · `scripts/scan-secrets.mjs` · `.github/workflows/security.yml`
+* Gates: `.github/workflows/*.yml` (contract checks) · `main.yml` (lint/typecheck/build) · `dependency-audit.yml` (`pnpm audit` full + prod)

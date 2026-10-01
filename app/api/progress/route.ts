@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/courses";
-import { buildCourseReviewQuestions } from "@/lib/quizzes";
+import { buildTrustedCourseReviewQuestions } from "@/lib/server/course-progress";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/server/auth";
 import { checkRateLimit } from "@/lib/server/rate-limit";
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       if (!(await checkRateLimit(`progress-quiz:${user.uid}:${course_slug}`, 5, 10 * 60_000))) {
         throw new ApiError(429, "rate_limited", "Too many review submissions. Wait a few minutes and try again.");
       }
-      const questions = buildCourseReviewQuestions(course);
+      const questions = buildTrustedCourseReviewQuestions(course);
       if (quizAnswers.length !== questions.length) {
         throw new ApiError(400, "invalid_quiz_answers", "Your review answers could not be verified. Please retake the final review.");
       }

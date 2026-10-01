@@ -30,6 +30,7 @@ export async function POST(request: Request) {
         uid,
         approved_at: new Date().toISOString(),
         approved_by: admin.email,
+        revoked_at: null,
       },
       { onConflict: "uid" }
     );

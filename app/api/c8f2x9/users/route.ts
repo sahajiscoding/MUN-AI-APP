@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       pageUids.length
         ? supabaseAdmin().from("entitlements").select("uid, status, plan_id, source, expires_at").in("uid", pageUids)
         : Promise.resolve({ data: [] as Array<{ uid: string; status: string; plan_id: string | null; source: string | null; expires_at: string | null }> }),
-      supabaseAdmin().from("admin_users").select("uid"),
+      supabaseAdmin().from("admin_users").select("uid").is("revoked_at", null),
       supabaseAdmin().from("referral_partners").select("email, referral_code, status").limit(2000),
     ]);
 

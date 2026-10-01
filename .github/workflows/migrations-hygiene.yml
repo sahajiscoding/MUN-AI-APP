@@ -29,4 +29,12 @@ jobs:
           grep -rq "pg_advisory_xact_lock" supabase/migrations || fail "advisory serialization lock missing from migrations"
           grep -rq "self_referral" supabase/migrations || fail "DB self-referral guard missing from migrations"
           grep -rq "rate_limit_check" supabase/migrations || fail "shared rate-limit function missing from migrations"
+          # Per-payment redemption ledger: a payment may extend access once.
+          grep -rq "entitlement_payment_grants" supabase/migrations || fail "durable payment idempotency ledger missing"
+          grep -rq "payment_not_eligible_for_entitlement" supabase/migrations || fail "payment eligibility guard missing from grant RPC"
+          # Admin revocation must remain monotonic across delete/re-approve.
+          grep -rq "revoked_at" supabase/migrations || fail "admin revocation tombstone missing"
+          # AI quota reservation/settlement RPCs.
+          grep -rq "reserve_ai_usage" supabase/migrations || fail "AI reservation RPC missing"
+          grep -rq "settle_ai_usage" supabase/migrations || fail "AI settlement RPC missing"
           echo "Migrations hygiene OK"

@@ -33,7 +33,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
+          # No dependency download happens in this workflow (pnpm audit reads
+          # the lockfile), so the pnpm cache path may not exist and the
+          # cache-save post step would fail path validation.
 
       - name: Enable Corepack
         run: |

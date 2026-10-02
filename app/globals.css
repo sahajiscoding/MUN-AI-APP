@@ -623,6 +623,89 @@ body {
   }
 }
 
+/* Auth avatar mascot animations (original blob, auth-avatar.tsx) */
+.avatar-float {
+  animation: avatar-float 5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.avatar-bounce {
+  animation: avatar-typing-bounce 0.55s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.avatar-shake {
+  animation: avatar-shake 0.5s ease;
+}
+
+.avatar-happy {
+  animation: avatar-happy 0.7s ease;
+}
+
+@keyframes avatar-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes avatar-typing-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.02, 0.98);
+  }
+}
+
+@keyframes avatar-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px);
+  }
+  40% {
+    transform: translateX(8px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes avatar-happy {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-14px) scale(1.04, 0.96);
+  }
+  65% {
+    transform: translateY(0) scale(0.98, 1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-float,
+  .avatar-bounce,
+  .avatar-shake,
+  .avatar-happy {
+    animation: none;
+  }
+}
+
 @media (max-width: 640px) {
   .chat-markdown h1 {
     font-size: 1.45rem;

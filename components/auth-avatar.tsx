@@ -149,6 +149,22 @@ export function AuthAvatar({
   const pupilR = 10.5 + curiosity * 1.8 - (blinking ? 9 : 0);
   const waving = isTyping && !reduced && !happy && !sad;
 
+  const caption = happy
+    ? "Yay — let's go!"
+    : sad
+      ? "Oops — try again?"
+      : shy
+        ? isTyping
+          ? "No peeking…"
+          : "Shy — password time!"
+        : activeField === "email"
+          ? isTyping
+            ? "Nice typing…"
+            : "I'm watching you type…"
+          : activeField === "name"
+            ? "Hello, delegate!"
+            : "Eyes on you…";
+
   return (
     <div
       ref={wrapRef}
@@ -322,6 +338,19 @@ export function AuthAvatar({
           </g>
         </svg>
       </div>
+
+      {/* reactive caption */}
+      <p
+        className={cn(
+          "rounded-full border backdrop-blur-sm",
+          size === "xl"
+            ? "mt-3 border-white/15 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/80"
+            : "mt-1 border-[var(--line)] bg-[var(--control-bg)] px-3 py-1 text-xs font-semibold text-[var(--muted)]",
+        )}
+        role="status"
+      >
+        {caption}
+      </p>
     </div>
   );
 }

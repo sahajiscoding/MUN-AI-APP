@@ -20,7 +20,6 @@ import {
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { readJsonResponse } from "@/lib/http";
 
 type AdminUser = {    uid: string;
@@ -354,7 +353,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <nav className="flex shrink-0 items-center gap-2" aria-label="Administrator navigation">
-            <ThemeToggle />
             <Link href="/admin/analytics" className="button-secondary inline-flex items-center px-3 py-2 text-sm font-semibold sm:px-4">
               Analytics
             </Link>

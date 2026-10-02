@@ -4,7 +4,6 @@ import { Landmark } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export function PublicNav({ variant = "default" }: { variant?: "default" | "onDark" }) {
   const router = useRouter();
@@ -30,7 +29,6 @@ export function PublicNav({ variant = "default" }: { variant?: "default" | "onDa
         <span className={`display-type text-2xl ${onDark ? "text-white" : "text-[var(--ink)]"}`}>MUN Prep</span>
       </Link>
       <div className="flex items-center gap-2 sm:gap-3">
-        <ThemeToggle />
         <button
           type="button"
           onClick={handleSignIn}

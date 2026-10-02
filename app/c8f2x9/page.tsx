@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { getSupabase } from "@/lib/supabase/client";
 import { readJsonResponse } from "@/lib/http";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 type MfaMode = "none" | "verify" | "enroll";
 
@@ -219,10 +218,6 @@ export default function AdminLoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-[var(--inverse-panel)] px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <div className="grid h-14 w-14 place-items-center rounded-xl bg-[var(--patina)] text-white mb-4">

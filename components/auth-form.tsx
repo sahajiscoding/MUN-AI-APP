@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { AuthAvatar, type AvatarField, type AvatarStatus } from "@/components/auth-avatar";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { readJsonResponse } from "@/lib/http";
 
 type AuthFormProps = {
@@ -114,7 +113,6 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
               </span>
               <span className="display-type text-2xl">MUN Prep</span>
             </Link>
-            <ThemeToggle />
           </div>
 
           <div className="flex items-center py-16 lg:py-20">
@@ -145,7 +143,6 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
         <div className="w-full max-w-md min-w-0">
           <div className="mb-8 flex items-center justify-between gap-4 lg:hidden">
             <Link href="/" className="display-type text-3xl">MUN Prep</Link>
-            <ThemeToggle />
           </div>
 
           <AuthAvatar

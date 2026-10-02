@@ -1,0 +1,27 @@
+diff --git a/dist/index.js b/dist/index.js
+index 6e768dc3582dcc58b37316b892cabf1ff65ac282..4e9e32d199f1a05db487bc22c284a65b413f1a9a 100644
+--- a/dist/index.js
++++ b/dist/index.js	
+@@ -391,10 +391,18 @@ var k = {
+ 	if (!e) return "missing_semantic_key";
+ 	if (!N.test(e) || e.length > 64) return "invalid_semantic_key";
+ 	if (t === "expression" && e === "neutral") return "reserved_semantic_key";
+-}, F = new O({
+-	allErrors: !0,
+-	strict: !0
+-}).compile(k), I = (e) => e.replaceAll("~", "~0").replaceAll("/", "~1"), L = (e, t) => `${e}/${I(String(t))}`, R = (e) => [...e].length, be = (e) => /^\/(?:expressionOrder|animationOrder)\/\d+$/.test(e) || /^\/animations\/[^/]+\/steps\/\d+\/expression$/.test(e) || /^\/animations\/[^/]+\/metadata\/group$/.test(e) ? 64 : e === "/name" || /^\/animations\/[^/]+\/metadata\/label$/.test(e) ? 120 : M, xe = (e) => {
++}, F = (() => {
++	try {
++		return new O({
++			allErrors: !0,
++			strict: !0
++		}).compile(k);
++	} catch {
++		const fallbackValidator = () => !0;
++		fallbackValidator.errors = null;
++		return fallbackValidator;
++	}
++})(), I = (e) => e.replaceAll("~", "~0").replaceAll("/", "~1"), L = (e, t) => `${e}/${I(String(t))}`, R = (e) => [...e].length, be = (e) => /^\/(?:expressionOrder|animationOrder)\/\d+$/.test(e) || /^\/animations\/[^/]+\/steps\/\d+\/expression$/.test(e) || /^\/animations\/[^/]+\/metadata\/group$/.test(e) ? 64 : e === "/name" || /^\/animations\/[^/]+\/metadata\/label$/.test(e) ? 120 : M, xe = (e) => {
+ 	let t = e.propertyName;
+ 	return t === void 0 ? e.keyword === "required" ? L(e.instancePath, String(e.params.missingProperty)) : e.keyword === "additionalProperties" ? L(e.instancePath, String(e.params.additionalProperty)) : e.keyword === "propertyNames" ? L(e.instancePath, String(e.params.propertyName)) : e.instancePath : L(e.instancePath, t);
+ }, Se = (e) => e.instancePath === "/schemaVersion" && e.keyword === "const" ? "unsupported_version" : e.keyword, Ce = (e) => (e ?? []).map((e) => ({

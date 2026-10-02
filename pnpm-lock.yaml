@@ -9,13 +9,16 @@ overrides:
   brace-expansion@1: 1.1.21
   brace-expansion@5: 5.0.12
 
+patchedDependencies:
+  '@bible-strong/avatar-core': e6396c89844b54e96768078f7c858e98d31e6306e75c11ebffbdd0ba35a75139
+
 importers:
 
   .:
     dependencies:
       '@bible-strong/avatar-core':
         specifier: 0.1.0
-        version: 0.1.0
+        version: 0.1.0(patch_hash=e6396c89844b54e96768078f7c858e98d31e6306e75c11ebffbdd0ba35a75139)
       '@bible-strong/avatar-react':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -2622,13 +2625,13 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@bible-strong/avatar-core@0.1.0':
+  '@bible-strong/avatar-core@0.1.0(patch_hash=e6396c89844b54e96768078f7c858e98d31e6306e75c11ebffbdd0ba35a75139)':
     dependencies:
       ajv: 8.20.0
 
   '@bible-strong/avatar-react@0.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@bible-strong/avatar-core': 0.1.0
+      '@bible-strong/avatar-core': 0.1.0(patch_hash=e6396c89844b54e96768078f7c858e98d31e6306e75c11ebffbdd0ba35a75139)
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 

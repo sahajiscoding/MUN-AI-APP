@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@bible-strong/avatar-core": "0.1.0",
+    "@bible-strong/avatar-react": "0.1.0",
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.112.4",
     "clsx": "2.1.1",

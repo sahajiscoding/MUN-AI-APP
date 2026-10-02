@@ -58,6 +58,18 @@ function getDistinctDescription(item: NewsItem) {
   return !description || normalize(description) === normalize(title) ? "" : description;
 }
 
+// RSS feed links are untrusted external input. Only http(s) URLs may be
+// rendered as a clickable href — anything else (e.g. a `javascript:` URI
+// smuggled in by a malicious feed) falls back to a harmless "#".
+function safeArticleLink(value: string) {
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === "http:" || url.protocol === "https:" ? value : "#";
+  } catch {
+    return "#";
+  }
+}
+
 export default function DiscoverPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -317,7 +329,7 @@ function FeaturedCard({
 
   return (
     <a
-      href={item.link}
+      href={safeArticleLink(item.link)}
       target="_blank"
       rel="noopener noreferrer"
       className="block surface rounded-xl overflow-hidden hover:-translate-y-0.5 transition group"
@@ -410,7 +422,7 @@ function ArticleCard({
 
   return (
     <a
-      href={item.link}
+      href={safeArticleLink(item.link)}
       target="_blank"
       rel="noopener noreferrer"
       className="flex gap-4 surface rounded-xl p-4 hover:-translate-y-0.5 transition group"

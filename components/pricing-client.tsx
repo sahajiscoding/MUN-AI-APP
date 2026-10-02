@@ -4,6 +4,7 @@ import { Check, Crown, Loader2, LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { readJsonResponse } from "@/lib/http";
+import { sanitizePublicMessage } from "@/lib/safe-message";
 import { canonicalPlanId, formatPlanPrice, getPlan, plans } from "@/lib/plans";
 
 type EntitlementData = {
@@ -122,7 +123,7 @@ export function PricingClient() {
     try {
       await applyReferralCodeValue(referralCode.trim());
     } catch (err) {
-      setReferralMessage({ type: "error", text: err instanceof Error ? err.message : "That referral code could not be applied." });
+      setReferralMessage({ type: "error", text: sanitizePublicMessage(err, "That referral code could not be applied.") });
     } finally {
       setReferralBusy(false);
     }
@@ -166,7 +167,7 @@ export function PricingClient() {
 
       window.location.assign(data.openUrl);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      alert(sanitizePublicMessage(err, "Something went wrong. Try again."));
       setLoading(null);
       setPendingPlanId(null);
     }

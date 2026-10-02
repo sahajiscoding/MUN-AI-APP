@@ -18,6 +18,7 @@ import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { readJsonResponse } from "@/lib/http";
+import { sanitizePublicMessage } from "@/lib/safe-message";
 import { cn } from "@/lib/utils";
 
 type ChatHistoryItem = {
@@ -109,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         if (!cancelled) {
           setChats(response.ok ? data.chats ?? [] : []);
-          setChatError(response.ok ? "" : data.error || "Could not load your saved chats.");
+          setChatError(response.ok ? "" : sanitizePublicMessage(data.error, "Could not load your saved chats."));
         }
       } catch {
         if (!cancelled) {

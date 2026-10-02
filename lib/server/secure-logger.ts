@@ -28,6 +28,11 @@ const SECRET_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /xox[bap]-[A-Za-z0-9-]+/gi, replacement: "[redacted-token]" },
   { pattern: /ghp_[A-Za-z0-9]+/g, replacement: "[redacted-token]" },
   { pattern: /AKIA[0-9A-Z]{16}/g, replacement: "[redacted-aws-key]" },
+  { pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, replacement: "[redacted-credential]" },
+  {
+    pattern: /([?&](?:apikey|api_key|token|access_token|secret|key|auth)=)[^\s&"'<>]+/gi,
+    replacement: "$1[redacted]",
+  },
   {
     pattern: /-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----[\s\S]*?-----END (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/g,
     replacement: "[redacted-private-key]",

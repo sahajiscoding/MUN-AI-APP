@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth-provider";
 import { AuthAvatar } from "@/components/auth-avatar";
 import { PaywallModal } from "@/components/paywall-modal";
 import { readJsonResponse } from "@/lib/http";
+import { sanitizePublicMessage } from "@/lib/safe-message";
 
 type ToolWorkspaceProps = {
   eyebrow: string;
@@ -289,7 +290,9 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
         }
       } catch (error) {
         if (!cancelled) {
-          const message = error instanceof Error ? error.message : "That saved chat could not be opened.";
+          // Never render raw error text: SDK/network errors can embed
+          // request URLs carrying credentials.
+          const message = sanitizePublicMessage(error, "That saved chat could not be opened.");
           setChatLoadError(message);
           setStatus(message);
         }
@@ -535,7 +538,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
       if (caught instanceof Error && caught.name === "AbortError") {
         setStatus("Generation cancelled.");
       } else {
-        setStatus(caught instanceof Error ? caught.message : "Something went wrong.");
+        setStatus(sanitizePublicMessage(caught, "Something went wrong."));
       }
     } finally {
       requestControllerRef.current = null;

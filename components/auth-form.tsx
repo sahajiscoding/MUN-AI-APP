@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { AuthAvatar, type AvatarField, type AvatarStatus } from "@/components/auth-avatar";
 import { readJsonResponse } from "@/lib/http";
+import { sanitizePublicMessage } from "@/lib/safe-message";
 
 type AuthFormProps = {
   mode: "login" | "signup";
@@ -305,7 +306,8 @@ function formatAuthError(error: unknown) {
       return "That email already has an account.";
     }
     if (msg.includes("password")) {
-      return error.message;
+      // Sanitize: provider messages occasionally echo request details.
+      return sanitizePublicMessage(error.message, "Authentication failed. Please try again.");
     }
   }
 

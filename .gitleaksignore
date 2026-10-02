@@ -1,4 +1,0 @@
-3a70cbda113ef7a4a447b338f79a5741738325ba:SETUP.md:generic-api-key:42
-1d1e550c60903007a614a7e9cc7a8d8e9fc5f29d:.env.example:generic-api-key:17
-fefc5786f13ecf5e398732172d060a48c527eab1:lib/supabase/server.ts:generic-api-key:11
-5b6687f224807092ab0de85c44a2e886453ecc72:manual-checklist.md:curl-auth-header:13

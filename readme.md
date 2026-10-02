@@ -160,3 +160,14 @@ Supabase Authentication → Providers → Google must be enabled with the matchi
 ## AI provider configuration
 
 AI requests are authenticated server-side and continue to use the existing paid-access and request-rate controls. Every mode runs through NVIDIA NIM (`https://integrate.api.nvidia.com/v1/chat/completions`) using the server-only `NVIDIA_API_KEY`, and only the model differs: **Max** uses `moonshotai/kimi-k3` (`NVIDIA_KIMI_MODEL`), while **Thorough** and **Quick** use `z-ai/glm-5.3-flash` (`NVIDIA_RESEARCH_MODEL`), with Quick on the smaller output budget and Thorough on the larger one. There is deliberately no base-URL variable — the NVIDIA endpoint is fixed — and no second provider is configured, so an absent `NVIDIA_API_KEY` disables AI features instead of falling back to another vendor. Do not expose provider keys through any `NEXT_PUBLIC_*` variable. The NVIDIA key previously pasted into chat must be rotated before use.
+
+
+## License
+
+MUN Prep is free software: you can redistribute it and/or modify it under the terms of the **GNU Affero General Public License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+Copyright (C) 2026 the MUN Prep contributors. See [LICENSE](./LICENSE) for the full text.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+Because this app is served over a network, section 13 applies: anyone who interacts with a deployed copy is entitled to the Corresponding Source. Keep this repository public and keep the deployed code matching the committed code. If you incorporate third-party AGPL code (for example `bible-strong-avatar-lab` packages or sources), preserve its copyright notices and document your modifications as section 5(a) requires.

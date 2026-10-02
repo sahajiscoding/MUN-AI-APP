@@ -3,8 +3,9 @@
 import { Landmark, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { AuthAvatar, type AvatarField, type AvatarStatus } from "@/components/auth-avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { readJsonResponse } from "@/lib/http";
 
@@ -26,6 +27,26 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
   const [error, setError] = useState("");
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Reactive mascot state — driven by focus + typing + outcome.
+  const [activeField, setActiveField] = useState<AvatarField>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
+  const typingTimer = useRef<number | undefined>(undefined);
+  const statusTimer = useRef<number | undefined>(undefined);
+
+  function pokeTyping() {
+    setIsTyping(true);
+    window.clearTimeout(typingTimer.current);
+    typingTimer.current = window.setTimeout(() => setIsTyping(false), 900);
+  }
+
+  function flashStatus(next: AvatarStatus) {
+    setAvatarStatus(next);
+    window.clearTimeout(statusTimer.current);
+    if (next !== "idle") {
+      statusTimer.current = window.setTimeout(() => setAvatarStatus("idle"), 2600);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,9 +67,13 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
         await signInWithEmail(email, password);
       }
 
+      flashStatus("success");
+      // Brief pause so the mascot's happy bounce reads before navigating.
+      await new Promise((resolve) => setTimeout(resolve, 650));
       router.push(next);
     } catch (caught) {
       setError(formatAuthError(caught));
+      flashStatus("error");
     } finally {
       setBusy(false);
     }
@@ -64,9 +89,18 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
       // redirect happens via OAuth flow
     } catch (caught) {
       setError(formatAuthError(caught));
+      flashStatus("error");
       setBusy(false);
     }
   }
+
+  // Clear pending mascot timers on unmount.
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(typingTimer.current);
+      window.clearTimeout(statusTimer.current);
+    };
+  }, []);
 
   return (
     <div className="grid min-h-dvh min-w-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
@@ -114,6 +148,14 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
             <ThemeToggle />
           </div>
 
+          <AuthAvatar
+            activeField={activeField}
+            isTyping={isTyping}
+            status={avatarStatus}
+            emailLength={email.length}
+            className="mx-auto mb-4"
+          />
+
           <div className="surface rounded-panel p-6 sm:p-7">
             <p className="label-text">Secure access</p>
             <h2 className="display-type mt-2 text-4xl">
@@ -143,7 +185,9 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                   <input
                     className="input-field mt-2"
                     value={name}
-                    onChange={(event) => { setName(event.target.value); }}
+                    onChange={(event) => { setName(event.target.value); pokeTyping(); }}
+                    onFocus={() => setActiveField("name")}
+                    onBlur={() => setActiveField(null)}
                     autoComplete="name"
                     required
                   />
@@ -155,7 +199,9 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                 <input
                   className="input-field mt-2"
                   value={email}
-                  onChange={(event) => { setEmail(event.target.value); }}
+                  onChange={(event) => { setEmail(event.target.value); pokeTyping(); }}
+                  onFocus={() => setActiveField("email")}
+                  onBlur={() => setActiveField(null)}
                   type="email"
                   autoComplete="email"
                   required
@@ -168,7 +214,9 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                   <input
                     className="input-field pr-11"
                     value={password}
-                    onChange={(event) => { setPassword(event.target.value); }}
+                    onChange={(event) => { setPassword(event.target.value); pokeTyping(); }}
+                    onFocus={() => setActiveField("password")}
+                    onBlur={() => setActiveField(null)}
                     type="password"
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     minLength={6}

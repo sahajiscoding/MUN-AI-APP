@@ -1,11 +1,13 @@
 import { ApiError } from "@/lib/api";
 import { logger } from "@/lib/server/secure-logger";
+import { parseSSEPayload } from "@/lib/ai/sse";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
-const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5.3-flash";
+const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
 const LEGACY_RESEARCH_MODEL_ALIASES: Record<string, string> = {
-  "z-ai/glm-5-3-flash": DEFAULT_RESEARCH_MODEL,
+  // Dotted form was sent briefly and NVIDIA rejects it (404 unknown model).
+  "z-ai/glm-5.3-flash": DEFAULT_RESEARCH_MODEL,
   "deepseek-ai/deepseek-v4-flash-0731": DEFAULT_RESEARCH_MODEL,
   "minimaxai/minimax-m3": DEFAULT_RESEARCH_MODEL,
 };
@@ -161,52 +163,49 @@ async function callNvidiaModel(
         };
 
         const consumeLine = (line: string) => {
-          if (!line.startsWith("data: ")) return;
-          const data = line.slice(6).trim();
-          if (!data || data === "[DONE]") return;
-          sawAnyData = true;
+          // Any `data:` line (even a malformed one) proves the provider is
+          // streaming, which suppresses the non-streaming fallback error.
+          if (line.startsWith("data: ")) sawAnyData = true;
+          const payload = parseSSEPayload(line);
+          if (!payload.present) return;
 
-          try {
-            const parsed = JSON.parse(data) as {
-              choices?: Array<{
-                delta?: { content?: string };
-                finish_reason?: string | null;
-              }>;
-              usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-              error?: { message?: unknown } | string | unknown;
-              message?: unknown;
-            };
-            // NVIDIA can deliver failures as in-stream events on a 200
-            // response (unknown model, quota, key problems). Without this,
-            // they are silently dropped and the client only sees an "empty
-            // response".
-            const providerError = parsed.error ?? parsed.message;
-            if (typeof providerError === "string" && providerError) {
-              emitProviderError(providerError);
-              return;
-            }
-            if (
-              providerError &&
-              typeof providerError === "object" &&
-              typeof (providerError as { message?: unknown }).message === "string" &&
-              (providerError as { message: string }).message
-            ) {
-              emitProviderError((providerError as { message: string }).message);
-              return;
-            }
-            const choice = parsed.choices?.[0];
-            const content = choice?.delta?.content;
-            if (content) emit({ content });
+          const parsed = payload.data as {
+            choices?: Array<{
+              delta?: { content?: string };
+              finish_reason?: string | null;
+            }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+            error?: { message?: unknown } | string | unknown;
+            message?: unknown;
+          };
+          // NVIDIA can deliver failures as in-stream events on a 200
+          // response (unknown model, quota, key problems). Without this,
+          // they are silently dropped and the client only sees an "empty
+          // response".
+          const providerError = parsed.error ?? parsed.message;
+          if (typeof providerError === "string" && providerError) {
+            emitProviderError(providerError);
+            return;
+          }
+          if (
+            providerError &&
+            typeof providerError === "object" &&
+            typeof (providerError as { message?: unknown }).message === "string" &&
+            (providerError as { message: string }).message
+          ) {
+            emitProviderError((providerError as { message: string }).message);
+            return;
+          }
+          const choice = parsed.choices?.[0];
+          const content = choice?.delta?.content;
+          if (content) emit({ content });
 
-            const usage = normalizeAIUsage(parsed.usage);
-            if (usage) emit({ usage });
+          const usage = normalizeAIUsage(parsed.usage);
+          if (usage) emit({ usage });
 
-            if (choice?.finish_reason) {
-              finishReason = choice.finish_reason;
-              emit({ finishReason });
-            }
-          } catch {
-            // Ignore malformed provider chunks while preserving the rest of the stream.
+          if (choice?.finish_reason) {
+            finishReason = choice.finish_reason;
+            emit({ finishReason });
           }
         };
 

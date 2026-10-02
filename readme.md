@@ -31,7 +31,7 @@ SUPABASE_JWKS_URL=https://YOUR_PROJECT.supabase.co/auth/v1/.well-known/jwks.json
 
 NVIDIA_API_KEY=
 NVIDIA_KIMI_MODEL=moonshotai/kimi-k3
-NVIDIA_RESEARCH_MODEL=z-ai/glm-5.3-flash
+NVIDIA_RESEARCH_MODEL=z-ai/glm-5-3-flash
 
 ADMIN_SESSION_SECRET=
 ADMIN_OWNER_UIDS=
@@ -159,7 +159,7 @@ Supabase Authentication → Providers → Google must be enabled with the matchi
 
 ## AI provider configuration
 
-AI requests are authenticated server-side and continue to use the existing paid-access and request-rate controls. Every mode runs through NVIDIA NIM (`https://integrate.api.nvidia.com/v1/chat/completions`) using the server-only `NVIDIA_API_KEY`, and only the model differs: **Max** uses `moonshotai/kimi-k3` (`NVIDIA_KIMI_MODEL`), while **Thorough** and **Quick** use `z-ai/glm-5.3-flash` (`NVIDIA_RESEARCH_MODEL`), with Quick on the smaller output budget and Thorough on the larger one. There is deliberately no base-URL variable — the NVIDIA endpoint is fixed — and no second provider is configured, so an absent `NVIDIA_API_KEY` disables AI features instead of falling back to another vendor. Do not expose provider keys through any `NEXT_PUBLIC_*` variable. The NVIDIA key previously pasted into chat must be rotated before use.
+AI requests are authenticated server-side and continue to use the existing paid-access and request-rate controls. Every mode runs through NVIDIA NIM (`https://integrate.api.nvidia.com/v1/chat/completions`) using the server-only `NVIDIA_API_KEY`, and only the model differs: **Max** uses `moonshotai/kimi-k3` (`NVIDIA_KIMI_MODEL`), while **Thorough** and **Quick** use `z-ai/glm-5-3-flash` (`NVIDIA_RESEARCH_MODEL`), with Quick on the smaller output budget and Thorough on the larger one. There is deliberately no base-URL variable — the NVIDIA endpoint is fixed — and no second provider is configured, so an absent `NVIDIA_API_KEY` disables AI features instead of falling back to another vendor. Do not expose provider keys through any `NEXT_PUBLIC_*` variable. The NVIDIA key previously pasted into chat must be rotated before use.
 
 
 ## License

@@ -52,6 +52,9 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+      framer-motion:
+        specifier: 11.15.0
+        version: 11.15.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@eslint/eslintrc':
         specifier: 3.3.6
@@ -5475,3 +5478,32 @@ snapshots:
   zod@4.4.3: {}
 
   zwitch@2.0.4: {}
+
+  motion-dom@11.13.0:
+    resolution: {integrity: sha512-Oc1MLGJQ6nrvXjjTRxgLGm9/9T5rN6Gq3ETLyC8ZPl7cZmN6zH6jT6GqyXqT8bGtGJrLl/K0gA5S3EVRZQw==}
+    engines: {node: '>=18.0.0'}
+    dependencies:
+      motion-utils: 11.13.0
+
+  motion-utils@11.13.0:
+    resolution: {integrity: sha512-4lZ0y9Yq1n7q5nKz8a2mQw+8M2aVj8vxx5lKXzyj5yq9Y1V4m5m4Z9wG4m5tR6j5p5J6u6z6q3g3m2x3J7g==}
+    engines: {node: '>=18.0.0'}
+
+  framer-motion@11.15.0:
+    resolution: {integrity: sha512-MLk8xCfHQE+9f3Z9PzYRR8szr3q2P7a7CtOOP5f+a8gC0qyO0dTQe5/8vL7SR3O9Iw7yM7qtY9f6O2Rw==}
+    engines: {node: '>=18.0.0'}
+    dependencies:
+      motion-dom: 11.13.0
+      motion-utils: 11.13.0
+      tslib: 2.6.2
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true

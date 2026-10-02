@@ -314,7 +314,7 @@ export function PricingClient() {
               <p className="font-semibold">Statement descriptor</p>
               <p className="mt-2">
                 On your card, netbanking or UPI statements, the charge will appear as{" "}
-                <strong>"UroPay/UroPai"</strong> and not your business name, because every payment goes through UroPay&apos;s system.
+                <strong>&quot;UroPay/UroPai&quot;</strong> and not your business name, because every payment goes through UroPay&apos;s system.
               </p>
               <p className="mt-2">
                 Please confirm that you understand this before proceeding. This is mandatory to avoid chargebacks.

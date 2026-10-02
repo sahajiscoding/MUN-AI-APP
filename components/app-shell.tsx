@@ -17,7 +17,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
 import { SidebarToggle } from "@/components/sidebar-toggle";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { readJsonResponse } from "@/lib/http";
 import { cn } from "@/lib/utils";
 
@@ -178,7 +177,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="display-type text-lg">MUN Prep</span>
           </Link>
           <div className="flex items-center gap-1">
-            <ThemeToggle />
             <button
               type="button"
               onClick={() => { setMobileMenuOpen(true); }}
@@ -376,7 +374,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               )}
               <div className={cn("flex items-center gap-2", collapsed && "flex-col")}>
-                <ThemeToggle compact={collapsed} />
                 <button
                   type="button"
                   onClick={() => logout()}

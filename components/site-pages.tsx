@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle2, FileText, Landmark, LifeBuoy } from "lucide-react";
 import type { ReactNode } from "react";
 import type { SitePage } from "@/lib/site-pages";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
@@ -13,7 +12,6 @@ export function SiteHeader() {
           <span className="display-type text-2xl">MUN Prep</span>
         </Link>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <Link href="/" className="button-secondary inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold"><ArrowLeft className="h-4 w-4" /> Home</Link>
         </div>
       </div>

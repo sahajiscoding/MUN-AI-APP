@@ -26,34 +26,6 @@
   --panel-text: #f7f3ea;
 }
 
-/*
- * Dark theme. Flipping the design tokens below restyles the whole site:
- * nearly every component colors itself from these variables. Brand accents
- * are lifted in value (not hue) so they stay readable on dark surfaces, and
- * the page background is a deep warm near-black rather than pure #000.
- */
-[data-theme="dark"] {
-  color-scheme: dark;
-  --ink: #ece4d6;
-  --paper: #16130f;
-  --paper-strong: #211d18;
-  --line: rgba(236, 228, 214, 0.13);
-  --muted: #a79c90;
-  --oxblood: #d4707b;
-  --brass: #d4a45c;
-  --patina: #4cb5ab;
-  --surface-bg: rgba(33, 29, 24, 0.78);
-  --control-bg: rgba(33, 29, 24, 0.72);
-  --control-bg-strong: rgba(44, 38, 32, 0.95);
-  --input-bg: rgba(33, 29, 24, 0.74);
-  --placeholder: rgba(167, 156, 144, 0.65);
-  --inverse-panel: #1b1714;
-  --panel-text: #f7f3ea;
-  /* --surface stays undefined in light mode (sidebar is transparent today);
-     dark mode gives the app shell a distinct panel surface. */
-  --surface: #1e1a16;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -305,51 +277,6 @@ textarea:focus-visible {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
-}
-
-/* In dark mode, Tailwind's black hover tints disappear on dark surfaces;
-   swap them for a subtle light tint so hover feedback stays visible. */
-[data-theme="dark"] .hover\:bg-black\/5:hover {
-  background-color: rgba(236, 228, 214, 0.08);
-}
-
-[data-theme="dark"] .hover\:bg-black\/10:hover {
-  background-color: rgba(236, 228, 214, 0.12);
-}
-
-/* A few cards use hardcoded white tints (bg-white/30 … /70) that would stay
-   light on a dark page. Remap them to dark translucent fills in dark mode
-   only. bg-white/10 and plain bg-white stay untouched — they belong to the
-   always-dark admin/auth panels where white-on-dark is intentional. */
-[data-theme="dark"] .bg-white\/30 {
-  background-color: rgba(33, 29, 24, 0.55);
-}
-
-[data-theme="dark"] .bg-white\/35 {
-  background-color: rgba(33, 29, 24, 0.6);
-}
-
-[data-theme="dark"] .bg-white\/40 {
-  background-color: rgba(33, 29, 24, 0.62);
-}
-
-[data-theme="dark"] .bg-white\/45 {
-  background-color: rgba(33, 29, 24, 0.66);
-}
-
-[data-theme="dark"] .bg-white\/65 {
-  background-color: rgba(33, 29, 24, 0.78);
-}
-
-[data-theme="dark"] .bg-white\/70 {
-  background-color: rgba(33, 29, 24, 0.82);
-}
-
-/* The primary button is cream (flipped --ink) in dark mode; its hardcoded
-   dark hover would make it jump dark on hover, so hover lightens instead. */
-[data-theme="dark"] .button-primary:hover {
-  background: #e2d9c8;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
 }
 
 /* Smooth theme cross-fade for the main surfaces. */

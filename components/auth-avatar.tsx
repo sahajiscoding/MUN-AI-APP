@@ -13,6 +13,8 @@ type AuthAvatarProps = {
   status: AvatarStatus;
   /** length of the email value — pupils get curious as it grows */
   emailLength?: number;
+  /** md: compact (above forms) · xl: hero stage (auth side panel) */
+  size?: "md" | "xl";
   className?: string;
 };
 
@@ -36,6 +38,7 @@ export function AuthAvatar({
   isTyping,
   status,
   emailLength = 0,
+  size = "md",
   className,
 }: AuthAvatarProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -143,7 +146,8 @@ export function AuthAvatar({
   const headDx = reduced ? 0 : look.x * 5;
   const headRotate = reduced ? 0 : look.x * 4;
   const curiosity = Math.min(1, emailLength / 24);
-  const pupilR = 9.5 + curiosity * 1.6 - (blinking ? 8 : 0);
+  const pupilR = 10.5 + curiosity * 1.8 - (blinking ? 9 : 0);
+  const waving = isTyping && !reduced && !happy && !sad;
 
   const caption = happy
     ? "Yay — let's go!"
@@ -179,7 +183,9 @@ export function AuthAvatar({
         <svg
           viewBox="0 0 200 176"
           className={cn(
-            "h-36 w-36 sm:h-40 sm:w-40",
+            size === "xl"
+              ? "h-60 w-60 sm:h-72 sm:w-72 xl:h-80 xl:w-80"
+              : "h-36 w-36 sm:h-40 sm:w-40",
             !reduced && isTyping && !happy && !sad && "avatar-bounce",
           )}
           role="img"
@@ -188,21 +194,74 @@ export function AuthAvatar({
           {/* ground shadow */}
           <ellipse cx="100" cy="164" rx="52" ry="8" fill="rgba(23,20,18,0.14)" />
 
+          {/* twinkling sparkles around the mascot */}
+          {!reduced && (
+            <g fill="#E9C46A">
+              <path className="avatar-twinkle" style={{ animationDelay: "0s" }} d="M30 34 l2.2 5.8 5.8 2.2 -5.8 2.2 -2.2 5.8 -2.2 -5.8 -5.8 -2.2 5.8 -2.2 Z" />
+              <path className="avatar-twinkle" style={{ animationDelay: "1.1s" }} d="M170 44 l1.8 4.6 4.6 1.8 -4.6 1.8 -1.8 4.6 -1.8 -4.6 -4.6 -1.8 4.6 -1.8 Z" />
+              <path className="avatar-twinkle" style={{ animationDelay: "2s" }} d="M160 142 l1.5 3.8 3.8 1.5 -3.8 1.5 -1.5 3.8 -1.5 -3.8 -3.8 -1.5 3.8 -1.5 Z" />
+            </g>
+          )}
+
           <g style={{ transform: `rotate(${headRotate}deg)`, transformBox: "fill-box", transformOrigin: "center" }}>
+            {/* stubby arms — wave while typing, shy-fold on password */}
+            <g
+              className={cn(waving && "avatar-wave-left")}
+              style={{ transformBox: "fill-box", transformOrigin: "top center" }}
+            >
+              <ellipse
+                cx="32"
+                cy="112"
+                rx="10"
+                ry="17"
+                fill="#2A7F78"
+                stroke="#171412"
+                strokeWidth="4"
+                style={{
+                  transform: shy ? "translate(14px, -18px) rotate(28deg)" : "none",
+                  transformBox: "fill-box",
+                  transformOrigin: "center",
+                  transition: "transform 220ms ease",
+                }}
+              />
+            </g>
+            <g
+              className={cn(waving && "avatar-wave-right")}
+              style={{ transformBox: "fill-box", transformOrigin: "top center" }}
+            >
+              <ellipse
+                cx="168"
+                cy="112"
+                rx="10"
+                ry="17"
+                fill="#2A7F78"
+                stroke="#171412"
+                strokeWidth="4"
+                style={{
+                  transform: shy ? "translate(-14px, -18px) rotate(-28deg)" : "none",
+                  transformBox: "fill-box",
+                  transformOrigin: "center",
+                  transition: "transform 220ms ease",
+                }}
+              />
+            </g>
+
             {/* body */}
             <ellipse cx="100" cy="92" rx="68" ry="62" fill="#3AA99E" />
             <ellipse cx="100" cy="92" rx="68" ry="62" fill="none" stroke="#171412" strokeWidth="5" />
             {/* belly */}
             <ellipse cx="100" cy="118" rx="40" ry="30" fill="#F7F3EA" opacity="0.9" />
-            {/* head nubs */}
-            <circle cx="62" cy="44" r="11" fill="#3AA99E" stroke="#171412" strokeWidth="5" />
-            <circle cx="138" cy="44" r="11" fill="#3AA99E" stroke="#171412" strokeWidth="5" />
+            {/* head nubs with shine */}
+            <circle cx="62" cy="44" r="12" fill="#3AA99E" stroke="#171412" strokeWidth="5" />
+            <circle cx="138" cy="44" r="12" fill="#3AA99E" stroke="#171412" strokeWidth="5" />
+            <circle cx="58" cy="40" r="3" fill="#F7F3EA" opacity="0.8" />
+            <circle cx="134" cy="40" r="3" fill="#F7F3EA" opacity="0.8" />
 
-            {/* blush */}
-            <ellipse cx="52" cy="108" rx="11" ry="7" fill="#E07856" opacity={shy ? 0.85 : 0.45} />
-            <ellipse cx="148" cy="108" rx="11" ry="7" fill="#E07856" opacity={shy ? 0.85 : 0.45} />
+            {/* chubby blush */}
+            <ellipse cx="50" cy="108" rx="13" ry="8.5" fill="#E07856" opacity={shy ? 0.9 : 0.55} />
+            <ellipse cx="150" cy="108" rx="13" ry="8.5" fill="#E07856" opacity={shy ? 0.9 : 0.55} />
 
-            {/* eyes */}
+            {/* big glossy eyes */}
             <g
               style={{
                 transform: blinking ? "scaleY(0.08)" : "scaleY(1)",
@@ -211,15 +270,17 @@ export function AuthAvatar({
                 transition: "transform 120ms ease",
               }}
             >
-              <ellipse cx="72" cy="84" rx="21" ry="23" fill="#fff" stroke="#171412" strokeWidth="4" />
-              <ellipse cx="128" cy="84" rx="21" ry="23" fill="#fff" stroke="#171412" strokeWidth="4" />
+              <ellipse cx="72" cy="84" rx="24" ry="26" fill="#fff" stroke="#171412" strokeWidth="4" />
+              <ellipse cx="128" cy="84" rx="24" ry="26" fill="#fff" stroke="#171412" strokeWidth="4" />
               <g style={{ transform: `translate(${px}px, ${py}px)` }}>
-                <circle cx="72" cy="86" r={pupilR} fill="#171412" />
-                <circle cx="128" cy="86" r={pupilR} fill="#171412" />
+                <circle cx="72" cy="87" r={pupilR} fill="#171412" />
+                <circle cx="128" cy="87" r={pupilR} fill="#171412" />
                 {!blinking && (
                   <>
-                    <circle cx={75} cy={82} r="3" fill="#fff" />
-                    <circle cx={131} cy={82} r="3" fill="#fff" />
+                    <circle cx={74} cy={82} r="4" fill="#fff" />
+                    <circle cx={130} cy={82} r="4" fill="#fff" />
+                    <circle cx={79} cy={90} r="1.6" fill="#fff" opacity="0.9" />
+                    <circle cx={135} cy={90} r="1.6" fill="#fff" opacity="0.9" />
                   </>
                 )}
               </g>
@@ -280,7 +341,12 @@ export function AuthAvatar({
 
       {/* reactive caption */}
       <p
-        className="mt-1 rounded-full border border-[var(--line)] bg-[var(--control-bg)] px-3 py-1 text-xs font-semibold text-[var(--muted)] backdrop-blur-sm"
+        className={cn(
+          "rounded-full border backdrop-blur-sm",
+          size === "xl"
+            ? "mt-3 border-white/15 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/80"
+            : "mt-1 border-[var(--line)] bg-[var(--control-bg)] px-3 py-1 text-xs font-semibold text-[var(--muted)]",
+        )}
         role="status"
       >
         {caption}

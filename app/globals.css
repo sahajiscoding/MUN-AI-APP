@@ -570,6 +570,26 @@ body {
   animation: avatar-happy 0.7s ease;
 }
 
+.avatar-wave-left,
+.avatar-wave-right {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+
+.avatar-wave-left {
+  animation: avatar-wave-left 0.6s ease-in-out infinite;
+}
+
+.avatar-wave-right {
+  animation: avatar-wave-right 0.6s ease-in-out infinite;
+}
+
+.avatar-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: avatar-twinkle 2.8s ease-in-out infinite;
+}
+
 @keyframes avatar-float {
   0%,
   100% {
@@ -624,11 +644,46 @@ body {
   }
 }
 
+@keyframes avatar-wave-left {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-24deg);
+  }
+}
+
+@keyframes avatar-wave-right {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(24deg);
+  }
+}
+
+@keyframes avatar-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(20deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .avatar-float,
   .avatar-bounce,
   .avatar-shake,
-  .avatar-happy {
+  .avatar-happy,
+  .avatar-wave-left,
+  .avatar-wave-right,
+  .avatar-twinkle {
     animation: none;
   }
 }

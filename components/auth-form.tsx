@@ -105,7 +105,16 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
     <div className="grid min-h-dvh min-w-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
       <section className="relative hidden min-w-0 overflow-hidden bg-[var(--inverse-panel)] text-[var(--panel-text)] lg:block">
         <div className="diplomatic-grid absolute inset-0 opacity-25" />
-        <div className="relative grid min-h-dvh grid-rows-[auto_1fr_auto] p-8 lg:p-12">
+        {/* soft spotlight behind the mascot */}
+        <div
+          className="absolute inset-0"
+          aria-hidden="true"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 50% at 50% 46%, rgba(58,169,158,0.22), transparent 70%)",
+          }}
+        />
+        <div className="relative grid min-h-dvh grid-rows-[auto_1fr] p-8 lg:p-12">
           <div className="flex items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-3">
               <span className="grid h-12 w-12 place-items-center rounded-panel bg-[var(--paper)] text-[var(--ink)]">
@@ -115,26 +124,15 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
             </Link>
           </div>
 
-          <div className="flex items-center py-16 lg:py-20">
-            <div className="max-w-2xl">
-              <p className="label-text text-[var(--brass)]">Delegate command center</p>
-              <h1 className="display-type mt-5 text-4xl leading-[1] sm:text-5xl lg:text-6xl">
-              Research, draft, and debate with a sharper brief.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-white/72">
-                One account, one paid entitlement, one workspace for position papers,
-                speeches, POIs, and resolution strategy.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid max-w-xl grid-cols-3 gap-3 text-sm">
-            {["Policy", "Speeches", "POIs"].map((item) => (
-              <div key={item} className="rounded-panel border border-white/12 p-4">
-                <span className="text-white/56">Briefing lane</span>
-                <strong className="mt-2 block">{item}</strong>
-              </div>
-            ))}
+          {/* mascot stage — fills the panel and reacts to the form */}
+          <div className="grid place-items-center py-8">
+            <AuthAvatar
+              activeField={activeField}
+              isTyping={isTyping}
+              status={avatarStatus}
+              emailLength={email.length}
+              size="xl"
+            />
           </div>
         </div>
       </section>
@@ -145,12 +143,13 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
             <Link href="/" className="display-type text-3xl">MUN Prep</Link>
           </div>
 
+          {/* compact mascot for small screens (side panel covers lg+) */}
           <AuthAvatar
             activeField={activeField}
             isTyping={isTyping}
             status={avatarStatus}
             emailLength={email.length}
-            className="mx-auto mb-4"
+            className="mx-auto mb-4 lg:hidden"
           />
 
           <div className="surface rounded-panel p-6 sm:p-7">

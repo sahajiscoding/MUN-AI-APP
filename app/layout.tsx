@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/components/auth-provider";
-import "@bible-strong/avatar-react/styles.css";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";

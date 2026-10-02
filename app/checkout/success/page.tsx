@@ -419,7 +419,6 @@ export default function CheckoutSuccessPage() {
           </div>
         )}
       </section>
-        </div>
     </ProtectedAppShell>
   );
 }

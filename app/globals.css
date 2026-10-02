@@ -706,3 +706,57 @@ body {
     overflow-x: auto;
   }
 }
+
+/* Diplomatic prestige — workspace desk treatment (light only) */
+.desk-seal-watermark {
+  background:
+    radial-gradient(ellipse 55% 42% at 50% 38%, rgba(183, 138, 66, 0.1), transparent 70%),
+    radial-gradient(ellipse 40% 32% at 50% 40%, rgba(29, 111, 104, 0.07), transparent 70%);
+}
+
+.desk-ai-card {
+  position: relative;
+}
+
+.desk-ai-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1.25rem;
+  right: 1.25rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(183, 138, 66, 0.65), transparent);
+}
+
+.desk-stream-cursor {
+  background: var(--brass);
+}
+
+.desk-fade-in {
+  animation: desk-fade-in 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.desk-chip-in {
+  animation: desk-fade-in 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.desk-send-button {
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.desk-send-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(23, 20, 18, 0.22);
+}
+
+@keyframes desk-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

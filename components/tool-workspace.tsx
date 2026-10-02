@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowDown, Bot, Loader2, MessageSquare, Plus, Send } from "lucide-react";
+import { ArrowDown, Bot, Landmark, Loader2, MessageSquare, Plus, Send } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
+import { AuthAvatar } from "@/components/auth-avatar";
 import { PaywallModal } from "@/components/paywall-modal";
 import { readJsonResponse } from "@/lib/http";
 
@@ -13,6 +14,8 @@ type ToolWorkspaceProps = {
   title: string;
   description: string;
   mode: "research" | "country-profile" | "position-paper" | "speech" | "poi" | "resolution";
+  greeting?: string;
+  starters?: string[];
 };
 
 type ResponseMode = "quick" | "thorough" | "max";
@@ -26,6 +29,59 @@ const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: numbe
   quick: { label: "Quick", maxTokens: 1800, temperature: 0.45 },
   thorough: { label: "Thorough", maxTokens: 8000, temperature: 0.7 },
   max: { label: "Max", maxTokens: 12000, temperature: 0.85 },
+};
+
+type DeskWelcome = { greeting: string; starters: string[] };
+
+const deskWelcomeDefaults: Record<ToolWorkspaceProps["mode"], DeskWelcome> = {
+  research: {
+    greeting: "Muni pulled this morning's briefs. Pick a thread and we'll build your case.",
+    starters: [
+      "UNSC reform — where does India stand?",
+      "DISEC cyber norms — map the blocs",
+      "Climate finance — opposition arguments to expect",
+    ],
+  },
+  "country-profile": {
+    greeting: "Give me a country and a committee — I'll sketch its policy spine.",
+    starters: [
+      "Brazil in UNEP on deforestation",
+      "Japan in DISEC on autonomous weapons",
+      "Kenya in WHO on pandemic preparedness",
+    ],
+  },
+  "position-paper": {
+    greeting: "Bring a topic and a delegation — we'll turn policy into paragraphs.",
+    starters: [
+      "Outline a position paper on maritime security",
+      "Draft operative clauses on AI governance",
+      "Turn these points into a stance paragraph",
+    ],
+  },
+  speech: {
+    greeting: "Ninety seconds, one gavel, zero filler. What's the motion?",
+    starters: [
+      "Write a 90-second opening speech",
+      "Moderated caucus angles on refugees",
+      "A sharp POI follow-up line",
+    ],
+  },
+  poi: {
+    greeting: "Points of information win debates. Feed me a claim to dismantle.",
+    starters: [
+      "Counter: sanctions always work",
+      "Rebut a climate reparations argument",
+      "Turn this weakness into a question",
+    ],
+  },
+  resolution: {
+    greeting: "Preambulatory, operative, unshakeable. What's the agenda?",
+    starters: [
+      "Draft a resolution on cyber warfare",
+      "Preambulatory clauses for peacekeeping",
+      "Review my operative clauses",
+    ],
+  },
 };
 
 function isSafeExternalUrl(value: string) {
@@ -55,7 +111,7 @@ function extractSSEContent(text: string): string {
   return out;
 }
 
-export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspaceProps) {
+export function ToolWorkspace({ eyebrow, title, description, mode, greeting, starters }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -73,6 +129,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
   const [showPaywall, setShowPaywall] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const outputRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
@@ -494,8 +551,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3 shrink-0">
         <div>
-          <p className="label-text">{eyebrow}</p>
-          <h1 className="display-type text-2xl">{title}</h1>
+          <p className="label-text text-[var(--brass)]">{eyebrow}</p>
+          <h1 className="display-type text-[1.7rem] leading-tight">{title}</h1>
         </div>
         <button
           onClick={handleNewChat}
@@ -552,7 +609,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                       <Bot className="h-4 w-4" aria-hidden="true" />
                     </div>
                   </div>
-                  <div className="surface flex-1 rounded-xl px-5 py-4">
+                  <div className="desk-ai-card surface flex-1 rounded-xl px-5 py-4">
                     <div className="chat-markdown text-sm leading-7">
                       <Streamdown
                         mode="static"
@@ -575,7 +632,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                     <Bot className="h-4 w-4" aria-hidden="true" />
                   </div>
                 </div>
-                <div className="surface flex-1 rounded-xl px-5 py-4">
+                <div className="desk-ai-card surface flex-1 rounded-xl px-5 py-4">
                   {status ? <p className="mb-3 text-xs text-[var(--muted)]" aria-live="polite">{status}</p> : null}
                   <div className="chat-markdown text-sm leading-7">
                     <Streamdown
@@ -589,7 +646,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                       {output}
                     </Streamdown>
                     <span
-                      className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-[var(--ink)] align-middle"
+                      className="desk-stream-cursor ml-0.5 inline-block h-4 w-2 animate-pulse align-middle"
                       aria-label="Response is still being generated"
                     />
                   </div>
@@ -623,13 +680,37 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center px-5">
-            <div className="max-w-md">
-              <div className="grid h-16 w-16 mx-auto place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] mb-6">
-                <Bot className="h-8 w-8" />
+          <div className="desk-seal-watermark relative flex h-full flex-col items-center justify-center overflow-y-auto px-5 py-10 text-center">
+            <Landmark
+              className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 text-[var(--brass)] opacity-[0.07]"
+              aria-hidden="true"
+            />
+            <div className="desk-fade-in relative w-full max-w-xl">
+              <p className="label-text text-[var(--brass)]">{eyebrow}</p>
+              <h2 className="display-type mt-3 text-4xl sm:text-5xl">{title}</h2>
+              <div className="mt-2 flex justify-center">
+                <AuthAvatar activeField={null} isTyping={false} status="idle" size="md" />
               </div>
-              <h2 className="display-type text-2xl mb-3">{title}</h2>
-              <p className="text-sm leading-6 text-[var(--muted)]">{description}</p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+                {greeting ?? deskWelcomeDefaults[mode].greeting}
+              </p>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">{description}</p>
+              <div className="mt-6 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:flex-wrap">
+                {(starters ?? deskWelcomeDefaults[mode].starters).map((starter, index) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    onClick={() => {
+                      setInput(starter);
+                      inputRef.current?.focus();
+                    }}
+                    className="desk-chip-in surface rounded-xl px-4 py-2.5 text-left text-sm font-semibold transition hover:-translate-y-0.5 sm:max-w-[16rem]"
+                    style={{ animationDelay: `${120 + index * 60}ms` }}
+                  >
+                    {starter}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -649,23 +730,30 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
       {/* Input area */}
       <div className="shrink-0 border-t border-[var(--line)] bg-[var(--paper)]/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-5 sm:py-3.5 sm:pb-3.5">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-2 surface rounded-xl border border-[var(--line)] px-4 py-3">
-            <textarea
-              className="min-h-[2.5rem] max-h-32 flex-1 resize-none bg-transparent px-1 outline-none text-sm leading-6"
-              value={input}
-              onChange={(e) => { setInput(e.target.value); }}
-              placeholder={`Ask about ${title.toLowerCase()}...`}
-              rows={1}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void handleSubmit(e as any);
-                }
-              }}
-            />
+          <div className="group flex items-end gap-2 surface rounded-2xl border border-[var(--line)] px-4 py-3 shadow-[0_18px_50px_rgba(23,20,18,0.14)]">
+            <div className="min-w-0 flex-1">
+              <textarea
+                ref={inputRef}
+                className="min-h-[2.5rem] max-h-32 w-full resize-none bg-transparent px-1 outline-none text-sm leading-6"
+                value={input}
+                onChange={(e) => { setInput(e.target.value); }}
+                placeholder={`Ask about ${title.toLowerCase()}...`}
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void handleSubmit(e as any);
+                  }
+                }}
+              />
+              <p className="hidden px-1 pt-1 text-[11px] text-[var(--muted)] group-focus-within:block">
+                Enter ↵ to send · Shift + Enter for a new line
+                {input.length > 0 ? <span aria-hidden="true"> · {input.length} characters</span> : null}
+              </p>
+            </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex rounded-lg border border-[var(--line)] overflow-hidden">
+              <div className="flex rounded-full border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-0.5 overflow-hidden">
                 {(["quick", "thorough", "max"] as const).map((item) => (
                   <button
                     key={item}
@@ -673,8 +761,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                     onClick={() => { setResponseMode(item); }}
                     className={
                       responseMode === item
-                        ? "bg-[var(--ink)] text-[var(--paper)] px-2 py-1 text-xs font-semibold"
-                        : "px-2 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
+                        ? "rounded-full bg-[var(--ink)] text-[var(--paper)] px-2.5 py-1 text-xs font-semibold"
+                        : "rounded-full px-2.5 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
                     }
                   >
                     {item === "quick" ? "Quick" : item === "thorough" ? "Thorough" : "Max"}
@@ -687,7 +775,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode }: ToolWorkspa
                 disabled={loading || !input.trim()}
                 aria-label="Send message"
                 title="Send message"
-                className="grid h-8 w-8 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] disabled:opacity-40 transition"
+                className="desk-send-button grid h-8 w-8 place-items-center rounded-full bg-[var(--ink)] text-[var(--paper)] disabled:opacity-40"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

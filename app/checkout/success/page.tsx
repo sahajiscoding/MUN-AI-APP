@@ -160,6 +160,15 @@ export default function CheckoutSuccessPage() {
   ) {
     return (
       <ProtectedAppShell>
+        <div className="mx-auto max-w-2xl px-4 pt-6">
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--ink)]/5 p-4 text-sm leading-6 text-[var(--ink)]">
+            <p className="font-semibold">Statement descriptor</p>
+            <p className="mt-1">
+              The charge on your card, netbanking or UPI statement appears as{" "}
+              <strong>"UroPay/UroPai"</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
+            </p>
+          </div>
+        </div>
         <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
           <CheckCircle2
             className="mx-auto h-12 w-12 text-[var(--patina)]"
@@ -183,6 +192,7 @@ export default function CheckoutSuccessPage() {
             Return to dashboard
           </Link>
         </section>
+        </div>
       </ProtectedAppShell>
     );
   }
@@ -341,8 +351,17 @@ export default function CheckoutSuccessPage() {
   // --------------------------------------------------
 
   return (
-    <ProtectedAppShell>
-      <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
+      <ProtectedAppShell>
+        <div className="mx-auto max-w-2xl px-4 pt-6">
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--ink)]/5 p-4 text-sm leading-6 text-[var(--ink)]">
+            <p className="font-semibold">Statement descriptor</p>
+            <p className="mt-1">
+              The charge on your card, netbanking or UPI statement appears as{" "}
+              <strong>"UroPay/UroPai"</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
+            </p>
+          </div>
+        </div>
+        <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
         <Loader2
           className="mx-auto h-12 w-12 animate-spin text-[var(--patina)]"
           aria-hidden="true"
@@ -401,6 +420,7 @@ export default function CheckoutSuccessPage() {
           </div>
         )}
       </section>
+        </div>
     </ProtectedAppShell>
   );
 }

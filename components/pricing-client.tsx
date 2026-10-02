@@ -26,6 +26,8 @@ export function PricingClient() {
   const [appliedReferralCode, setAppliedReferralCode] = useState<string | null>(null);
   const [referralMessage, setReferralMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [referralBusy, setReferralBusy] = useState(false);
+  const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,8 +128,10 @@ export function PricingClient() {
     }
   }
 
-  async function handleBuy(planId: string) {
-    setLoading(planId);
+  async function confirmCheckout() {
+    if (!pendingPlanId) return;
+    setCheckoutConfirmOpen(false);
+    setLoading(pendingPlanId);
     try {
       if (referralCode.trim()) {
         await applyReferralCodeValue(referralCode.trim());
@@ -140,7 +144,7 @@ export function PricingClient() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ planId })
+        body: JSON.stringify({ planId: pendingPlanId })
       });
 
       const data = (await readJsonResponse<{ error?: string | { message?: string }; openUrl?: string }>(res)) ?? {};
@@ -164,6 +168,7 @@ export function PricingClient() {
     } catch (err) {
       alert(err instanceof Error ? err.message : "Something went wrong. Try again.");
       setLoading(null);
+      setPendingPlanId(null);
     }
   }
 
@@ -264,7 +269,10 @@ export function PricingClient() {
               </ul>
 
               <button
-                onClick={() => handleBuy(plan.id)}
+                onClick={() => {
+                  setPendingPlanId(plan.id);
+                  setCheckoutConfirmOpen(true);
+                }}
                 disabled={disabled}
                 className="button-primary mt-7 flex w-full items-center justify-center gap-2 px-4 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -293,6 +301,45 @@ export function PricingClient() {
           </div>
         </>
       ) : null}
+
+      {checkoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setCheckoutConfirmOpen(false)}
+          />
+          <div className="relative surface rounded-xl border border-[var(--line)] shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 className="display-type text-xl">Important notice before checkout</h3>
+            <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--paper)] p-4 text-sm leading-6 text-[var(--ink)]">
+              <p className="font-semibold">Statement descriptor</p>
+              <p className="mt-2">
+                On your card, netbanking or UPI statements, the charge will appear as{" "}
+                <strong>"UroPay/UroPai"</strong> and not your business name, because every payment goes through UroPay&apos;s system.
+              </p>
+              <p className="mt-2">
+                Please confirm that you understand this before proceeding. This is mandatory to avoid chargebacks.
+              </p>
+            </div>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={() => confirmCheckout()}
+                className="button-primary flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl"
+              >
+                I understand — Proceed to checkout
+              </button>
+              <button
+                onClick={() => {
+                  setCheckoutConfirmOpen(false);
+                  setPendingPlanId(null);
+                }}
+                className="button-secondary flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

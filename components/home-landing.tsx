@@ -3,7 +3,6 @@ import Link from "next/link";
 import { PublicNav } from "@/components/public-nav";
 import { SiteFooter } from "@/components/site-pages";
 import { CloudShader } from "@/components/ui/cloud-shader";
-import { motion } from "motion/react";
 
 const workspaces = [
   {
@@ -33,13 +32,8 @@ export function HomeLanding({ referralName }: { referralName?: string }) {
     <main className="min-h-screen overflow-x-hidden">
       <section className="relative min-h-screen w-full overflow-hidden">
         {/* Cloud shader background */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.4, ease: "easeOut" }}
-        >
-          <div className="absolute h-1/2 w-1/2 origin-top-left scale-200">
+        <div className="absolute inset-0 cloud-fade-in">
+          <div className="absolute h-1/2 w-1/2 origin-top-left scale-[2]">
             <CloudShader 
               speed={1} 
               count={6}
@@ -49,7 +43,7 @@ export function HomeLanding({ referralName }: { referralName?: string }) {
               className="absolute inset-0" 
             />
           </div>
-        </motion.div>
+        </div>
 
         {/* Content */}
         <div className="relative z-20 mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-7 sm:px-8 lg:px-12">
@@ -96,17 +90,13 @@ export function HomeLanding({ referralName }: { referralName?: string }) {
         </div>
 
         {/* Window-seat wing view with gentle in-flight bob */}
-        <motion.div
-          className="pointer-events-none absolute -bottom-6 left-0 z-10 w-[85%] md:w-[70%]"
-          animate={{ y: [0, -12, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        >
+        <div className="pointer-events-none absolute -bottom-6 left-0 z-10 w-[85%] md:w-[70%] wing-bob">
           <img
             src="https://assets.aceternity.com/components/plane-wing.png"
             alt="Airplane wing above the clouds"
             className="h-auto w-full object-cover opacity-60"
           />
-        </motion.div>
+        </div>
       </section>
       <SiteFooter />
     </main>

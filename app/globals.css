@@ -594,6 +594,35 @@ body {
   font-weight: 800;
 }
 
+/* Cloud shader hero animations (CSS replacement for motion/react) */
+.cloud-fade-in {
+  animation: cloud-fade-in 1.4s ease-out both;
+}
+
+.wing-bob {
+  animation: wing-bob 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes cloud-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wing-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
 @media (max-width: 640px) {
   .chat-markdown h1 {
     font-size: 1.45rem;

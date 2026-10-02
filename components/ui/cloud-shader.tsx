@@ -241,13 +241,15 @@ export const CloudShader = ({
     skyBottomColor,
   });
 
-  paramsRef.current = {
-    speed,
-    count,
-    cloudColor,
-    skyTopColor,
-    skyBottomColor,
-  };
+  useEffect(() => {
+    paramsRef.current = {
+      speed,
+      count,
+      cloudColor,
+      skyTopColor,
+      skyBottomColor,
+    };
+  }, [speed, count, cloudColor, skyTopColor, skyBottomColor]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

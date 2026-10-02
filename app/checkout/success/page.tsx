@@ -42,6 +42,21 @@ type PaymentResponse = {
   error?: string;
 };
 
+/** Shown above every checkout outcome: the bank-statement descriptor notice. */
+function StatementDescriptorNotice() {
+  return (
+    <div className="mx-auto max-w-2xl px-4 pt-6">
+      <div className="rounded-lg border border-[var(--line)] bg-[var(--ink)]/5 p-4 text-sm leading-6 text-[var(--ink)]">
+        <p className="font-semibold">Statement descriptor</p>
+        <p className="mt-1">
+          The charge on your card, netbanking or UPI statement appears as{" "}
+          <strong>&quot;UroPay/UroPai&quot;</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function CheckoutSuccessPage() {
   const searchParams =
     useSearchParams();
@@ -160,15 +175,7 @@ export default function CheckoutSuccessPage() {
   ) {
     return (
       <ProtectedAppShell>
-        <div className="mx-auto max-w-2xl px-4 pt-6">
-          <div className="rounded-lg border border-[var(--line)] bg-[var(--ink)]/5 p-4 text-sm leading-6 text-[var(--ink)]">
-            <p className="font-semibold">Statement descriptor</p>
-            <p className="mt-1">
-              The charge on your card, netbanking or UPI statement appears as{" "}
-              <strong>&quot;UroPay/UroPai&quot;</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
-            </p>
-          </div>
-        </div>
+        <StatementDescriptorNotice />
         <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
           <CheckCircle2
             className="mx-auto h-12 w-12 text-[var(--patina)]"
@@ -351,15 +358,7 @@ export default function CheckoutSuccessPage() {
 
   return (
       <ProtectedAppShell>
-        <div className="mx-auto max-w-2xl px-4 pt-6">
-          <div className="rounded-lg border border-[var(--line)] bg-[var(--ink)]/5 p-4 text-sm leading-6 text-[var(--ink)]">
-            <p className="font-semibold">Statement descriptor</p>
-            <p className="mt-1">
-              The charge on your card, netbanking or UPI statement appears as{" "}
-              <strong>&quot;UroPay/UroPai&quot;</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
-            </p>
-          </div>
-        </div>
+        <StatementDescriptorNotice />
         <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
         <Loader2
           className="mx-auto h-12 w-12 animate-spin text-[var(--patina)]"

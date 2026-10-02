@@ -6,6 +6,7 @@ import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 import { estimateAiTokens, reserveAiUsage, settleAiUsage } from "@/lib/server/ai-usage";
+import { accumulateUsage, parseSSEPayload } from "@/lib/ai/sse";
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { logger } from "@/lib/server/secure-logger";
@@ -261,35 +262,21 @@ async function collectStreamContent(source: ReadableStream<Uint8Array>): Promise
   let content = "";
   let finishReason: string | undefined;
   let streamError: string | undefined;
-  let promptTokens = 0;
-  let completionTokens = 0;
+  const usageTotals = { promptTokens: 0, completionTokens: 0 };
 
   const consumeLine = (line: string) => {
-    if (!line.startsWith("data: ")) return;
-    const data = line.slice(6).trim();
-    if (data === "[DONE]") return;
-    try {
-      const parsed = JSON.parse(data) as {
-        content?: string;
-        finishReason?: string;
-        error?: string;
-        usage?: { prompt_tokens?: number; completion_tokens?: number };
-      };
-      if (typeof parsed.error === "string" && parsed.error) streamError = parsed.error;
-      if (typeof parsed.finishReason === "string") finishReason = parsed.finishReason;
-      if (parsed.content) content += parsed.content;
-      const usage = parsed.usage;
-      if (usage) {
-        if (Number.isSafeInteger(usage.prompt_tokens) && (usage.prompt_tokens ?? 0) > promptTokens) {
-          promptTokens = usage.prompt_tokens ?? 0;
-        }
-        if (Number.isSafeInteger(usage.completion_tokens) && (usage.completion_tokens ?? 0) > completionTokens) {
-          completionTokens = usage.completion_tokens ?? 0;
-        }
-      }
-    } catch {
-      // Ignore incomplete or provider-specific SSE lines.
-    }
+    const payload = parseSSEPayload(line);
+    if (!payload.present) return;
+    const parsed = payload.data as {
+      content?: string;
+      finishReason?: string;
+      error?: string;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+    if (typeof parsed.error === "string" && parsed.error) streamError = parsed.error;
+    if (typeof parsed.finishReason === "string") finishReason = parsed.finishReason;
+    if (parsed.content) content += parsed.content;
+    accumulateUsage(parsed.usage, usageTotals);
   };
 
   try {
@@ -307,7 +294,7 @@ async function collectStreamContent(source: ReadableStream<Uint8Array>): Promise
     reader.releaseLock();
   }
 
-  return { content, finishReason, streamError, promptTokens, completionTokens };
+  return { content, finishReason, streamError, promptTokens: usageTotals.promptTokens, completionTokens: usageTotals.completionTokens };
 }
 
 function persistStream(  source: ReadableStream<Uint8Array>,
@@ -318,30 +305,14 @@ function persistStream(  source: ReadableStream<Uint8Array>,
   let content = "";
   let buffer = "";
   let cancelled = false;
-  let promptTokens = 0;
-  let completionTokens = 0;
+  const usageTotals = { promptTokens: 0, completionTokens: 0 };
 
   const consumeLine = (line: string) => {
-    if (!line.startsWith("data: ")) return;
-    const data = line.slice(6).trim();
-    if (data === "[DONE]") return;
-
-    try {
-      const parsed = JSON.parse(data) as { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-      if (parsed.content) content += parsed.content;
-
-      const usage = parsed.usage;
-      if (usage) {
-        if (Number.isSafeInteger(usage.prompt_tokens) && (usage.prompt_tokens ?? 0) > promptTokens) {
-          promptTokens = usage.prompt_tokens ?? 0;
-        }
-        if (Number.isSafeInteger(usage.completion_tokens) && (usage.completion_tokens ?? 0) > completionTokens) {
-          completionTokens = usage.completion_tokens ?? 0;
-        }
-      }
-    } catch {
-      // Ignore incomplete or provider-specific SSE lines.
-    }
+    const payload = parseSSEPayload(line);
+    if (!payload.present) return;
+    const parsed = payload.data as { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    if (parsed.content) content += parsed.content;
+    accumulateUsage(parsed.usage, usageTotals);
   };
 
   return new ReadableStream<Uint8Array>({
@@ -382,7 +353,7 @@ function persistStream(  source: ReadableStream<Uint8Array>,
         // persistence failed. Provider-reported usage is authoritative;
         // otherwise fall back to a conservative estimate of what was streamed.
         // (This is what keeps cancelled generations from being free.)
-        const observedTokens = promptTokens + completionTokens;
+        const observedTokens = usageTotals.promptTokens + usageTotals.completionTokens;
         await settleAiUsage(
           details.reservationId,
           observedTokens > 0

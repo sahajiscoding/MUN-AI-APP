@@ -65,6 +65,48 @@ function toNumberOrNull(
     : null;
 }
 
+type PaymentSyncUpdate = {
+  event: UroPayWebhookEvent;
+  payment: { environment?: string | null };
+  eventId: string;
+  status: string;
+};
+
+/**
+ * Shared column mapping applied whenever a webhook delivery syncs the local
+ * payment row. The non-paid and first-paid paths differ only in the status
+ * they write and whether they return the updated row.
+ */
+function buildPaymentSyncUpdate({ event, payment, eventId, status }: PaymentSyncUpdate) {
+  return {
+    status,
+    amount_captured: toNumberOrNull(event.amount_captured),
+    commission: toNumberOrNull(event.commission),
+    transaction_fee: toNumberOrNull(event.transaction_fee),
+    tax: toNumberOrNull(event.tax),
+    net_amount: toNumberOrNull(event.net_amount),
+    environment:
+      event.environment ?? payment.environment ?? null,
+    event_id: eventId,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/** Awards the first-purchase referral commission for a confirmed payment. */
+function awardReferralCommission(
+  payment: { uid: string; id: string; amount: unknown },
+  orderId: string,
+  planId: string,
+) {
+  return processReferralCommission({
+    uid: payment.uid,
+    paymentId: payment.id,
+    orderId,
+    planId,
+    paymentAmountPaise: Number(payment.amount),
+  });
+}
+
 export async function POST(
   request: Request
 ) {
@@ -322,18 +364,7 @@ export async function POST(
     if (authoritativeStatus !== "paid") {
       const { error: updateError } = await admin
         .from("payments")
-        .update({
-          status: authoritativeStatus,
-          amount_captured: toNumberOrNull(event.amount_captured),
-          commission: toNumberOrNull(event.commission),
-          transaction_fee: toNumberOrNull(event.transaction_fee),
-          tax: toNumberOrNull(event.tax),
-          net_amount: toNumberOrNull(event.net_amount),
-          environment:
-            event.environment ?? payment.environment ?? null,
-          event_id: eventId,
-          updated_at: new Date().toISOString(),
-        })
+        .update(buildPaymentSyncUpdate({ event, payment, eventId, status: authoritativeStatus }))
         .eq("id", payment.id)
         .eq("status", "pending");
 
@@ -391,13 +422,7 @@ export async function POST(
       ) {
         const plan = getPlan(payment.plan_id);
         if (plan) {
-          await processReferralCommission({
-            uid: payment.uid,
-            paymentId: payment.id,
-            orderId,
-            planId: plan.id,
-            paymentAmountPaise: Number(payment.amount),
-          });
+          await awardReferralCommission(payment, orderId, plan.id);
         }
         await markWebhookEventProcessed(admin, eventId);
         claimedEventId = null;
@@ -426,13 +451,7 @@ export async function POST(
         paymentId: payment.id,
         orderId,
       });
-      await processReferralCommission({
-        uid: payment.uid,
-        paymentId: payment.id,
-        orderId,
-        planId: plan.id,
-        paymentAmountPaise: Number(payment.amount),
-      });
+      await awardReferralCommission(payment, orderId, plan.id);
       await markWebhookEventProcessed(admin, eventId);
       claimedEventId = null;
 
@@ -453,18 +472,7 @@ export async function POST(
       error: paymentUpdateError,
     } = await admin
       .from("payments")
-      .update({
-        status: "paid",
-        amount_captured: toNumberOrNull(event.amount_captured),
-        commission: toNumberOrNull(event.commission),
-        transaction_fee: toNumberOrNull(event.transaction_fee),
-        tax: toNumberOrNull(event.tax),
-        net_amount: toNumberOrNull(event.net_amount),
-        environment:
-          event.environment ?? payment.environment ?? null,
-        event_id: eventId,
-        updated_at: new Date().toISOString(),
-      })
+      .update(buildPaymentSyncUpdate({ event, payment, eventId, status: "paid" }))
       .eq("id", payment.id)
       .eq("status", "pending")
       .select("*")
@@ -512,13 +520,7 @@ export async function POST(
       paymentId: payment.id,
       orderId,
     });
-    await processReferralCommission({
-      uid: payment.uid,
-      paymentId: payment.id,
-      orderId,
-      planId: plan.id,
-      paymentAmountPaise: Number(payment.amount),
-    });
+    await awardReferralCommission(payment, orderId, plan.id);
     await markWebhookEventProcessed(admin, eventId);
     claimedEventId = null;
 

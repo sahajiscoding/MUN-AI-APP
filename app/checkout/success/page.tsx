@@ -165,7 +165,7 @@ export default function CheckoutSuccessPage() {
             <p className="font-semibold">Statement descriptor</p>
             <p className="mt-1">
               The charge on your card, netbanking or UPI statement appears as{" "}
-              <strong>"UroPay/UroPai"</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
+              <strong>&quot;UroPay/UroPai&quot;</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
             </p>
           </div>
         </div>
@@ -192,7 +192,6 @@ export default function CheckoutSuccessPage() {
             Return to dashboard
           </Link>
         </section>
-        </div>
       </ProtectedAppShell>
     );
   }
@@ -357,7 +356,7 @@ export default function CheckoutSuccessPage() {
             <p className="font-semibold">Statement descriptor</p>
             <p className="mt-1">
               The charge on your card, netbanking or UPI statement appears as{" "}
-              <strong>"UroPay/UroPai"</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
+              <strong>&quot;UroPay/UroPai&quot;</strong> — not this business name — because every payment is processed through UroPay&apos;s system.
             </p>
           </div>
         </div>

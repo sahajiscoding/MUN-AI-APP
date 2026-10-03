@@ -57,11 +57,18 @@ jobs:
             exit 1
           fi
 
-      - name: Known CVE overrides present (js-yaml, brace-expansion)
+      - name: Known CVE overrides present (js-yaml, brace-expansion, braces waiver)
         run: |
           grep -q "js-yaml: 4.3.2" pnpm-workspace.yaml || { echo "FAIL: js-yaml 4.3.2 override missing"; exit 1; }
           grep -q "brace-expansion@1: 1.1.21" pnpm-workspace.yaml || { echo "FAIL: brace-expansion 1.x override missing"; exit 1; }
           grep -q "brace-expansion@5: 5.0.12" pnpm-workspace.yaml || { echo "FAIL: brace-expansion 5.x override missing"; exit 1; }
+          # TEMPORARY WAIVER (GHSA-vfj7-8cjw-p6xm, braces DoS): no patched
+          # release is published on npm yet (latest is 3.0.3), so a version
+          # override is impossible today. The CVE is waived via
+          # pnpm-workspace.yaml audit.ignore instead. When braces
+          # 3.0.4+ ships, replace the waiver with a `braces: 3.0.4`
+          # override and drop this grep.
+          grep -q "GHSA-vfj7-8cjw-p6xm" pnpm-workspace.yaml || { echo "FAIL: braces CVE waiver missing"; exit 1; }
           grep -q '"packageManager": "pnpm@' package.json || { echo "FAIL: packageManager pin missing"; exit 1; }
           echo "Overrides OK"
 

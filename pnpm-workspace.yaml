@@ -10,3 +10,11 @@ overrides:
   # brace-expansion. Patched floors: 1.1.21 (1.x) and 5.0.12 (5.x).
   brace-expansion@1: 1.1.21
   brace-expansion@5: 5.0.12
+
+# TEMPORARY WAIVER (GHSA-vfj7-8cjw-p6xm, braces stack-exhaustion DoS):
+# no patched release is published on npm yet (latest is 3.0.3), so a version
+# override is impossible today. When braces 3.0.4+ ships, replace this waiver
+# with a `braces: 3.0.4` override above.
+audit:
+  ignore:
+    - GHSA-vfj7-8cjw-p6xm

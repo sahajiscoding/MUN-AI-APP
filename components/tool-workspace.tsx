@@ -2,10 +2,11 @@
 
 import { ArrowDown, Bot, Landmark, Loader2, MessageSquare, Plus, Send } from "lucide-react";
 import { Streamdown } from "streamdown";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { AuthAvatar } from "@/components/auth-avatar";
+import { getRotatingStarters } from "@/lib/muni-starters";
 import { PaywallModal } from "@/components/paywall-modal";
 import { readJsonResponse } from "@/lib/http";
 import { sanitizePublicMessage } from "@/lib/safe-message";
@@ -32,56 +33,26 @@ const responseModeConfig: Record<ResponseMode, { label: string; maxTokens: numbe
   max: { label: "Max", maxTokens: 12000, temperature: 0.85 },
 };
 
-type DeskWelcome = { greeting: string; starters: string[] };
+type DeskWelcome = { greeting: string };
 
 const deskWelcomeDefaults: Record<ToolWorkspaceProps["mode"], DeskWelcome> = {
   research: {
     greeting: "Muni pulled this morning's briefs. Pick a thread and we'll build your case.",
-    starters: [
-      "UNSC reform — where does India stand?",
-      "DISEC cyber norms — map the blocs",
-      "Climate finance — opposition arguments to expect",
-    ],
   },
   "country-profile": {
     greeting: "Give me a country and a committee — I'll sketch its policy spine.",
-    starters: [
-      "Brazil in UNEP on deforestation",
-      "Japan in DISEC on autonomous weapons",
-      "Kenya in WHO on pandemic preparedness",
-    ],
   },
   "position-paper": {
     greeting: "Bring a topic and a delegation — we'll turn policy into paragraphs.",
-    starters: [
-      "Outline a position paper on maritime security",
-      "Draft operative clauses on AI governance",
-      "Turn these points into a stance paragraph",
-    ],
   },
   speech: {
     greeting: "Ninety seconds, one gavel, zero filler. What's the motion?",
-    starters: [
-      "Write a 90-second opening speech",
-      "Moderated caucus angles on refugees",
-      "A sharp POI follow-up line",
-    ],
   },
   poi: {
     greeting: "Points of information win debates. Feed me a claim to dismantle.",
-    starters: [
-      "Counter: sanctions always work",
-      "Rebut a climate reparations argument",
-      "Turn this weakness into a question",
-    ],
   },
   resolution: {
     greeting: "Preambulatory, operative, unshakeable. What's the agenda?",
-    starters: [
-      "Draft a resolution on cyber warfare",
-      "Preambulatory clauses for peacekeeping",
-      "Review my operative clauses",
-    ],
   },
 };
 
@@ -138,6 +109,11 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
   const shouldAutoScrollRef = useRef(true);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [chatLoadError, setChatLoadError] = useState("");
+
+  // Fresh random threads on every mount: each refresh deals a new hand from
+  // Muni's 100k+ prompt pool. An explicit `starters` prop still wins.
+  const rotatingStarters = useMemo(() => getRotatingStarters(mode, 3), [mode]);
+  const visibleStarters = starters ?? rotatingStarters;
 
   // Follow the stream only while the user is already near the latest content.
   // Once they scroll up, leave their reading position alone.
@@ -711,7 +687,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
               </p>
               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">{description}</p>
               <div className="mt-6 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:flex-wrap">
-                {(starters ?? deskWelcomeDefaults[mode].starters).map((starter, index) => (
+                {visibleStarters.map((starter, index) => (
                   <button
                     key={starter}
                     type="button"

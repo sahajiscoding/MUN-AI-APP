@@ -14,8 +14,13 @@ export default function HomePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
-      />
+        // Text child, not HTML: React inserts script content as raw text, and
+        // `<` is unicode-escaped so no JSON value can break out of the tag.
+        // This keeps the client-boundary HTML gate green.
+        suppressHydrationWarning
+      >
+        {JSON.stringify(organizationJsonLd()).replace(/</g, "\\u003c")}
+      </script>
       <HomeLanding />
     </>
   );

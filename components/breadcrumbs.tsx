@@ -31,8 +31,13 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
       </nav>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(items)) }}
-      />
+        // Text child, not HTML: React inserts script content as raw text, and
+        // `<` is unicode-escaped so no crumb value can break out of the tag.
+        // This keeps the client-boundary HTML gate green.
+        suppressHydrationWarning
+      >
+        {JSON.stringify(breadcrumbJsonLd(items)).replace(/</g, "\\u003c")}
+      </script>
     </>
   );
 }

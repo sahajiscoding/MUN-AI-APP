@@ -8,7 +8,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: ["/"],
-        disallow: ["/api/", "/app/", "/admin/", "/c8f2x9/", "/partner/", "/checkout/", "/dashboard", "/profile"],
+        // NOTE: the obscured admin sign-in path is intentionally NOT listed
+        // here. robots.txt is public, and naming it would advertise the URL.
+        // It stays hidden via auth gates (and it was never linked publicly).
+        disallow: ["/api/", "/app/", "/admin/", "/partner/", "/checkout/", "/dashboard", "/profile"],
       },
     ],
     sitemap: absoluteUrl("/sitemap.xml"),

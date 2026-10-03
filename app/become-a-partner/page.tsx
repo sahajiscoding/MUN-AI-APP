@@ -1,16 +1,24 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, Share2, Trophy } from "lucide-react";
 import { PublicPage } from "@/components/site-pages";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { PartnerApplyForm } from "@/components/partner-apply-form";
+import { publicMetadata } from "@/lib/seo";
 
-export const metadata = { title: "Become a partner" };
+export const metadata = publicMetadata({
+  title: "Become a partner",
+  description:
+    "Join MUN Prep as a referral partner: share your link with delegates and earn 16.72% of every paid plan they buy.",
+  path: "/become-a-partner",
+});
 
 /** Public partner-recruitment page with the application form. */
 export default function BecomePartnerPage() {
   return (
     <PublicPage>
       <section className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+        <Breadcrumbs items={[{ name: "Home", path: "/" }, { name: "Become a partner", path: "/become-a-partner" }]} />
+        <div className="mt-6 grid gap-12 lg:grid-cols-2 lg:items-start">
           <div>
             <p className="label-text text-[var(--oxblood)]">Referral partners</p>
             <h1 className="display-type mt-3 text-4xl sm:text-5xl">Turn your MUN circle into income.</h1>

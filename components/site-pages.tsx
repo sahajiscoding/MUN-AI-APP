@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle2, FileText, Landmark, LifeBuoy } from "lucide-react";
 import type { ReactNode } from "react";
 import type { SitePage } from "@/lib/site-pages";
+import { Breadcrumbs, type Crumb } from "@/components/breadcrumbs";
 
 /** Public site header with home navigation. */
 export function SiteHeader() {
@@ -31,8 +32,8 @@ export function PublicPage({ children }: { children: ReactNode }) {
 }
 
 /** Policy article page rendering every section of a legal document. */
-export function PolicyPage({ page }: { page: SitePage }) {
-  return <PublicPage><article className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12"><p className="label-text text-[var(--oxblood)]">{page.eyebrow}</p><h1 className="display-type mt-4 text-4xl leading-none sm:text-5xl">{page.title}</h1><p className="mt-5 max-w-3xl text-lg leading-8 text-[var(--muted)]">{page.description}</p><div className="mt-7 rounded-xl border border-[var(--brass)]/35 bg-[var(--brass)]/10 p-4 text-sm leading-6 text-[var(--ink)]"><strong>Important:</strong> This is a working website draft. Have qualified legal counsel review policy text, jurisdiction, business identity, contact details, retention periods, and payment terms before relying on or publishing it.</div><div className="mt-6 grid gap-8">{page.sections.map((section) => <section key={section.heading} className="border-t border-[var(--line)] pt-6"><h2 className="display-type text-2xl sm:text-3xl">{section.heading}</h2><p className="mt-2 max-w-3xl whitespace-pre-line text-base leading-8 text-[var(--muted)]">{section.body}</p></section>)}</div></article></PublicPage>;
+export function PolicyPage({ page, trail }: { page: SitePage; trail?: Crumb[] }) {
+  return <PublicPage><article className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12"><Breadcrumbs items={trail ?? [{ name: "Home", path: "/" }, { name: "Legal", path: "/legal" }]} /><p className="label-text mt-6 text-[var(--oxblood)]">{page.eyebrow}</p><h1 className="display-type mt-4 text-4xl leading-none sm:text-5xl">{page.title}</h1><p className="mt-5 max-w-3xl text-lg leading-8 text-[var(--muted)]">{page.description}</p><div className="mt-7 rounded-xl border border-[var(--brass)]/35 bg-[var(--brass)]/10 p-4 text-sm leading-6 text-[var(--ink)]"><strong>Important:</strong> This is a working website draft. Have qualified legal counsel review policy text, jurisdiction, business identity, contact details, retention periods, and payment terms before relying on or publishing it.</div><div className="mt-6 grid gap-8">{page.sections.map((section) => <section key={section.heading} className="border-t border-[var(--line)] pt-6"><h2 className="display-type text-2xl sm:text-3xl">{section.heading}</h2><p className="mt-2 max-w-3xl whitespace-pre-line text-base leading-8 text-[var(--muted)]">{section.body}</p></section>)}</div></article></PublicPage>;
 }
 
 /** Generic state page for errors, empty states, and status codes. */

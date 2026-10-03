@@ -1,9 +1,8 @@
 import { ProfileForm } from "@/components/profile-form";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
+import { privateMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Delegate Profile"
-};
+export const metadata = privateMetadata("Delegate Profile");
 
 /** Delegate profile page for editing conference context. */
 export default function ProfilePage() {

@@ -1,9 +1,8 @@
 import { PricingClient } from "@/components/pricing-client";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
+import { privateMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Access"
-};
+export const metadata = privateMetadata("Access");
 
 /** Pricing page showing plans and checkout. */
 export default function PricingPage() {

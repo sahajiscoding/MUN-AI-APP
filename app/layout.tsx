@@ -12,12 +12,24 @@ export const metadata: Metadata = {
   },
   description:
     "A paid delegate preparation workspace for Model United Nations research, position papers, speeches, POIs, and resolutions.",
+  authors: [{ name: "MUN Prep" }],
+  creator: "MUN Prep",
+  publisher: "MUN Prep",
+  icons: { icon: "/icon.svg" },
   openGraph: {
     title: "MUN Prep App",
     description:
       "Research, draft, and debate from one focused Model United Nations prep workspace.",
+    url: "/",
+    siteName: "MUN Prep",
     type: "website"
-  }
+  },
+  twitter: {
+    card: "summary",
+    title: "MUN Prep App",
+    description:
+      "Research, draft, and debate from one focused Model United Nations prep workspace.",
+  },
 };
 
 /** Root layout wrapping every route with the authentication provider. */

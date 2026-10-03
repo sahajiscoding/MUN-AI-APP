@@ -1,10 +1,9 @@
 import { XCircle } from "lucide-react";
 import Link from "next/link";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
+import { privateMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Payment Not Verified"
-};
+export const metadata = privateMetadata("Payment Not Verified");
 
 /** Checkout failure page shown when payment verification fails. */
 export default function CheckoutFailurePage() {

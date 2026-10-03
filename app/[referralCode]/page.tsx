@@ -1,11 +1,20 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 import { HomeLanding } from "@/components/home-landing";
 import { ReferralCookieCapture } from "@/components/referral-cookie-capture";
 import { getReferralPartner } from "@/lib/referrals";
 import { logger } from "@/lib/server/secure-logger";
+import { absoluteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+// Referral entries render the same homepage offer, so they canonicalize to
+// the homepage instead of competing with it as duplicate content.
+export const metadata: Metadata = {
+  title: "MUN Prep App",
+  alternates: { canonical: absoluteUrl("/") },
+};
 
 const REFERRAL_PATH_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$/;
 

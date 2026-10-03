@@ -32,6 +32,7 @@ const answerColors = [
   "border-[#6570a8] hover:bg-[#6570a8] hover:text-white",
 ];
 
+/** Checks whether an external URL is safe to render as a link. */
 function isSafeExternalUrl(value: string) {
   try {
     const url = new URL(value, window.location.origin);
@@ -41,6 +42,7 @@ function isSafeExternalUrl(value: string) {
   }
 }
 
+/** Builds a fallback quiz question from the lesson title. */
 function makeFallbackQuestion(lesson: Lesson): PublicQuizQuestion {
   return {
     question: `Which topic is the focus of the lesson “${lesson.title}”?`,
@@ -48,6 +50,7 @@ function makeFallbackQuestion(lesson: Lesson): PublicQuizQuestion {
   };
 }
 
+/** Course detail page with lessons, checkpoints, review quiz, and certificate. */
 export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const { user, getIdToken } = useAuth();
@@ -93,6 +96,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     if (!user || !slug) return;
     let cancelled = false;
 
+    /** Loads the saved course progress for the signed-in learner. */
     async function loadProgress() {
       try {
         const token = await getIdToken();
@@ -140,6 +144,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     return () => { observer.disconnect(); };
   }, [activeLessonIndex]);
 
+  /** Submits the active lesson checkpoint answer and unlocks progress. */
   async function submitCheckpoint() {
     if (!user || activeLessonIndex < 0 || activeAnswer === null || !activeQuestion) return;
     setSaving(true);
@@ -166,11 +171,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     }
   }
 
+  /** Clears the selected checkpoint answer and resets its state. */
   function resetCheckpoint() {
     setActiveAnswer(null);
     setCheckpointState("idle");
   }
 
+  /** Starts the final course review quiz from the first question. */
   function startFinalQuiz() {
     setFinalAnswers([]);
     setFinalQuestionIndex(0);
@@ -178,12 +185,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     setQuizSubmitted(false);
   }
 
+  /** Records the selected answer for the current final-quiz question. */
   function chooseFinalAnswer(optionIndex: number) {
     const next = [...finalAnswers];
     next[finalQuestionIndex] = optionIndex;
     setFinalAnswers(next);
   }
 
+  /** Submits the final quiz answers and stores the score. */
   async function submitFinalQuiz(answers: number[]) {
     if (!user) return;
     setSaving(true);
@@ -217,6 +226,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     }
   }
 
+  /** Downloads the completion certificate PDF for this course. */
   async function downloadCertificate() {
     if (!user || !allLessonsComplete || !quizPassed || downloadingCertificate) return;
     setDownloadingCertificate(true);
@@ -253,6 +263,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     }
   }
 
+  /** Opens a share composer for the completed course on the given network. */
   function shareCompletion(network: "linkedin" | "twitter") {
     const shareUrl = `${window.location.origin}/app/courses/${encodeURIComponent(slug)}`;
     const text = `I completed the ${course?.title || "MUN Prep"} course on MUN Prep.`;
@@ -262,6 +273,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     window.open(target, "_blank", "noopener,noreferrer,width=720,height=640");
   }
 
+  /** Advances the final quiz or submits it on the last question. */
   function advanceFinalQuiz() {
     if (finalAnswers[finalQuestionIndex] === undefined) return;
     if (finalQuestionIndex === finalQuizQuestions.length - 1) {

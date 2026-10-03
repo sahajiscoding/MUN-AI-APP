@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 
+/** Account settings panel with profile links and sign-out. */
 export function SettingsPanel() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  /** Signs out and returns to the sign-in page. */
   async function handleLogout() {
     setBusy(true);
     setError("");

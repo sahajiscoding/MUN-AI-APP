@@ -46,6 +46,7 @@ function parseExpiryDate(value: string) {
   return target;
 }
 
+/** POST /api/c8f2x9/grant-subscription — grants a weekly/monthly pass to a user. */
 export async function POST(request: Request) {
   try {
     const admin = await requireAdminOwner();

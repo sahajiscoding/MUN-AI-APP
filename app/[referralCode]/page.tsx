@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const REFERRAL_PATH_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$/;
 
+/** Referral landing page validating the code and showing the homepage offer. */
 export default async function ReferralLandingPage({
   params,
 }: {

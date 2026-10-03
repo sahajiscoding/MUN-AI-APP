@@ -41,6 +41,7 @@ const SECRET_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
 
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 
+/** Truncate a string to a max length with a truncation marker. */
 function truncate(value: string, max = MAX_STRING_LENGTH): string {
   return value.length > max ? `${value.slice(0, max)}…[truncated]` : value;
 }
@@ -62,6 +63,7 @@ export function maskEmail(value: unknown): string {
   return `…@${truncate(domain, 60)}`;
 }
 
+/** Redact secrets and mask emails inside free-form log text. */
 function redactSecretsText(text: string): string {
   let out = text;
   for (const { pattern, replacement } of SECRET_PATTERNS) {
@@ -71,6 +73,7 @@ function redactSecretsText(text: string): string {
   return out;
 }
 
+/** Recursively sanitize a log field, redacting secrets and truncating identifiers. */
 function sanitizeValue(value: unknown, depth = 0): unknown {
   if (depth > 4) return "[depth-limit]";
   if (value === null || value === undefined) return value;
@@ -130,29 +133,52 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
   return "[unloggable]";
 }
 
+/** Write a sanitized log line at the given level with optional fields. */
 function emit(
   level: "error" | "warn" | "info" | "debug",
   message: string,
   fields?: unknown,
 ) {
   const safeMessage = truncate(redactSecretsText(message));
-  if (fields === undefined) {
-    console[level](safeMessage);
-    return;
+  const sanitized = fields === undefined ? undefined : sanitizeValue(fields);
+  // Static dispatch only: `level` is a closed union type and can never come
+  // from user input, but indexed access (console[level]) is flagged by SAST
+  // as unsafe dynamic invocation. An explicit switch keeps the call sites
+  // statically resolvable.
+  switch (level) {
+    case "error":
+      if (sanitized === undefined) console.error(safeMessage);
+      else console.error(safeMessage, sanitized);
+      break;
+    case "warn":
+      if (sanitized === undefined) console.warn(safeMessage);
+      else console.warn(safeMessage, sanitized);
+      break;
+    case "info":
+      if (sanitized === undefined) console.info(safeMessage);
+      else console.info(safeMessage, sanitized);
+      break;
+    case "debug":
+      if (sanitized === undefined) console.debug(safeMessage);
+      else console.debug(safeMessage, sanitized);
+      break;
   }
-  console[level](safeMessage, sanitizeValue(fields));
 }
 
 export const logger = {
+  /** Log a sanitized error message with optional fields. */
   error(message: string, fields?: unknown) {
     emit("error", message, fields);
   },
+  /** Log a sanitized warning message with optional fields. */
   warn(message: string, fields?: unknown) {
     emit("warn", message, fields);
   },
+  /** Log a sanitized info message with optional fields. */
   info(message: string, fields?: unknown) {
     emit("info", message, fields);
   },
+  /** Log a sanitized debug message outside production with optional fields. */
   debug(message: string, fields?: unknown) {
     if (process.env.NODE_ENV !== "production") {
       emit("debug", message, fields);
@@ -160,6 +186,7 @@ export const logger = {
   },
 };
 
+/** Redact secrets from a provider message and cap it at 1000 characters. */
 export function redactProviderMessage(message: string): string {
   return truncate(redactSecretsText(message), 1000);
 }

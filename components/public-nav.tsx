@@ -5,16 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 
+/** Public navigation bar with sign-in and get-started actions. */
 export function PublicNav({ variant = "default" }: { variant?: "default" | "onDark" }) {
   const router = useRouter();
   const { user, loading } = useAuth();
   const onDark = variant === "onDark";
 
+  /** Navigates to the dashboard or login page for sign-in. */
   function handleSignIn() {
     if (loading) return;
     router.push(user ? "/dashboard" : "/login");
   }
 
+  /** Navigates to the dashboard or signup page to get started. */
   function handleGetStarted() {
     if (loading) return;
     router.push(user ? "/dashboard" : "/signup");

@@ -8,6 +8,7 @@ import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Returns a JSON response with private no-store headers. */
 function privateJson(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
   return NextResponse.json(body, {
     status,
@@ -19,6 +20,7 @@ function privateJson(body: unknown, status = 200, extraHeaders?: Record<string, 
   });
 }
 
+/** POST /api/admin/reconcile-payments — repairs paid payments missing entitlements. */
 export async function POST(request: Request) {
   // Authenticate first, throttle second. The previous order (IP bucket before
   // auth) let unauthenticated requests burn the owner's bucket (self-DoS

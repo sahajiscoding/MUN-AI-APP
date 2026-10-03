@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 const KEY = "mun_cookie_preferences";
 
+/** Cookie preference control storing the optional choice locally. */
 export function CookiePreferences() {
   const [optional, setOptional] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -12,6 +13,7 @@ export function CookiePreferences() {
     setOptional(window.localStorage.getItem(KEY) === "enabled");
   }, []);
 
+  /** Saves the optional cookie preference to local storage. */
   function save() {
     window.localStorage.setItem(KEY, optional ? "enabled" : "disabled");
     setSaved(true);

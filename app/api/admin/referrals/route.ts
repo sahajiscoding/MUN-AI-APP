@@ -6,6 +6,7 @@ import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
+/** GET /api/admin/referrals — returns partners, referrals, and commissions for admins. */
 export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
@@ -116,6 +117,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** Sums finite numbers rounded to two decimals. */
 function sum(values: number[]) {
   return Math.round(values.reduce((total, value) => total + (Number.isFinite(value) ? value : 0), 0) * 100) / 100;
 }

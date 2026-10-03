@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 const approveSchema = z.object({ uid: z.string().uuid() }).strict();
 
+/** POST /api/c8f2x9/approve — approves a user as admin and grants admin access. */
 export async function POST(request: Request) {
   try {
     const admin = await requireAdminOwner();

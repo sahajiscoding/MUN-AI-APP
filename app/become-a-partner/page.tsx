@@ -5,6 +5,7 @@ import { PartnerApplyForm } from "@/components/partner-apply-form";
 
 export const metadata = { title: "Become a partner" };
 
+/** Public partner-recruitment page with the application form. */
 export default function BecomePartnerPage() {
   return (
     <PublicPage>
@@ -52,6 +53,7 @@ export default function BecomePartnerPage() {
   );
 }
 
+/** Renders one numbered referral benefit step with icon and copy. */
 function Step({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
     <div className="flex items-start gap-4 rounded-xl border border-[var(--line)] bg-white/40 p-5">

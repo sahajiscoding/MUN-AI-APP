@@ -6,7 +6,7 @@ import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 import { estimateAiTokens, reserveAiUsage, settleAiUsage } from "@/lib/server/ai-usage";
-import { accumulateUsage, parseSSEPayload } from "@/lib/ai/sse";
+import { accumulateUsage, consumeSSEStream, parseSSEPayload } from "@/lib/ai/sse";
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { logger } from "@/lib/server/secure-logger";
@@ -42,6 +42,7 @@ const schema = z.object({
 // worst-case completion the provider is allowed to generate.
 const MODE_COMPLETION_CEILINGS = { quick: 4096, thorough: 8000, max: 12000 } as const;
 
+/** Returns the completion token ceiling for a response mode. */
 function completionTokenCeiling(
   mode: keyof typeof MODE_COMPLETION_CEILINGS,
   requested?: number
@@ -67,6 +68,7 @@ type StreamPersistenceDetails = Omit<GenerationDetails, "output"> & {
   promptEstimate: number;
 };
 
+/** POST /api/ai/research — generates an MUN research answer with streaming support. */
 export async function POST(request: Request) {
   try {
     let uid: string;
@@ -254,20 +256,15 @@ type CollectedStream = {
   completionTokens: number;
 };
 
-// Drain a provider SSE stream fully (used by the non-streaming JSON mode).
+/** Drains a provider SSE stream fully (used by the non-streaming JSON mode). */
 async function collectStreamContent(source: ReadableStream<Uint8Array>): Promise<CollectedStream> {
-  const reader = source.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
   let content = "";
   let finishReason: string | undefined;
   let streamError: string | undefined;
   const usageTotals = { promptTokens: 0, completionTokens: 0 };
 
-  const consumeLine = (line: string) => {
-    const payload = parseSSEPayload(line);
-    if (!payload.present) return;
-    const parsed = payload.data as {
+  await consumeSSEStream(source, (data) => {
+    const parsed = data as {
       content?: string;
       finishReason?: string;
       error?: string;
@@ -277,40 +274,22 @@ async function collectStreamContent(source: ReadableStream<Uint8Array>): Promise
     if (typeof parsed.finishReason === "string") finishReason = parsed.finishReason;
     if (parsed.content) content += parsed.content;
     accumulateUsage(parsed.usage, usageTotals);
-  };
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      lines.forEach(consumeLine);
-    }
-    buffer += decoder.decode();
-    if (buffer) consumeLine(buffer);
-  } finally {
-    reader.releaseLock();
-  }
+  });
 
   return { content, finishReason, streamError, promptTokens: usageTotals.promptTokens, completionTokens: usageTotals.completionTokens };
 }
 
+/** Forwards a provider SSE stream while persisting the completed chat. */
 function persistStream(  source: ReadableStream<Uint8Array>,
   details: StreamPersistenceDetails
 ) {
-  const reader = source.getReader();
-  const decoder = new TextDecoder();
+  const upstream = new AbortController();
   let content = "";
-  let buffer = "";
   let cancelled = false;
   const usageTotals = { promptTokens: 0, completionTokens: 0 };
 
-  const consumeLine = (line: string) => {
-    const payload = parseSSEPayload(line);
-    if (!payload.present) return;
-    const parsed = payload.data as { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+  const handlePayload = (data: unknown) => {
+    const parsed = data as { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } };
     if (parsed.content) content += parsed.content;
     accumulateUsage(parsed.usage, usageTotals);
   };
@@ -318,19 +297,10 @@ function persistStream(  source: ReadableStream<Uint8Array>,
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
+        // Forward every raw chunk to the client while parsing a copy.
+        await consumeSSEStream(source, handlePayload, (value) => {
           controller.enqueue(value);
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          lines.forEach(consumeLine);
-        }
-
-        buffer += decoder.decode();
-        if (buffer) consumeLine(buffer);
+        }, upstream.signal);
         if (!cancelled && content) {
           await saveCompletedChat({
             chatId: details.chatId,
@@ -348,7 +318,6 @@ function persistStream(  source: ReadableStream<Uint8Array>,
       } catch (error) {
         if (!cancelled) controller.error(error);
       } finally {
-        reader.releaseLock();
         // Settle exactly once, even when the client cancelled mid-stream or
         // persistence failed. Provider-reported usage is authoritative;
         // otherwise fall back to a conservative estimate of what was streamed.
@@ -365,11 +334,12 @@ function persistStream(  source: ReadableStream<Uint8Array>,
     async cancel(reason) {
       cancelled = true;
       // Propagate the disconnect upstream so the provider stops generating.
-      await reader.cancel(reason);
+      upstream.abort(reason);
     },
   });
 }
 
+/** Trims chat turns to recent size-bounded history. */
 function limitTurns(turns: ChatTurn[]) {
   const selected: ChatTurn[] = [];
   let total = 0;
@@ -382,6 +352,7 @@ function limitTurns(turns: ChatTurn[]) {
   return selected;
 }
 
+/** Loads a chat owned by the user from storage or the database. */
 async function loadOwnedChat(uid: string, chatId: string) {
   const stored = await loadChatTranscript(uid, chatId);
   if (stored && stored.uid === uid) return stored;
@@ -417,6 +388,7 @@ async function loadOwnedChat(uid: string, chatId: string) {
   };
 }
 
+/** Persists a completed chat transcript and generation index row. */
 async function saveCompletedChat(details: GenerationDetails) {
   await saveChatTranscript({
     id: details.chatId,

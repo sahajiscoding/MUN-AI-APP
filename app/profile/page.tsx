@@ -5,6 +5,7 @@ export const metadata = {
   title: "Delegate Profile"
 };
 
+/** Delegate profile page for editing conference context. */
 export default function ProfilePage() {
   return (
     <ProtectedAppShell>

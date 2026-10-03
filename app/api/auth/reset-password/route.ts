@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 
 const schema = z.object({ password: z.string().min(8).max(128) });
 
+/** POST /api/auth/reset-password — updates the password from a recovery token. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);

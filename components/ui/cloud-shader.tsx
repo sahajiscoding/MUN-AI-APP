@@ -187,6 +187,7 @@ void main() {
 }
 `;
 
+/** Parses a hex or rgb string into normalized RGB values. */
 function parseHex(color: string): [number, number, number] {
   const value = color.trim();
   if (value.startsWith("#")) {
@@ -211,6 +212,7 @@ function parseHex(color: string): [number, number, number] {
   return [0.95, 0.95, 0.95];
 }
 
+/** Compiles a WebGL shader, returning null on failure. */
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
   const shader = gl.createShader(type);
   if (!shader) return null;
@@ -223,6 +225,7 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
   return shader;
 }
 
+/** Animated WebGL cloud background with configurable sky and drift. */
 export const CloudShader = ({
   className,
   children,
@@ -300,6 +303,7 @@ export const CloudShader = ({
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
+    /** Resizes the canvas to its display size for the shader. */
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = canvas.clientWidth;
@@ -319,6 +323,7 @@ export const CloudShader = ({
     resize();
 
     const start = performance.now();
+    /** Draws one animated cloud frame on the canvas. */
     const draw = (now: number) => {
       if (!running) return;
       const p = paramsRef.current;

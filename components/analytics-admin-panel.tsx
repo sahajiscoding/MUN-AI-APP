@@ -31,10 +31,12 @@ type Analytics = {
   trend: TrendPoint[];
 };
 
+/** Formats a YYYY-MM-DD day as a short UTC date label. */
 function shortDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
 }
 
+/** Renders one analytics total with icon, value, and detail. */
 function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Users; label: string; value: number; detail: string; tone: string }) {
   return (
     <div className="surface rounded-xl p-5">
@@ -46,11 +48,13 @@ function StatCard({ icon: Icon, label, value, detail, tone }: { icon: typeof Use
   );
 }
 
+/** Admin analytics dashboard with totals, trend, and per-course metrics. */
 export function AnalyticsAdminPanel() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /** Loads course analytics from the admin API. */
   async function loadAnalytics() {
     setLoading(true);
     setError("");

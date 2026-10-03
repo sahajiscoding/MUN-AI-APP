@@ -13,6 +13,7 @@ import { logger } from "@/lib/server/secure-logger";
 // outage is visible instead of silently weakening enforcement (SEC-RL-03).
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
+/** Log use of the in-memory rate-limit fallback, as an error in production. */
 function logFallback(message: string, detail: string) {
   const line = `${message}: ${detail}`;
   if (process.env.NODE_ENV === "production") {
@@ -22,6 +23,7 @@ function logFallback(message: string, detail: string) {
   }
 }
 
+/** Enforce a process-local sliding-window rate limit as a DB fallback. */
 function memoryCheck(key: string, maxAttempts: number, windowMs: number): boolean {
   const now = Date.now();
   const record = attempts.get(key);

@@ -16,6 +16,7 @@ const profileSchema = z.object({
   goals: z.string().trim().max(2000).default(""),
 }).strict();
 
+/** GET /api/profile — returns the authenticated user's delegate profile. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** PUT /api/profile — upserts the authenticated user's delegate profile. */
 export async function PUT(request: Request) {
   try {
     const user = await requireUser(request);

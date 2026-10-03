@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 const schema = z.object({ email: z.string().trim().email().max(320) });
 
+/** POST /api/auth/reset-request — starts a Supabase password recovery email. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);

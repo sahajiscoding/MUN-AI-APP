@@ -6,6 +6,7 @@ export const metadata = {
   title: "Payment Not Verified"
 };
 
+/** Checkout failure page shown when payment verification fails. */
 export default function CheckoutFailurePage() {
   return (
     <ProtectedAppShell>

@@ -5,6 +5,7 @@ export const metadata = {
   title: "Country Profile"
 };
 
+/** Country profile workspace page. */
 export default function CountryProfilePage() {
   return (
     <ProtectedAppShell>

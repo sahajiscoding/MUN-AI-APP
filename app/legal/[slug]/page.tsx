@@ -5,6 +5,7 @@ import { legalPages } from "@/lib/site-pages";
 
 export const dynamic = "force-dynamic";
 
+/** Legal policy page rendering the document for the given slug. */
 export default async function LegalPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const page = legalPages[slug];

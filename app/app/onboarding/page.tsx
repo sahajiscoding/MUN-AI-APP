@@ -1,4 +1,5 @@
 import Link from "next/link";
 import { ProtectedAppShell } from "@/components/protected-app-shell";
 export const metadata = { title: "Onboarding" };
+/** First-run onboarding page pointing delegates to profile setup. */
 export default function OnboardingPage() { return <ProtectedAppShell><div className="surface mx-auto max-w-3xl rounded-xl p-6 sm:p-8"><p className="label-text text-[var(--oxblood)]">First briefing</p><h1 className="display-type mt-3 text-4xl">Set up your delegate desk.</h1><p className="mt-4 max-w-2xl leading-7 text-[var(--muted)]">Add your committee, country, agenda, experience level, and goals so MUN Prep can make each workspace response more relevant.</p><div className="mt-7 flex flex-wrap gap-3"><Link href="/profile" className="button-primary px-5 font-semibold">Complete profile</Link><Link href="/app/courses" className="button-secondary px-5 font-semibold">Explore courses</Link></div></div></ProtectedAppShell>; }

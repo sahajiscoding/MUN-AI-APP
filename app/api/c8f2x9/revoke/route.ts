@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 const revokeSchema = z.object({ uid: z.string().uuid() }).strict();
 
+/** POST /api/c8f2x9/revoke — revokes a user's admin access without touching paid plans. */
 export async function POST(request: Request) {
   try {
     const admin = await requireAdminOwner();

@@ -26,6 +26,7 @@ type PaymentStatus =
   | "failed"
   | "expired";
 
+/** Normalizes a payment status string to pending/paid/failed/expired. */
 function normalizeStatus(value: unknown): PaymentStatus | null {
   if (typeof value !== "string") {
     return null;
@@ -47,6 +48,7 @@ function normalizeStatus(value: unknown): PaymentStatus | null {
   }
 }
 
+/** GET /api/payments/status — returns the authenticated user's payment status for an orderRef. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);

@@ -10,6 +10,7 @@ import { readJsonResponse } from "@/lib/http";
 
 type ProgressMap = Record<string, { completed: number; total: number; quizScore: number; quizTotal: number }>;
 
+/** Courses catalog page with per-course progress. */
 export default function CoursesPage() {
   const { user, getIdToken } = useAuth();
   const [progress, setProgress] = useState<ProgressMap>({});
@@ -18,6 +19,7 @@ export default function CoursesPage() {
     if (!user) return;
     let cancelled = false;
 
+    /** Loads saved progress for every course from the progress API. */
     async function loadProgress() {
       try {
         const token = await getIdToken();

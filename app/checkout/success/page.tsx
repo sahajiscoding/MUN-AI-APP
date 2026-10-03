@@ -57,6 +57,7 @@ function StatementDescriptorNotice() {
   );
 }
 
+/** Checkout success page polling payment status until it resolves. */
 export default function CheckoutSuccessPage() {
   const searchParams =
     useSearchParams();
@@ -100,6 +101,7 @@ export default function CheckoutSuccessPage() {
     attemptsRef.current = 0;
     setPollTimedOut(false);
 
+    /** Polls the payment status API until the order reaches a terminal state. */
     const checkPayment = async () => {
       if (cancelled) return;
 

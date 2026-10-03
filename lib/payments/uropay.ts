@@ -6,6 +6,7 @@ const API_BASE = "https://api.uropai.in";
 // Read credentials lazily (per call, never cached at module load) so key
 // rotation takes effect without a code change (SEC-ENV-08).
 
+/** Return a required UroPay credential, throwing when it is not configured. */
 function requireCredential(
   value: string | undefined,
   name: string

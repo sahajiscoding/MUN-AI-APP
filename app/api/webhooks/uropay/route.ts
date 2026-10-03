@@ -26,6 +26,7 @@ type UroPayWebhookEvent = {
   environment?: string | null;
 };
 
+/** Normalizes a UroPay webhook status string to paid/failed/expired. */
 function normalizeStatus(
   value: unknown
 ): "paid" | "failed" | "expired" | null {
@@ -47,6 +48,7 @@ function normalizeStatus(
   }
 }
 
+/** Converts an unknown webhook amount value to a finite number or null. */
 function toNumberOrNull(
   value: unknown
 ): number | null {
@@ -107,6 +109,7 @@ function awardReferralCommission(
   });
 }
 
+/** POST /api/webhooks/uropay — verifies signature and syncs payment/entitlement state. */
 export async function POST(
   request: Request
 ) {
@@ -552,6 +555,7 @@ export async function POST(
   }
 }
 
+/** Marks a claimed UroPay webhook event as processed. */
 async function markWebhookEventProcessed(admin: ReturnType<typeof supabaseAdmin>, eventId: string) {
   const { error } = await admin
     .from("webhook_events")
@@ -560,6 +564,7 @@ async function markWebhookEventProcessed(admin: ReturnType<typeof supabaseAdmin>
   if (error) throw error;
 }
 
+/** GET /api/webhooks/uropay — rejects non-POST methods with 405. */
 export async function GET() {
   return new Response(null, {
     status: 405,

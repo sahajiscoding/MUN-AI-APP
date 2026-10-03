@@ -4,12 +4,14 @@ import {
 } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+/** Read a required environment variable, throwing when it is missing. */
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not configured.`);
   return value;
 }
 
+/** Create a Supabase server client bound to the current request cookies. */
 export async function createClient() {
   const cookieStore = await cookies();
   const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
@@ -40,6 +42,7 @@ export async function createClient() {
 // client components. Use separate Supabase secret keys per backend component
 // where the project supports them, rather than sharing one credential across
 // unrelated services.
+/** Build a backend-only Supabase client using the secret service key. */
 function getSupabaseAdmin() {
   const url = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
   const secretKey = getRequiredEnv("SUPABASE_SECRET_KEY");
@@ -55,6 +58,7 @@ function getSupabaseAdmin() {
 
 let adminClient: ReturnType<typeof getSupabaseAdmin> | null = null;
 
+/** Return the shared backend Supabase admin client, creating it on first use. */
 export function supabaseAdmin() {
   if (!adminClient) adminClient = getSupabaseAdmin();
   return adminClient;

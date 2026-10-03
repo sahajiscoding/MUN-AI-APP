@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { readJsonResponse } from "@/lib/http";
 
+/** Partner application form submitting name, contact, and outreach details. */
 export function PartnerApplyForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -13,6 +14,7 @@ export function PartnerApplyForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  /** Submits the partner application to the review API. */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);

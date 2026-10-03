@@ -5,6 +5,7 @@ export const metadata = {
   title: "Access"
 };
 
+/** Pricing page showing plans and checkout. */
 export default function PricingPage() {
   return (
     <ProtectedAppShell>

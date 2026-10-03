@@ -54,6 +54,7 @@ const toolRoutes: Record<string, string> = {
   resolution: "/app/resolution-builder",
 };
 
+/** Authenticated workspace shell with sidebar, chats, and navigation. */
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, getIdToken } = useAuth();
   const router = useRouter();
@@ -89,6 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    /** Loads the saved chat transcript for the given user. */
     async function loadChats() {
       if (!user) {
         if (!cancelled) {
@@ -124,6 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     void loadChats();
 
+    /** Refreshes chat history immediately and once more after creation settles. */
     const refreshChats = () => {
       void loadChats();
       window.setTimeout(() => void loadChats(), 700);
@@ -138,6 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [getIdToken, user]);
 
+  /** Starts a new chat and navigates to the research workspace. */
   function startNewChat() {
     window.dispatchEvent(new Event("mun:new-chat"));
     setMobileMenuOpen(false);
@@ -149,6 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
+  /** Derives a short display title from a chat history item. */
   function getChatTitle(chat: ChatHistoryItem) {
     const summary = chat.input_summary;
     const agenda = summary.agenda?.replace(/\s+/g, " ").trim();
@@ -162,6 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return chat.tool.replace(/-/g, " ");
   }
 
+  /** Builds the workspace URL that opens the given saved chat. */
   function getChatHref(chat: ChatHistoryItem) {
     const route = toolRoutes[chat.tool] || "/app/research";
     return `${route}?chat=${encodeURIComponent(chat.id)}`;

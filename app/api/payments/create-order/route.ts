@@ -46,6 +46,7 @@ const ALLOWED_CHECKOUT_HOSTS = (
   .map((host) => host.trim().toLowerCase())
   .filter(Boolean);
 
+/** Validates a UroPay checkout URL against the HTTPS allowlist. */
 function assertSafeCheckoutUrl(value: unknown): string {
   if (typeof value !== "string" || !value) {
     throw new ApiError(
@@ -86,6 +87,7 @@ function assertSafeCheckoutUrl(value: unknown): string {
   return url.href;
 }
 
+/** POST /api/payments/create-order — creates a pending payment and UroPay order. */
 export async function POST(
   request: Request
 ) {

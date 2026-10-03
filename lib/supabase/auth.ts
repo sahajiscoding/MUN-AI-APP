@@ -7,6 +7,7 @@ export type VerifiedUser = {
   name?: string;
 };
 
+/** Verify the request's Supabase user and require a confirmed email address. */
 export async function requireUser(request: Request): Promise<VerifiedUser> {
   const authorization = request.headers.get("authorization");
   const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();

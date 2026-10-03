@@ -36,12 +36,14 @@ const stubValue: AuthContextValue = {
   getIdToken: () => Promise.reject(new Error("Not hydrated yet")),
 };
 
+/** Provides Supabase authentication state to the app. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [user, setUser] = useState<SupaUser | null>(null);
   const [loading, setLoading] = useState(true);
   const clientRef = useRef<ReturnType<typeof getSupabase> | null>(null);
 
+  /** Syncs the Supabase user profile to the server user record. */
   const syncUserRecord = useCallback(async (supaUser: SupaUser) => {
     try {
       const client = clientRef.current;
@@ -93,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       user,
       loading,
+      /** Starts Google OAuth sign-in with the given post-login path. */
       async signInWithGoogle(next = "/dashboard") {
         const { error } = await client.auth.signInWithOAuth({
           provider: "google",
@@ -103,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw error;
       },
+      /** Signs in with email and password via the auth API. */
       async signInWithEmail(email, password) {
         const response = await fetch("/api/auth/signin", {
           method: "POST",
@@ -120,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (error) throw error;
       },
+      /** Registers a new account with name, email, and password. */
       async signUpWithEmail(name, email, password) {
         const response = await fetch("/api/auth/signup", {
           method: "POST",
@@ -133,10 +138,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { sessionCreated: Boolean(payload.sessionCreated) };
       },
+      /** Signs out of the current Supabase session. */
       async logout() {
         const { error } = await client.auth.signOut();
         if (error) throw error;
       },
+      /** Returns the current Supabase access token. */
       async getIdToken() {
         const { data } = await client.auth.getSession();
         const token = data.session?.access_token;
@@ -149,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** Returns the current authentication context value. */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used inside AuthProvider.");

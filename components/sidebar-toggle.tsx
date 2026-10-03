@@ -2,6 +2,7 @@
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
+/** Toggle button collapsing or expanding the desktop sidebar. */
 export function SidebarToggle({
   collapsed,
   onToggle

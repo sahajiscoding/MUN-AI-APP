@@ -85,6 +85,7 @@ const deskWelcomeDefaults: Record<ToolWorkspaceProps["mode"], DeskWelcome> = {
   },
 };
 
+/** Checks whether a markdown link URL is safe to open. */
 function isSafeExternalUrl(value: string) {
   try {
     const url = new URL(value, window.location.origin);
@@ -96,6 +97,7 @@ function isSafeExternalUrl(value: string) {
 
 // A proxy may buffer an event-stream and re-serve it as plain text with a
 // rewritten content type. Recover the answer from such a body.
+/** Recovers streamed answer text from a proxied SSE body. */
 function extractSSEContent(text: string): string {
   let out = "";
   for (const line of text.split("\n")) {
@@ -112,6 +114,7 @@ function extractSSEContent(text: string): string {
   return out;
 }
 
+/** AI debate workspace with streaming chat, history, and paywall gating. */
 export function ToolWorkspace({ eyebrow, title, description, mode, greeting, starters }: ToolWorkspaceProps) {
   const { user, getIdToken } = useAuth();
   const pathname = usePathname();
@@ -144,6 +147,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     }
   }, [output, streaming]);
 
+  /** Tracks scroll position to decide whether to follow the live stream. */
   function handleOutputScroll() {
     const element = outputRef.current;
     if (!element) return;
@@ -154,6 +158,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     setShowJumpToLatest(streaming && !atLatest);
   }
 
+  /** Scrolls the transcript to the latest streamed content. */
   function jumpToLatest() {
     shouldAutoScrollRef.current = true;
     setShowJumpToLatest(false);
@@ -175,7 +180,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     return () => { window.clearInterval(timer); };
   }, [loading]);
 
-  const handleNewChat = useCallback(() => {
+  /** Clears the conversation and aborts any in-flight generation. */
+  const resetConversationState = useCallback(() => {
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
     setInput("");
@@ -186,6 +192,11 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     setLoading(false);
     setLoadingSavedChat(false);
     setStreaming(false);
+  }, []);
+
+  /** Starts a new chat and drops the saved-chat URL parameter. */
+  const handleNewChat = useCallback(() => {
+    resetConversationState();
 
     // Drop ?chat= from the URL so the old conversation cannot be restored.
     if (chatId || urlChatId) {
@@ -194,18 +205,21 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     setChatId(null);
     shouldAutoScrollRef.current = true;
     setShowJumpToLatest(false);
-  }, [chatId, pathname, urlChatId]);
+  }, [chatId, pathname, urlChatId, resetConversationState]);
 
   // Keep the selected chat synchronized for deep links, sidebar clicks, and browser back/forward.
   useEffect(() => {
+    /** Syncs the selected chat id from the current URL. */
     const syncFromUrl = () => {
       setChatId(urlChatId);
     };
+    /** Opens the saved chat requested by the sidebar event. */
     const handleChatOpen = (event: Event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail.id;
       if (id) setChatId(id);
     };
 
+    /** Handles a sidebar request to start a new chat. */
     const handleNewChatRequest = () => {
       handleNewChat();
     };
@@ -234,19 +248,10 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
       return;
     }
     if (chatId === null && prevChatIdRef.current !== null) {
-      requestControllerRef.current?.abort();
-      requestControllerRef.current = null;
-      setInput("");
-      setTurns([]);
-      setOutput("");
-      setStatus("");
-      setChatLoadError("");
-      setLoading(false);
-      setLoadingSavedChat(false);
-      setStreaming(false);
+      resetConversationState();
     }
     prevChatIdRef.current = chatId;
-  }, [chatId]);
+  }, [chatId, resetConversationState]);
 
   // Load a saved conversation when the sidebar opens one.
   useEffect(() => {
@@ -260,6 +265,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     setStatus("Loading saved chat…");
     setChatLoadError("");
 
+    /** Loads the saved chat transcript for the given chat. */
     async function loadChat() {
       try {
         const token = await getIdToken();
@@ -330,6 +336,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
       });
   }, [user, getIdToken]);
 
+  /** Cancels the in-flight AI generation. */
   function handleCancel() {
     requestControllerRef.current?.abort();
     requestControllerRef.current = null;
@@ -339,6 +346,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     setStreaming(false);
   }
 
+  /** Submits the prompt and streams the AI response into the transcript. */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = input.trim();
@@ -351,6 +359,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
     }
 
     const priorTurns = turns;
+    /** Restores the prior transcript when a submission fails. */
     const rollbackPendingTurn = () => {
       setTurns(priorTurns);
       setOutput("");
@@ -386,7 +395,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
         maxTokens,
         temperature,
       };
-      const postResearch = (asStream: boolean) =>
+      /** Posts the prompt to the research API, optionally as a stream. */
+    const postResearch = (asStream: boolean) =>
         fetch("/api/ai/research", {
           method: "POST",
           headers: {
@@ -401,6 +411,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
       let generationSucceeded = false;
 
       // Returns true when the paywall was shown (caller must stop).
+      /** Handles API errors, showing the paywall when access is required. */
       async function handleErrorResponse(res: Response): Promise<boolean> {
         const errData = (await readJsonResponse<{ code?: string; error?: string }>(res)) ?? {};
         if (errData.code === "paid_access_required") {
@@ -413,6 +424,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
         throw new Error(errData.error ?? "Failed to generate response.");
       }
 
+      /** Consumes a JSON response and appends its content to the transcript. */
       async function consumeJsonResult(res: Response): Promise<void> {
         const cloned = res.clone();
         let data: { content?: unknown; chatId?: string; error?: unknown } = {};

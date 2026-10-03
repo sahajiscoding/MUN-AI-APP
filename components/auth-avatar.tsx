@@ -53,6 +53,7 @@ export function AuthAvatar({
     setReduced(mq.matches);
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
+    /** Tracks the pointer to steer the mascot gaze on fine-pointer devices. */
     function onMove(event: PointerEvent) {
       const el = wrapRef.current;
       if (!el) return;
@@ -117,6 +118,12 @@ export function AuthAvatar({
     if (reduced) return;
     let timeout = 0;
     let closed = 0;
+    /** Non-security blink jitter in [0, 1) via CSPRNG (no Math.random). */
+    const blinkJitter = () => {
+      const sample = new Uint32Array(1);
+      crypto.getRandomValues(sample);
+      return sample[0] / 0x1_00_00_00_00;
+    };
     const schedule = () => {
       timeout = window.setTimeout(
         () => {
@@ -126,7 +133,7 @@ export function AuthAvatar({
             schedule();
           }, 140);
         },
-        2400 + Math.random() * 3200,
+        2400 + blinkJitter() * 3200,
       );
     };
     schedule();

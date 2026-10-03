@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+/** Refresh the Supabase auth session at the edge and propagate updated cookies. */
 export async function updateSession(request: NextRequest, requestHeaders: Headers) {
   let supabaseResponse = NextResponse.next({
     request: { headers: requestHeaders },

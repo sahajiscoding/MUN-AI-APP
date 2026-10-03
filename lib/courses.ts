@@ -971,10 +971,12 @@ Publicist writings used to interpret and develop international law.
   },
 ];
 
+/** Find a course by its slug, returning undefined when not found. */
 export function getCourseBySlug(slug: string): Course | undefined {
   return courses.find((c) => c.slug === slug);
 }
 
+/** Return all courses belonging to the given category id. */
 export function getCoursesByCategory(categoryId: string): Course[] {
   return courses.filter((c) => c.category === categoryId);
 }

@@ -5,6 +5,7 @@ export const metadata = {
   title: "Research"
 };
 
+/** Research workspace page. */
 export default function ResearchPage() {
   return (
     <ProtectedAppShell>

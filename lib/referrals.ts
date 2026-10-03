@@ -19,11 +19,13 @@ export type ReferralPartner = {
   commission_rate: number;
 };
 
+/** Normalize a referral code to uppercase form, returning null when it fails validation. */
 function normalizeCode(value: string) {
   const code = value.trim().toUpperCase();
   return CODE_PATTERN.test(code) ? code : null;
 }
 
+/** Fetch the active referral partner for a code, or null when invalid or inactive. */
 export async function getReferralPartner(referralCode: string): Promise<ReferralPartner | null> {
   const code = normalizeCode(referralCode);
   if (!code) return null;
@@ -43,10 +45,12 @@ export async function getReferralPartner(referralCode: string): Promise<Referral
   return data ? { ...data, commission_rate: Number(data.commission_rate) || DEFAULT_COMMISSION_RATE } : null;
 }
 
+/** Read the referral code stored in the request cookies, if any. */
 export async function getReferralCodeFromCookie() {
   return (await cookies()).get(REFERRAL_COOKIE_NAME)?.value ?? null;
 }
 
+/** Persist a referral code cookie for first-touch attribution unless one already exists. */
 export async function setReferralCookie(code: string) {
   const normalized = normalizeCode(code);
   if (!normalized) return false;
@@ -70,12 +74,14 @@ export type ReferralAttribution = {
   status: "registered" | "converted" | "cancelled";
 };
 
+/** Attach the cookie-stored referral code to a user, if present. */
 export async function attachReferralToUser(uid: string) {
   const code = await getReferralCodeFromCookie();
   if (!code) return null;
   return applyReferralCodeToUser(uid, code);
 }
 
+/** Attribute a user to the partner owning the given referral code, guarding against duplicates and self-referrals. */
 export async function applyReferralCodeToUser(uid: string, referralCode: string, verifiedEmail?: string): Promise<ReferralAttribution | null> {
   const partner = await getReferralPartner(referralCode);
   if (!partner) return null;
@@ -131,6 +137,7 @@ export async function applyReferralCodeToUser(uid: string, referralCode: string,
   return data as ReferralAttribution;
 }
 
+/** Create the first-purchase referral commission for a verified paid payment. */
 export async function processReferralCommission(input: {
   uid: string;
   paymentId: string;
@@ -238,6 +245,7 @@ export function hashDashboardToken(rawToken: string) {
   return createHash("sha256").update(rawToken.trim().toLowerCase()).digest("hex");
 }
 
+/** Compute the expiry timestamp for a newly minted partner dashboard token. */
 export function dashboardTokenExpiryDate(from: Date = new Date()) {
   return new Date(from.getTime() + DASHBOARD_TOKEN_TTL_MS).toISOString();
 }

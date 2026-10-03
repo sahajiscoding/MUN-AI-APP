@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   }
 };
 
+/** Root layout wrapping every route with the authentication provider. */
 export default function RootLayout({
   children
 }: Readonly<{

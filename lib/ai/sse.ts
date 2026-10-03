@@ -45,12 +45,15 @@ export function accumulateUsage(usage: RawUsage | undefined, state: TokenUsageSt
  * Reads an SSE byte stream to completion, invoking `onPayload` with each
  * parsed JSON `data:` payload. Heartbeats, `[DONE]` markers, and malformed
  * lines are skipped. `onChunk` fires for every raw byte chunk (useful when
- * the stream must also be forwarded). The reader is released when done.
+ * the stream must also be forwarded). If `signal` aborts, the reader is
+ * cancelled with the abort reason and the pending read rejects. The reader
+ * is released when done.
  */
 export async function consumeSSEStream(
   source: ReadableStream<Uint8Array>,
   onPayload: (data: unknown) => void,
   onChunk?: (value: Uint8Array) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const reader = source.getReader();
   const decoder = new TextDecoder();
@@ -59,6 +62,12 @@ export async function consumeSSEStream(
     const payload = parseSSEPayload(line);
     if (payload.present) onPayload(payload.data);
   };
+  const abortListener = () => {
+    void reader.cancel(signal?.reason).catch(() => {
+      // The stream may already be closed; cancellation still propagates.
+    });
+  };
+  signal?.addEventListener("abort", abortListener, { once: true });
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -72,6 +81,7 @@ export async function consumeSSEStream(
     buffer += decoder.decode();
     if (buffer) dispatch(buffer);
   } finally {
+    signal?.removeEventListener("abort", abortListener);
     reader.releaseLock();
   }
 }

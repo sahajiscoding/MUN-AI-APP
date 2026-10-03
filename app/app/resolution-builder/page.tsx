@@ -5,6 +5,7 @@ export const metadata = {
   title: "Resolution Builder"
 };
 
+/** Resolution builder workspace page. */
 export default function ResolutionBuilderPage() {
   return (
     <ProtectedAppShell>

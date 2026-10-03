@@ -23,10 +23,12 @@ export type ChatTranscript = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** Build the Storage object path for a user's chat transcript. */
 function chatPath(uid: string, chatId: string) {
   return `${uid}/${chatId}.json`;
 }
 
+/** Normalize stored turns, falling back to prompt/output when none are valid. */
 function normalizeTurns(value: unknown, prompt: string, output: string): ChatTurn[] {
   if (Array.isArray(value)) {
     const turns = value.filter((turn): turn is ChatTurn => {
@@ -44,6 +46,7 @@ function normalizeTurns(value: unknown, prompt: string, output: string): ChatTur
   ];
 }
 
+/** Validate raw storage data into a ChatTranscript, or null when malformed. */
 function toTranscript(value: unknown): ChatTranscript | null {
   if (!value || typeof value !== "object") return null;
 
@@ -78,6 +81,7 @@ function toTranscript(value: unknown): ChatTranscript | null {
   };
 }
 
+/** Verify the private chat-history Storage bucket exists and is configured. */
 async function ensureChatBucket() {
   const { data, error } = await supabaseAdmin().storage.getBucket(CHAT_BUCKET);
   if (data && data.public === false) return true;
@@ -89,6 +93,7 @@ async function ensureChatBucket() {
   return false;
 }
 
+/** Upload a chat transcript JSON to the user's private Storage prefix. */
 export async function saveChatTranscript(transcript: ChatTranscript) {
   if (!UUID_PATTERN.test(transcript.uid) || !UUID_PATTERN.test(transcript.id)) return false;
   if (!(await ensureChatBucket())) return false;
@@ -115,6 +120,7 @@ export async function saveChatTranscript(transcript: ChatTranscript) {
   return true;
 }
 
+/** Download and validate a single chat transcript for a user. */
 export async function loadChatTranscript(uid: string, chatId: string) {
   if (!UUID_PATTERN.test(uid) || !UUID_PATTERN.test(chatId)) return null;
 
@@ -131,6 +137,7 @@ export async function loadChatTranscript(uid: string, chatId: string) {
   }
 }
 
+/** Reduce a full transcript to its list-view summary without turn contents. */
 function transcriptToChatSummary(transcript: ChatTranscript) {
   const { turns: _turns, ...summary } = transcript.inputSummary;
   return {

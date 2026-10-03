@@ -48,16 +48,19 @@ const legacyPlanIds: Record<string, Plan["id"]> = {
   "monthly-pass": "monthly-pass",
 };
 
+/** Normalize a plan id alias to its canonical plan id, or null if unknown. */
 export function canonicalPlanId(planId: string | null | undefined) {
   if (!planId) return null;
   return legacyPlanIds[planId.trim().toLowerCase()] ?? null;
 }
 
+/** Look up a plan by id or alias, returning undefined when not found. */
 export function getPlan(planId: string | null | undefined) {
   const canonicalId = canonicalPlanId(planId);
   return plans.find((plan) => plan.id === canonicalId);
 }
 
+/** Format a plan amount stored in paise as an INR currency string. */
 export function formatPlanPrice(plan: Plan) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",

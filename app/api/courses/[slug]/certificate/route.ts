@@ -17,10 +17,12 @@ const customizationSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
 });
 
+/** Strips non-printable ASCII for safe PDF text rendering. */
 function safePdfText(value: string) {
   return value.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+/** Formats a date value as Month day, year in UTC. */
 function formatDate(value: string | null | undefined) {
   const date = value ? new Date(value) : new Date();
   return new Intl.DateTimeFormat("en-US", {
@@ -31,6 +33,7 @@ function formatDate(value: string | null | undefined) {
   }).format(date);
 }
 
+/** Derives a deterministic certificate ID from UID and course slug. */
 function certificateId(uid: string, slug: string) {
   const input = `${uid}:${slug}`;
   let hash = 2166136261;
@@ -41,6 +44,7 @@ function certificateId(uid: string, slug: string) {
   return `MUN-${slug.toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 18)}-${(hash >>> 0).toString(36).toUpperCase()}`;
 }
 
+/** Verifies completion and generates the course certificate PDF. */
 async function generateCertificate(
   request: Request,
   params: Promise<{ slug: string }>,
@@ -155,6 +159,7 @@ async function generateCertificate(
   });
 }
 
+/** GET /api/courses/[slug]/certificate — generates the course completion certificate PDF. */
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     return await generateCertificate(request, context.params);
@@ -163,6 +168,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   }
 }
 
+/** POST /api/courses/[slug]/certificate — generates the course completion certificate PDF. */
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const body = await parseJson<unknown>(request);

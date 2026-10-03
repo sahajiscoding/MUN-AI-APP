@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 
 const idSchema = z.string().uuid();
 
+/** POST /api/admin/referrals/commissions/[id]/pay — marks an unpaid commission as paid. */
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

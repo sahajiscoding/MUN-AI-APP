@@ -9,6 +9,7 @@ type PaywallModalProps = {
   onClose: () => void;
 };
 
+/** Paywall modal prompting plan selection for locked AI tools. */
 export function PaywallModal({ open, onClose }: PaywallModalProps) {
   if (!open) return null;
 

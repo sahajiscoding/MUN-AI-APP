@@ -10,6 +10,7 @@ const schema = z.object({
   password: z.string().min(1).max(128),
 });
 
+/** POST /api/auth/signin — signs in with email and password after verification. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);

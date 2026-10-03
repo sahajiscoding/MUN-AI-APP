@@ -9,6 +9,7 @@ import { readJsonResponse } from "@/lib/http";
 
 type MfaMode = "none" | "verify" | "enroll";
 
+/** Administrator sign-in gate with MFA verification. */
 export default function AdminLoginPage() {
   const router = useRouter();
   const { user, loading: authLoading, signInWithEmail, signInWithGoogle, logout, getIdToken } = useAuth();
@@ -30,6 +31,7 @@ export default function AdminLoginPage() {
   // If the account is an admin but MFA is not enrolled, the API returns
   // admin_mfa_required and this page opens the MFA setup popup. If MFA is
   // already enrolled, the same response opens the verification popup instead.
+  /** Promotes the signed-in Supabase session to an admin session, starting MFA when required. */
   const promoteSession = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -165,6 +167,7 @@ export default function AdminLoginPage() {
     }
   }
 
+  /** Cancels the MFA flow and signs out of the pending session. */
   async function cancelMfa() {
     setMfaMode("none");
     setMfaCode("");
@@ -181,6 +184,7 @@ export default function AdminLoginPage() {
     }
   }
 
+  /** Signs in with email and password, then promotes the session. */
   async function handleEmailSubmit(e: FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password || loading) return;
@@ -198,6 +202,7 @@ export default function AdminLoginPage() {
     }
   }
 
+  /** Starts Google sign-in for an administrator account. */
   async function handleGoogleSubmit() {
     if (loading) return;
 

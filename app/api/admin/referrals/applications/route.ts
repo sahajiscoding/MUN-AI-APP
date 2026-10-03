@@ -5,6 +5,7 @@ import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
+/** GET /api/admin/referrals/applications — lists partner applications for owners. */
 export async function GET() {
   try {
     await requireAdminOwner();

@@ -20,6 +20,7 @@ function maskEmail(email: string | null): string | null {
   return `${email[0]}***${email.slice(at)}`;
 }
 
+/** GET /api/c8f2x9/users — lists users with entitlements and admin flags for admins. */
 export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();

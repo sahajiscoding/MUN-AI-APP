@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 
 const idSchema = z.string().uuid();
 
+/** DELETE /api/admin/referrals/applications/[id] — dismisses a partner application. */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

@@ -14,6 +14,7 @@ const signupSchema = z.object({
   website: z.string().max(0).optional(),
 });
 
+/** POST /api/auth/signup — creates a Supabase account with anti-spam checks. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);

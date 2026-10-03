@@ -5,6 +5,7 @@ import { getReferralPartner } from "@/lib/referrals";
 
 export const dynamic = "force-dynamic";
 
+/** Referral login page attributing the signup to the partner link. */
 export default async function ReferralLoginPage({
   params,
 }: {

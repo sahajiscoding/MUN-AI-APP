@@ -67,6 +67,7 @@ export const quizzes: Record<string, PublicQuizQuestion[]> = {
   ],
 };
 
+/** Build a generic fallback question from a lesson title when no authored quiz item exists. */
 function makeFallbackQuestion(lesson: Lesson): PublicQuizQuestion {
   return {
     question: `Which topic is the focus of the lesson “${lesson.title}”?`,

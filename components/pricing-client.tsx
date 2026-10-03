@@ -17,6 +17,7 @@ type EntitlementResponse = {
   entitlement?: EntitlementData;
 };
 
+/** Pricing checkout client with entitlement check and referral support. */
 export function PricingClient() {
   const { user, getIdToken } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export function PricingClient() {
   useEffect(() => {
     let cancelled = false;
 
+    /** Loads the current paid entitlement for the signed-in user. */
     async function loadEntitlement() {
       if (!user) {
         if (!cancelled) {
@@ -90,6 +92,7 @@ export function PricingClient() {
   const hasAdminAccess = hasActiveAccess && entitlement.planId === "admin";
   const currentPlan = hasActiveAccess ? getPlan(entitlement.planId) : undefined;
 
+  /** Applies a referral code to the signed-in account. */
   async function applyReferralCodeValue(code: string) {
     if (!user) {
       throw new Error("Sign in before applying a referral code.");
@@ -116,6 +119,7 @@ export function PricingClient() {
     setReferralMessage({ type: "success", text: `Referral code ${appliedCode} is attached to this account.` });
   }
 
+  /** Applies the referral code typed into the pricing form. */
   async function handleApplyReferral() {
     if (!referralCode.trim() || referralBusy) return;
     setReferralBusy(true);
@@ -129,6 +133,7 @@ export function PricingClient() {
     }
   }
 
+  /** Creates a payment order and redirects to the checkout page. */
   async function confirmCheckout() {
     if (!pendingPlanId) return;
     setCheckoutConfirmOpen(false);

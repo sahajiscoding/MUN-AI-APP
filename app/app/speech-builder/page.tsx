@@ -5,6 +5,7 @@ export const metadata = {
   title: "Speech Builder"
 };
 
+/** Speech builder workspace page. */
 export default function SpeechBuilderPage() {
   return (
     <ProtectedAppShell>

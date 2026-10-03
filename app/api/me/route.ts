@@ -10,6 +10,7 @@ const schema = z.object({
   displayName: z.string().trim().max(160).default(""),
 }).strict();
 
+/** PUT /api/me — upserts the authenticated user's display name and attaches referral. */
 export async function PUT(request: Request) {
   try {
     const user = await requireUser(request);
@@ -40,18 +41,22 @@ export async function PUT(request: Request) {
   }
 }
 
+/** GET /api/me — rejects unsupported method with 405 (PUT only). */
 export async function GET() {
   return methodNotAllowed(["PUT"]);
 }
 
+/** POST /api/me — rejects unsupported method with 405 (PUT only). */
 export async function POST() {
   return methodNotAllowed(["PUT"]);
 }
 
+/** PATCH /api/me — rejects unsupported method with 405 (PUT only). */
 export async function PATCH() {
   return methodNotAllowed(["PUT"]);
 }
 
+/** DELETE /api/me — rejects unsupported method with 405 (PUT only). */
 export async function DELETE() {
   return methodNotAllowed(["PUT"]);
 }

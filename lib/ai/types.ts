@@ -17,6 +17,7 @@ export type AIStreamMeta = {
   finishReason?: string;
 };
 
+/** Normalize provider token-usage fields into a consistent AIUsage shape. */
 export function normalizeAIUsage(value: unknown): AIUsage | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as Record<string, unknown>;

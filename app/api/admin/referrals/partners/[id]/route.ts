@@ -17,6 +17,7 @@ const updateSchema = z.object({
   notes: z.string().trim().max(2000).nullable().optional(),
 }).strict();
 
+/** PATCH /api/admin/referrals/partners/[id] — updates a referral partner. */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

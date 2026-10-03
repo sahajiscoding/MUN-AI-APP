@@ -36,6 +36,7 @@ const REDACTIONS: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\b[A-Za-z0-9_]{40,}\b/g, replacement: "[redacted-token]" },
 ];
 
+/** Strip credentials, URLs, and token-like blobs from text before UI display. */
 function applyRedactions(text: string): string {
   let out = text;
   for (const { pattern, replacement } of REDACTIONS) {

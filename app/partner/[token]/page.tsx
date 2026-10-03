@@ -11,12 +11,14 @@ export const metadata = {
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
 
+/** Formats an ISO date for the partner dashboard tables. */
 function formatDate(value: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 }
 
+/** Private partner dashboard showing referrals and commissions. */
 export default async function PartnerDashboardPage({
   params,
 }: {
@@ -189,6 +191,7 @@ export default async function PartnerDashboardPage({
   );
 }
 
+/** Renders one dashboard total such as clicks or earned commission. */
 function Stat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-xl border border-[var(--line)] bg-white/40 p-4">

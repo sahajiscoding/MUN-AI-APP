@@ -5,6 +5,7 @@ export const metadata = {
   title: "Position Paper"
 };
 
+/** Position paper builder workspace page. */
 export default function PositionPaperPage() {
   return (
     <ProtectedAppShell>

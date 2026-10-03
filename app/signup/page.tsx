@@ -5,6 +5,7 @@ export const metadata = {
   title: "Create Account"
 };
 
+/** Signup page rendering the account creation form. */
 export default function SignupPage() {
   return (
     <Suspense>

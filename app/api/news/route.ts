@@ -47,6 +47,7 @@ const rssParser = new XMLParser({
   processEntities: false,
 });
 
+/** Extracts plain text from an RSS field value. */
 function asText(value: unknown): string {
   if (typeof value === "string" || typeof value === "number") return String(value);
   if (value && typeof value === "object") {
@@ -63,6 +64,7 @@ type NewsImage = {
   kind: "article" | "publisher";
 };
 
+/** Returns the URL only if it is a valid HTTPS URL. */
 function getHttpsUrl(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "";
 
@@ -75,12 +77,14 @@ function getHttpsUrl(value: unknown): string {
   }
 }
 
+/** Extracts a valid HTTPS source URL from a feed item source. */
 function getSourceUrl(value: unknown): string {
   if (!value || typeof value !== "object") return "";
   const record = value as Record<string, unknown>;
   return getHttpsUrl(record["@_url"] ?? record.url ?? record.href);
 }
 
+/** Builds a publisher favicon image from a feed item source. */
 function extractImage(item: Record<string, unknown>): NewsImage | undefined {
   // Only Google-controlled favicon URLs are allowed. Publisher media URLs
   // from the feed are intentionally dropped so the browser never fetches
@@ -99,6 +103,7 @@ function extractImage(item: Record<string, unknown>): NewsImage | undefined {
   }
 }
 
+/** Parses an RSS XML payload into capped news items for a category. */
 function parseRSS(xml: string, category: string): NewsItem[] {
   const parsed = rssParser.parse(xml) as Record<string, unknown>;
   const rss = parsed.rss as Record<string, unknown> | undefined;
@@ -128,6 +133,7 @@ function parseRSS(xml: string, category: string): NewsItem[] {
   });
 }
 
+/** Decodes HTML entities in a string (up to three passes). */
 function decodeHTMLEntities(str: string): string {
   let decoded = str;
 
@@ -149,6 +155,7 @@ function decodeHTMLEntities(str: string): string {
   return decoded;
 }
 
+/** Strips title/source duplication and truncates a feed description. */
 function cleanDescription(html: string, title: string, source: string): string {
   let description = cleanText(html);
   const titleKey = normalizeForComparison(title);
@@ -169,10 +176,12 @@ function cleanDescription(html: string, title: string, source: string): string {
   return description.slice(0, 280);
 }
 
+/** Lowercases and strips non-alphanumerics for comparison. */
 function normalizeForComparison(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
 }
 
+/** Decodes entities and strips HTML tags and extra whitespace. */
 function cleanText(value: string): string {
   return decodeHTMLEntities(value)
     .replace(/<[^>]+>/g, " ")
@@ -180,6 +189,7 @@ function cleanText(value: string): string {
     .trim();
 }
 
+/** Returns a JSON news response with public cache headers. */
 function newsResponse(body: unknown, status = 200) {
   return NextResponse.json(body, {
     status,
@@ -194,6 +204,7 @@ function newsResponse(body: unknown, status = 200) {
 // compression bomb over the wire inflating in memory). Cap what we buffer.
 const MAX_FEED_BYTES = 2_000_000;
 
+/** Reads a feed response body as text with a size cap. */
 async function readCappedText(response: Response): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) return "";
@@ -213,6 +224,7 @@ async function readCappedText(response: Response): Promise<string> {
   }
 }
 
+/** GET /api/news — fetches and aggregates Google News RSS feeds by category. */
 export async function GET(request: Request) {
   const ip = getClientIp(request);
   if (!(await checkRateLimit(`news:${ip}`, 30, 60_000))) {

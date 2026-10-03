@@ -13,6 +13,7 @@ const schema = z.object({
   answer_index: z.number().int().min(0).max(20),
 }).strict();
 
+/** POST /api/progress/checkpoint — verifies a lesson answer and unlocks the next lesson. */
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);

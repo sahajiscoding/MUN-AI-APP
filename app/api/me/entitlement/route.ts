@@ -4,6 +4,7 @@ import { getEntitlement } from "@/lib/server/entitlements";
 
 export const runtime = "nodejs";
 
+/** GET /api/me/entitlement — returns the authenticated user's entitlement. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);

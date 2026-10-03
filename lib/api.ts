@@ -13,6 +13,7 @@ export class ApiError extends Error {
   }
 }
 
+/** Convert a thrown error into a safe JSON response, logging unexpected errors server-side. */
 export function jsonError(error: unknown) {
   if (error instanceof ApiError) {
     return Response.json(
@@ -30,6 +31,7 @@ export function jsonError(error: unknown) {
   );
 }
 
+/** Build a 405 JSON response listing the allowed HTTP methods. */
 export function methodNotAllowed(allowed: string[]) {
   return Response.json(
     { error: "Method not allowed.", code: "method_not_allowed" },
@@ -40,6 +42,7 @@ export function methodNotAllowed(allowed: string[]) {
   );
 }
 
+/** Build a generic 404 JSON response for unknown API routes. */
 export function apiNotFound() {
   return Response.json(
     { error: "API route not found.", code: "not_found" },
@@ -97,6 +100,7 @@ export async function readRequestText(request: Request, maxBytes = 512_000): Pro
   return new TextDecoder().decode(merged);
 }
 
+/** Parse a request body as JSON within a byte budget, rejecting oversized or invalid payloads. */
 export async function parseJson<T>(request: Request, maxBytes = 512_000): Promise<T> {
   let raw: string;
   try {

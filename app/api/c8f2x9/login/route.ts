@@ -13,6 +13,7 @@ import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
+/** POST /api/c8f2x9/login — establishes an admin session from a verified user token. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
   }
 }
 
+/** DELETE /api/c8f2x9/login — revokes the admin session and clears the cookie. */
 export async function DELETE() {
   const session = await getAdminSession();
   let revocationFailed = false;

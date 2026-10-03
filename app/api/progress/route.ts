@@ -21,6 +21,7 @@ const upsertSchema = z.object({
   { message: "Provide progress to save." }
 );
 
+/** GET /api/progress — returns the authenticated user's course progress. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** POST /api/progress — saves completed lessons and grades the final review. */
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);

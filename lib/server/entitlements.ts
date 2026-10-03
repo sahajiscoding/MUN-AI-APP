@@ -16,6 +16,7 @@ export type Entitlement = {
   source?: string;
 };
 
+/** Load a user's premium entitlement, treating admins as always active. */
 export async function getEntitlement(
   uid: string
 ): Promise<Entitlement> {
@@ -81,6 +82,7 @@ export async function getEntitlement(
   };
 }
 
+/** Require active paid access for a user, throwing 402 otherwise. */
 export async function assertPaidAccess(
   uid: string
 ) {
@@ -101,6 +103,7 @@ export async function assertPaidAccess(
   return entitlement;
 }
 
+/** Grant premium access for a plan via an atomic database update. */
 export async function grantEntitlement(
   input: {
     uid: string;

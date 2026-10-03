@@ -16,6 +16,7 @@ type GenerationRow = {
   created_at: string;
 };
 
+/** Converts a legacy ai_generations row into a chat transcript. */
 function legacyTranscript(row: GenerationRow): ChatTranscript {
   const summary = row.input_summary ?? {};
   const agenda = typeof summary.agenda === "string" ? summary.agenda : "";
@@ -46,6 +47,7 @@ function legacyTranscript(row: GenerationRow): ChatTranscript {
   };
 }
 
+/** GET /api/chats/[id] — returns a single saved chat owned by the user. */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

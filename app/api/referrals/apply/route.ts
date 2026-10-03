@@ -10,6 +10,7 @@ const schema = z.object({
   code: z.string().trim().min(3).max(32),
 }).strict();
 
+/** POST /api/referrals/apply — applies a referral code to the authenticated user. */
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);

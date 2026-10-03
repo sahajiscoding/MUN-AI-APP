@@ -12,6 +12,7 @@ type ReconciliationResult = {
   reason: string;
 };
 
+/** Repair premium entitlements and referral commissions for recent paid payments. */
 export async function reconcilePaidPayments(
   limit = 50
 ): Promise<ReconciliationResult[]> {

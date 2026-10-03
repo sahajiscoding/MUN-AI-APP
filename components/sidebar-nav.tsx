@@ -21,12 +21,14 @@ const navigationItems = [
   { href: "/pricing", label: "Pricing", icon: ReceiptText, section: "account" }
 ] as const;
 
+/** Checks whether a sidebar item matches the current path. */
 function isItemActive(pathname: string, href: string) {
   if (href === "/app/courses") return pathname.startsWith("/app/courses");
   if (href === "/app/research") return pathname.startsWith("/app/research");
   return pathname === href;
 }
 
+/** Desktop sidebar navigation grouped by workspace sections. */
 export function SidebarNav({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const sections = ["discover", "workspace", "learn", "account"] as const;
@@ -76,6 +78,7 @@ export function SidebarNav({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+/** Bottom mobile navigation bar for the workspace. */
 export function MobileNav() {
   const pathname = usePathname();
   const mobileItems = navigationItems.filter((item) =>

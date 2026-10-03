@@ -21,6 +21,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { readJsonResponse } from "@/lib/http";
+import { consumeSSEStream } from "@/lib/ai/sse";
 
 type AdminUser = {    uid: string;
     display_name: string;
@@ -42,6 +43,7 @@ type AdminUser = {    uid: string;
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Derives expiry details from an ISO date string. */
 function getExpiry(expiresAt?: string | null) {
   if (!expiresAt) return null;
   const target = new Date(expiresAt);
@@ -50,10 +52,12 @@ function getExpiry(expiresAt?: string | null) {
   return { target, diffDays, lapsed: diffDays <= 0 };
 }
 
+/** Formats an expiry date for display. */
 function formatExpiryDate(target: Date) {
   return target.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Renders an expiry badge showing remaining or lapsed pass time. */
 function ExpiryNote({ expiresAt }: { expiresAt?: string | null }) {
   const expiry = getExpiry(expiresAt);
   if (!expiry) return null;
@@ -89,6 +93,7 @@ function ExpiryNote({ expiresAt }: { expiresAt?: string | null }) {
   );
 }
 
+/** Private admin dashboard for users, passes, and AI testing. */
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -109,6 +114,7 @@ export default function AdminDashboardPage() {
     currentExpiry: string | null;
   } | null>(null);
 
+  /** Fetches the admin user registry from the API. */
   const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/c8f2x9/users");
@@ -142,6 +148,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!customGrant) return;
 
+    /** Closes the custom pass dialog on Escape. */
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setCustomGrant(null);
     };
@@ -150,6 +157,7 @@ export default function AdminDashboardPage() {
     return () => { window.removeEventListener("keydown", handleKey); };
   }, [customGrant]);
 
+  /** Approves or revokes administrator access for the given user. */
   async function mutateAdmin(uid: string, action: "approve" | "revoke") {
     if (actionBusy) return;
     setActionBusy(`${action}:${uid}`);
@@ -171,11 +179,13 @@ export default function AdminDashboardPage() {
     }
   }
 
+  /** Signs out of the admin session and returns to the login gate. */
   async function handleLogout() {
     await fetch("/api/c8f2x9/login", { method: "DELETE" });
     router.push("/c8f2x9");
   }
 
+  /** Grants a weekly or monthly pass to the given user. */
   async function grantSubscription(uid: string, planId: "weekly-pass" | "monthly-pass") {
     if (actionBusy) return;
     setActionBusy(`grant:${planId}:${uid}`);
@@ -197,6 +207,7 @@ export default function AdminDashboardPage() {
     }
   }
 
+  /** Grants a custom pass ending on the dialog's chosen date. */
   async function grantCustomExpiry() {
     if (!customGrant || actionBusy) return;
     if (!customGrant.date) {
@@ -225,6 +236,7 @@ export default function AdminDashboardPage() {
     }
   }
 
+  /** Revokes a manually granted subscription after confirmation. */
   async function revokeSubscription(uid: string) {
     if (actionBusy) return;
     if (!window.confirm("Revoke the manually granted subscription for this user? Paid subscriptions are never affected.")) return;
@@ -247,6 +259,7 @@ export default function AdminDashboardPage() {
     }
   }
 
+  /** Copies the partner referral link for the given user. */
   async function copyReferralLink(user: AdminUser) {
     const link = user.referral?.link;
     if (!link) return;
@@ -260,6 +273,7 @@ export default function AdminDashboardPage() {
     }
   }
 
+  /** Runs an internal AI research test from the admin prompt. */
   async function handleAiTest(e: FormEvent) {
     e.preventDefault();
     if (!aiPrompt.trim() || aiStreaming) return;
@@ -291,35 +305,14 @@ export default function AdminDashboardPage() {
       const contentType = res.headers.get("Content-Type") || "";
 
       if (contentType.includes("text/event-stream") && res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
         let fullContent = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") continue;
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullContent += parsed.content;
-                  setAiOutput(fullContent);
-                }
-              } catch {
-                // Ignore malformed provider chunks.
-              }
-            }
+        await consumeSSEStream(res.body, (data) => {
+          const parsed = data as { content?: string };
+          if (parsed.content) {
+            fullContent += parsed.content;
+            setAiOutput(fullContent);
           }
-        }
+        });
       } else {
         const data = (await readJsonResponse<{ error?: string; content?: string }>(res)) ?? {};
         if (!res.ok) throw new Error(data.error || "The AI request failed.");

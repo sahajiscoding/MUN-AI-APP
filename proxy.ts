@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
+/** Build the Content-Security-Policy header value binding scripts to the request nonce. */
 function buildContentSecurityPolicy(nonce: string) {
   return [
     "default-src 'self'",
@@ -19,10 +20,12 @@ function buildContentSecurityPolicy(nonce: string) {
   ].join("; ");
 }
 
+/** Check whether an HTTP method can change state and needs CSRF origin verification. */
 function isStateChanging(method: string) {
   return ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
 }
 
+/** Verify a request Origin matches the app origin, allowing missing origins. */
 function isSafeOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
   if (!origin) return true; // server-to-server requests commonly omit Origin
@@ -33,6 +36,7 @@ function isSafeOrigin(request: NextRequest) {
   }
 }
 
+/** Enforce HTTPS, CSRF origin checks, and security headers while refreshing the auth session. */
 export async function proxy(request: NextRequest) {
   // Explicitly force HTTPS at the application edge. Local development is
   // allowed to remain HTTP; production requests are redirected.

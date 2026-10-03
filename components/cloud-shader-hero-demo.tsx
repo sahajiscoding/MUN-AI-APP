@@ -2,6 +2,7 @@
 
 import { CloudShader } from "@/components/ui/cloud-shader";
 
+/** Demo hero showcasing the animated cloud shader background. */
 export default function CloudShaderHeroDemo() {
   return (
     <div className="relative min-h-[50rem] w-full overflow-hidden">

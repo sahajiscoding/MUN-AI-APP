@@ -5,6 +5,7 @@ export const metadata = {
   title: "POI Trainer"
 };
 
+/** POI trainer workspace page. */
 export default function POITrainerPage() {
   return (
     <ProtectedAppShell>

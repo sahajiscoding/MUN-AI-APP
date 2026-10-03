@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
+/** POST /api/referrals/capture — captures a referral click for a valid active code. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);

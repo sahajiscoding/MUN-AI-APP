@@ -5,6 +5,7 @@ export const metadata = {
   title: "Settings",
 };
 
+/** Account settings page. */
 export default function SettingsPage() {
   return (
     <ProtectedAppShell>

@@ -16,12 +16,14 @@ const schema = z.object({
   website: z.string().max(500).optional(),
 }).strict();
 
+/** Hashes an email address for privacy-preserving rate-limit keys. */
 function emailRateLimitKey(email: string) {
   return createHash("sha256")
     .update(email.trim().toLowerCase())
     .digest("hex");
 }
 
+/** POST /api/partner/applications — submits a partner application with anti-spam checks. */
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);

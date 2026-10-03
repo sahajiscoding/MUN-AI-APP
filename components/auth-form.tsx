@@ -14,6 +14,7 @@ type AuthFormProps = {
   referralCode?: string;
 };
 
+/** Sign-in and signup form with referral capture and mascot feedback. */
 export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
@@ -34,12 +35,14 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
   const typingTimer = useRef<number | undefined>(undefined);
   const statusTimer = useRef<number | undefined>(undefined);
 
+  /** Marks the mascot as typing for a short bounce. */
   function pokeTyping() {
     setIsTyping(true);
     window.clearTimeout(typingTimer.current);
     typingTimer.current = window.setTimeout(() => setIsTyping(false), 900);
   }
 
+  /** Flashes a success or error state on the mascot avatar. */
   function flashStatus(next: AvatarStatus) {
     setAvatarStatus(next);
     window.clearTimeout(statusTimer.current);
@@ -48,6 +51,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
     }
   }
 
+  /** Submits the email credentials for login or signup. */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -79,6 +83,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
     }
   }
 
+  /** Starts Google OAuth sign-in with referral attribution. */
   async function handleGoogle() {
     setBusy(true);
     setError("");
@@ -261,6 +266,7 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
   );
 }
 
+/** Records a referral click before authentication completes. */
 async function captureReferral(code?: string) {
   if (!code) return;
 
@@ -278,10 +284,12 @@ async function captureReferral(code?: string) {
   }
 }
 
+/** Appends the referral code to the auth toggle link when present. */
 function withReferral(path: string, code?: string) {
   return code ? `${path}?referral=${encodeURIComponent(code)}` : path;
 }
 
+/** Returns a safe same-origin redirect path, defaulting to the dashboard. */
 function getSafeNext(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return "/dashboard";
@@ -295,6 +303,7 @@ function getSafeNext(value: string | null) {
   }
 }
 
+/** Maps a raw auth error to a safe user-facing message. */
 function formatAuthError(error: unknown) {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();

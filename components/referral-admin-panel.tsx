@@ -9,12 +9,21 @@ const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Closed allowlists: every call site passes a string literal, so a
+// compromised row id can never steer the request to another route or host.
+// The builder only ever returns a same-origin relative path.
+const ADMIN_SEGMENTS = new Set(["partners", "applications", "commissions"]);
+const ADMIN_SUFFIXES = new Set(["", "/dashboard-link", "/pay"]);
+
 // Row ids come from the admin API as UUIDs (each route enforces
 // z.string().uuid()). Refuse anything else before it reaches a URL path so a
 // malformed id can never escape its route segment.
+/** Builds a validated same-origin admin API path for the given referral record. */
 function adminResourcePath(segment: string, id: string, suffix = ""): string {
+  if (!ADMIN_SEGMENTS.has(segment)) throw new Error("That record could not be updated.");
+  if (!ADMIN_SUFFIXES.has(suffix)) throw new Error("That record could not be updated.");
   if (!UUID_PATTERN.test(id)) throw new Error("That record could not be updated.");
-  return `/api/admin/referrals/${segment}/${id}${suffix}`;
+  return `/api/admin/referrals/${segment}/${encodeURIComponent(id)}${suffix}`;
 }
 
 type Partner = {
@@ -88,6 +97,7 @@ const emptyForm = {
   notes: "",
 };
 
+/** Admin panel managing partners, applications, referrals, and commissions. */
 export function ReferralAdminPanel() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,6 +110,7 @@ export function ReferralAdminPanel() {
   const [copiedDashboardId, setCopiedDashboardId] = useState<string | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
 
+  /** Loads the referral dashboard summary and tables. */
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -120,6 +131,7 @@ export function ReferralAdminPanel() {
     void loadApplications();
   }, [load]);
 
+  /** Creates a new referral partner from the admin form. */
   async function addPartner(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -143,6 +155,7 @@ export function ReferralAdminPanel() {
     }
   }
 
+  /** Updates a partner status such as active or suspended. */
   async function changeStatus(partner: Partner, status: Partner["status"]) {
     setBusyId(partner.id);
     setError("");
@@ -164,6 +177,7 @@ export function ReferralAdminPanel() {
     }
   }
 
+  /** Copies a partner referral link to the clipboard. */
   async function copyReferralLink(partner: Partner) {
     if (!partner.referral_link) return;
 
@@ -176,6 +190,7 @@ export function ReferralAdminPanel() {
     }
   }
 
+  /** Generates and copies a private partner dashboard link. */
   async function copyDashboardLink(partner: Partner) {
     setBusyId(partner.id);
     setError("");
@@ -198,6 +213,7 @@ export function ReferralAdminPanel() {
     }
   }
 
+  /** Loads pending partner applications for review. */
   async function loadApplications() {
     try {
       const response = await fetch("/api/admin/referrals/applications", { cache: "no-store" });
@@ -209,6 +225,7 @@ export function ReferralAdminPanel() {
     }
   }
 
+  /** Loads an application into the partner creation form. */
   function loadIntoForm(application: Application) {
     setForm({
       name: application.name,
@@ -222,6 +239,7 @@ export function ReferralAdminPanel() {
     setMessage(`Application from ${application.name} loaded into the form above — pick a referral code and create the partner.`);
   }
 
+  /** Dismisses a partner application after review. */
   async function dismissApplication(application: Application) {
     setBusyId(application.id);
     setError("");
@@ -239,6 +257,7 @@ export function ReferralAdminPanel() {
     }
   }
 
+  /** Marks an unpaid commission as paid without transferring funds. */
   async function markPaid(commission: Commission) {
     setBusyId(commission.id);
     setError("");
@@ -352,5 +371,7 @@ export function ReferralAdminPanel() {
   );
 }
 
+/** Renders one referral summary total. */
 function Summary({ label, value }: { label: string; value: string }) { return <div className="surface rounded-panel p-4"><p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">{label}</p><p className="display-type mt-2 text-2xl">{value}</p></div>; }
+/** Renders a labeled admin form input. */
 function Field({ label, value, onChange, type = "text", placeholder, min, max, step, required }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string; min?: string; max?: string; step?: string; required?: boolean }) { return <label className="text-sm font-semibold">{label}<input type={type} value={value} onChange={(event) => { onChange(event.target.value); }} placeholder={placeholder} min={min} max={max} step={step} required={required} className="mt-1 w-full rounded-lg border border-[var(--line)] bg-transparent px-3 py-2 font-normal" /></label>; }

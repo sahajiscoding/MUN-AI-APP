@@ -45,6 +45,7 @@ const glossaryTerms = [
   { term: "Yields", definition: "When a speaker gives up remaining time — to questions, to the chair, or to another delegate." },
 ];
 
+/** Glossary reference page listing essential MUN terms. */
 export default function GlossaryPage() {
   return (
     <ProtectedAppShell>

@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 // Append-only audit trail for privileged admin actions. Table is service-role
 // only (no RLS policies grant access to browser roles). Logging must never
 // fail the action it accompanies, so failures are warnings only.
+/** Append a privileged admin action to the audit log, failing closed on write errors. */
 export async function recordAdminAction(input: {
   actorUid?: string;
   actorEmail?: string;

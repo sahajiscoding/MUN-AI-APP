@@ -3,6 +3,7 @@
 import { Globe, Landmark, Newspaper, RefreshCw, ShieldAlert, TrendingUp, Vote } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { readJsonResponse } from "@/lib/http";
+import { getRelativeTime } from "@/lib/relative-time";
 
 type NewsItem = {
   title: string;
@@ -23,12 +24,14 @@ const categoryConfig: Record<string, { label: string; icon: typeof Globe; color:
   global: { label: "Global", icon: Landmark, color: "text-[var(--patina)]" },
 };
 
+/** Sidebar discover panel listing categorized world news. */
 export function DiscoverPanel() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
+  /** Fetches the latest news, silently on background refresh. */
   const fetchNews = useCallback((silent = false) => {
     if (!silent) setLoading(true);
 
@@ -185,22 +188,3 @@ export function DiscoverPanel() {
   );
 }
 
-function getRelativeTime(dateStr: string): string {
-  if (!dateStr) return "";
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
-}

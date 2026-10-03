@@ -27,6 +27,7 @@ const initialProfile: ProfileState = {
   goals: "",
 };
 
+/** Delegate profile form editing school, committee, and prep goals. */
 export function ProfileForm() {
   const { user, getIdToken } = useAuth();
   const [profile, setProfile] = useState(initialProfile);
@@ -36,6 +37,7 @@ export function ProfileForm() {
   useEffect(() => {
     let cancelled = false;
 
+    /** Loads the saved delegate profile for the signed-in user. */
     async function loadProfile() {
       if (!user) {
         return;
@@ -64,6 +66,7 @@ export function ProfileForm() {
     };
   }, [getIdToken, user]);
 
+  /** Saves the edited delegate profile to the server. */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -95,6 +98,7 @@ export function ProfileForm() {
     }
   }
 
+  /** Updates one profile field in local form state. */
   function updateField<Key extends keyof ProfileState>(key: Key, value: ProfileState[Key]) {
     setProfile((current) => ({ ...current, [key]: value }));
   }
@@ -181,6 +185,7 @@ export function ProfileForm() {
   );
 }
 
+/** Renders a labeled profile input wrapper. */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">

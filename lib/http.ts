@@ -1,3 +1,4 @@
+/** Read a fetch response as JSON, returning null for empty bodies and throwing a friendly error for non-JSON. */
 export async function readJsonResponse<T>(response: Response): Promise<T | null> {
   const text = await response.text();
 
@@ -26,6 +27,7 @@ export async function readJsonResponse<T>(response: Response): Promise<T | null>
   throw new Error(friendlyHttpError(response.status));
 }
 
+/** Map an HTTP status code to a user-friendly error message. */
 function friendlyHttpError(status: number): string {
   if (status === 429) return "Too many requests. Please wait a moment and try again.";
   if (status === 401 || status === 403) return "Your session could not be verified. Please sign in again.";

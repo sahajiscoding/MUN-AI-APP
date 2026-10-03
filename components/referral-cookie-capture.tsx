@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+/** Captures the referral code in a cookie when the landing page loads. */
 export function ReferralCookieCapture({ code }: { code: string }) {
   useEffect(() => {
     const controller = new AbortController();

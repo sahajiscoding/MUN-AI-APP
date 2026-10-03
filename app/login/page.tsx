@@ -5,6 +5,7 @@ export const metadata = {
   title: "Sign In"
 };
 
+/** Login page rendering the sign-in form. */
 export default function LoginPage() {
   return (
     <Suspense>

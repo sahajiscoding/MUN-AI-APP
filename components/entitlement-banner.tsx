@@ -17,6 +17,7 @@ type EntitlementResponse = {
   error?: string;
 };
 
+/** Banner showing paid workspace status with an unlock action. */
 export function EntitlementBanner() {
   const { user, getIdToken } = useAuth();
   const [data, setData] = useState<EntitlementData | null>(null);
@@ -25,6 +26,7 @@ export function EntitlementBanner() {
   useEffect(() => {
     let cancelled = false;
 
+    /** Loads the current entitlement for the signed-in user. */
     async function load() {
       if (!user) {
         setData(null);

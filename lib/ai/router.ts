@@ -14,6 +14,7 @@ export type ResearchInput = {
   conversation?: ChatMessage[];
 };
 
+/** Run the MUN research task through the NVIDIA model matching the requested response mode. */
 export async function runMunResearch(input: ResearchInput) {
   const priorTurns = (input.conversation ?? []).slice(-12);
   const task = input.tool && input.tool !== "research" ? input.tool.replace(/-/g, " ") : "research brief";

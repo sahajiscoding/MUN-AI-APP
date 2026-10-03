@@ -18,6 +18,7 @@ const partnerSchema = z.object({
   notes: z.string().trim().max(2000).nullable().optional(),
 }).strict();
 
+/** POST /api/admin/referrals/partners — creates a referral partner. */
 export async function POST(request: Request) {
   try {
     const admin = await requireAdminOwner();

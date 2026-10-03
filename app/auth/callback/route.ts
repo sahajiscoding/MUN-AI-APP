@@ -4,6 +4,7 @@ import { logger } from "@/lib/server/secure-logger";
 
 export const runtime = "nodejs";
 
+/** Resolves a safe post-login redirect path within the same origin. */
 function getSafeNext(value: string | null, origin: string) {
   if (!value) return "/dashboard";
   try {
@@ -15,11 +16,13 @@ function getSafeNext(value: string | null, origin: string) {
   }
 }
 
+/** Redirects to sign-in after logging an OAuth callback failure. */
 function failureRedirect(origin: string, reason: string) {
   logger.error("OAuth callback failed:", { reason });
   return NextResponse.redirect(new URL("/auth/signin?error=oauth_callback_failed", origin));
 }
 
+/** Handles the OAuth callback and exchanges the code for a session. */
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   logger.info("OAuth callback reached:", { hasCode: Boolean(requestUrl.searchParams.get("code")) });

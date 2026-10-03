@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { NewsItem } from "@/app/api/news/route";
 import { readJsonResponse } from "@/lib/http";
+import { getRelativeTime } from "@/lib/relative-time";
 
 const TABS = [
   { key: "all", label: "For you" },
@@ -36,6 +37,7 @@ const CATEGORY_META: Record<string, { color: string; label: string }> = {
   sports: { color: "var(--brass)", label: "SPORTS" },
 };
 
+/** Builds a distinct article description stripped of title and source duplication. */
 function getDistinctDescription(item: NewsItem) {
   let description = (item.description || "")
     .replace(/&amp;nbsp;|&nbsp;|&amp;#160;|&#160;/gi, " ")
@@ -61,6 +63,7 @@ function getDistinctDescription(item: NewsItem) {
 // RSS feed links are untrusted external input. Only http(s) URLs may be
 // rendered as a clickable href — anything else (e.g. a `javascript:` URI
 // smuggled in by a malicious feed) falls back to a harmless "#".
+/** Returns a safe clickable URL, falling back to "#" for non-http(s) links. */
 function safeArticleLink(value: string) {
   try {
     const url = new URL(value, window.location.origin);
@@ -70,6 +73,7 @@ function safeArticleLink(value: string) {
   }
 }
 
+/** Discover news feed page with tabs, search, and saved articles. */
 export default function DiscoverPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +84,7 @@ export default function DiscoverPage() {
   const [savedReady, setSavedReady] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
 
+  /** Fetches news articles for the given category. */
   function fetchNews(category?: string) {
     setLoading(true);
     setNewsError("");
@@ -132,6 +137,7 @@ export default function DiscoverPage() {
   const featured = filtered[0];
   const rest = filtered.slice(1);
 
+  /** Toggles the saved bookmark state for an article link. */
   function toggleSave(link: string) {
     setSaved((prev) => {
       const next = new Set(prev);
@@ -141,6 +147,7 @@ export default function DiscoverPage() {
     });
   }
 
+  /** Shares an article via the Web Share API or copies its link. */
   async function shareItem(item: NewsItem) {
     const shareData = { title: item.title, text: item.description || item.title, url: item.link };
     try {
@@ -155,26 +162,6 @@ export default function DiscoverPage() {
       setShareStatus("We could not share this article. Copy its URL from the address bar.");
     }
     window.setTimeout(() => { setShareStatus(""); }, 3000);
-  }
-
-  function getRelativeTime(dateStr: string): string {
-    if (!dateStr) return "";
-    try {
-      const date = new Date(dateStr);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMins / 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffMins < 1) return "just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    } catch {
-      return "";
-    }
   }
 
   return (
@@ -282,7 +269,6 @@ export default function DiscoverPage() {
                     isSaved={saved.has(featured.link)}
                     onToggleSave={() => { toggleSave(featured.link); }}
                     onShare={() => void shareItem(featured)}
-                    getRelativeTime={getRelativeTime}
                   />
                 )}
 
@@ -295,7 +281,6 @@ export default function DiscoverPage() {
                       isSaved={saved.has(item.link)}
                       onToggleSave={() => { toggleSave(item.link); }}
                       onShare={() => void shareItem(item)}
-                      getRelativeTime={getRelativeTime}
                     />
                   ))}
                 </div>
@@ -310,19 +295,64 @@ export default function DiscoverPage() {
   );
 }
 
+/* ---------- Shared save/share actions ---------- */
+/** Renders save and share actions for a news article. */
+function ArticleActions({
+  isSaved,
+  onToggleSave,
+  onShare,
+  compact = false,
+}: {
+  isSaved: boolean;
+  onToggleSave: () => void;
+  onShare: () => void;
+  compact?: boolean;
+}) {
+  const buttonClass = compact ? "p-1 rounded" : "p-1.5 rounded-lg";
+  const iconClass = compact ? "h-3.5 w-3.5" : "h-4 w-4";
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          onToggleSave();
+        }}
+        type="button"
+        aria-label={isSaved ? "Remove article bookmark" : "Save article"}
+        className={`${buttonClass} hover:bg-black/5 transition`}
+      >
+        <Bookmark
+          className={`${iconClass} ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-[var(--muted)]"}`}
+        />
+      </button>
+      <button
+        type="button"
+        aria-label="Share article"
+        onClick={(e) => {
+          e.preventDefault();
+          onShare();
+        }}
+        className={`${buttonClass} hover:bg-black/5 transition`}
+      >
+        <Share2 className={`${iconClass} text-[var(--muted)]`} />
+      </button>
+    </div>
+  );
+}
+
 /* ---------- Featured Card ---------- */
+/** Renders the featured lead article card. */
 function FeaturedCard({
   item,
   isSaved,
   onToggleSave,
   onShare,
-  getRelativeTime,
 }: {
   item: NewsItem;
   isSaved: boolean;
   onToggleSave: () => void;
   onShare: () => void;
-  getRelativeTime: (d: string) => string;
 }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.global;
   const description = getDistinctDescription(item);
@@ -370,32 +400,11 @@ function FeaturedCard({
                 </>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  onToggleSave();
-                }}
-                type="button"
-                aria-label={isSaved ? "Remove article bookmark" : "Save article"}
-                className="p-1.5 rounded-lg hover:bg-black/5 transition"
-              >
-                <Bookmark
-                  className={`h-4 w-4 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-[var(--muted)]"}`}
-                />
-              </button>
-              <button
-                type="button"
-                aria-label="Share article"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onShare();
-                }}
-                className="p-1.5 rounded-lg hover:bg-black/5 transition"
-              >
-                <Share2 className="h-4 w-4 text-[var(--muted)]" />
-              </button>
-            </div>
+            <ArticleActions
+              isSaved={isSaved}
+              onToggleSave={onToggleSave}
+              onShare={onShare}
+            />
           </div>
         </div>
       </div>
@@ -404,18 +413,17 @@ function FeaturedCard({
 }
 
 /* ---------- Article Card ---------- */
+/** Renders a standard article row in the news feed. */
 function ArticleCard({
   item,
   isSaved,
   onToggleSave,
   onShare,
-  getRelativeTime,
 }: {
   item: NewsItem;
   isSaved: boolean;
   onToggleSave: () => void;
   onShare: () => void;
-  getRelativeTime: (d: string) => string;
 }) {
   const meta = CATEGORY_META[item.category] || CATEGORY_META.global;
   const description = getDistinctDescription(item);
@@ -450,30 +458,12 @@ function ArticleCard({
             </>
           )}
           <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                onToggleSave();
-              }}
-                type="button"
-                aria-label={isSaved ? "Remove article bookmark" : "Save article"}
-                className="p-1 rounded hover:bg-black/5 transition"
-              >
-                <Bookmark
-                className={`h-3.5 w-3.5 ${isSaved ? "fill-[var(--brass)] text-[var(--brass)]" : "text-[var(--muted)]"}`}
-              />
-            </button>
-            <button
-              type="button"
-              aria-label="Share article"
-              onClick={(e) => {
-                e.preventDefault();
-                onShare();
-              }}
-              className="p-1 rounded hover:bg-black/5 transition"
-            >
-              <Share2 className="h-3.5 w-3.5 text-[var(--muted)]" />
-            </button>
+            <ArticleActions
+              isSaved={isSaved}
+              onToggleSave={onToggleSave}
+              onShare={onShare}
+              compact
+            />
           </div>
         </div>
       </div>

@@ -20,6 +20,7 @@ type AdminSessionClaims = {
 
 export type AdminSession = AdminSessionClaims;
 
+/** Load and validate the admin session signing secret from the environment. */
 function getSessionSecret() {
   // Fail closed: ADMIN_SESSION_SECRET is mandatory and must never fall back
   // to SUPABASE_SECRET_KEY (cryptographic separation of duties — the DB
@@ -79,6 +80,7 @@ export async function adminSessionForUid(uid: string, accessToken: string): Prom
   };
 }
 
+/** Sign admin session claims into a short-lived HS256 JWT. */
 async function signAdminSession(session: AdminSession) {
   return new SignJWT({
     uid: session.uid,
@@ -148,6 +150,7 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   }
 }
 
+/** Require a valid admin session cookie, throwing 401 when absent or invalid. */
 export async function requireAdmin(): Promise<AdminSession> {
   const session = await getAdminSession();
   if (!session) {
@@ -199,6 +202,7 @@ export async function requireAdminOwner(): Promise<AdminSession> {
   return session;
 }
 
+/** Clear the administrator session cookie. */
 export async function clearAdminSession() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
@@ -259,6 +263,7 @@ export async function assertAdminMfaCompleted(uid: string, accessToken: string):
   }
 }
 
+/** Check whether a UID belongs to an active admin user. */
 export async function isUserAdmin(uid: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin()
     .from("admin_users")

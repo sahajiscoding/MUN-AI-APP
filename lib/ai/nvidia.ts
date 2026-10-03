@@ -25,6 +25,7 @@ export function callNvidiaResearch(input: AICompletionInput) {
   return callNvidiaModel(input, model, "nvidia");
 }
 
+/** Redact bearer tokens and API keys from a provider message before logging or display. */
 function redactProviderMessage(message: string) {
   return message
     .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
@@ -32,6 +33,7 @@ function redactProviderMessage(message: string) {
     .slice(0, 1000);
 }
 
+/** Extract a redacted error message from a failed NVIDIA provider response. */
 async function readProviderError(response: Response) {
   let providerMessage = "Unknown NVIDIA provider error.";
 
@@ -59,6 +61,7 @@ async function readProviderError(response: Response) {
   return redactProviderMessage(providerMessage);
 }
 
+/** Call an NVIDIA NIM chat model and return its output as a cancellable SSE stream. */
 async function callNvidiaModel(
   input: AICompletionInput,
   model: string,

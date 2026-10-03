@@ -2,19 +2,23 @@ import { ApiError } from "@/lib/api";
 import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
+/** Return today's date key used to bucket daily AI usage. */
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Read a numeric cap from the environment, falling back when missing or invalid. */
 function envCap(name: string, fallback: number) {
   const raw = Number(process.env[name]);
   return Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : fallback;
 }
 
+/** Return the configured daily AI request cap. */
 function dailyRequestCap() {
   return envCap("AI_DAILY_REQUEST_CAP", 60);
 }
 
+/** Return the configured daily AI token cap. */
 function dailyTokenCap() {
   return envCap("AI_DAILY_TOKEN_CAP", 300_000);
 }

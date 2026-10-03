@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+/** GET /api/chats — lists the authenticated user's saved chats. */
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);

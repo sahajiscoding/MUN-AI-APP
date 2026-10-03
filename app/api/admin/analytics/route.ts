@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/server/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Converts an ISO timestamp to a YYYY-MM-DD day key. */
 function dayKey(value: string | null | undefined) {
   if (!value) return null;
   const date = new Date(value);
@@ -14,10 +15,12 @@ function dayKey(value: string | null | undefined) {
   return date.toISOString().slice(0, 10);
 }
 
+/** Detects a missing certificate_downloads table from a DB error. */
 function isMissingAnalyticsTable(error: { code?: string; message?: string }) {
   return error.code === "42P01" || error.message?.includes("certificate_downloads") || false;
 }
 
+/** Returns the last N days as YYYY-MM-DD strings ending today. */
 function lastDays(count: number) {
   const days: string[] = [];
   const now = new Date();
@@ -30,6 +33,7 @@ function lastDays(count: number) {
   return days;
 }
 
+/** GET /api/admin/analytics — returns course completion and download metrics. */
 export async function GET() {
   try {
     const admin = await requireAdmin();

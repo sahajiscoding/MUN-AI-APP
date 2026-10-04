@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    if (!(await checkRateLimit(`admin-login:${ip}`, 5, 60_000))) {
+    if (!(await checkRateLimit(`admin-login:${ip}`, 5, 60_000, { failClosed: true }))) {
       throw new ApiError(429, "rate_limited", "Too many login attempts. Try again in a minute.");
     }
 

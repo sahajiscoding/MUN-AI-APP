@@ -160,8 +160,18 @@ export async function requireAdmin(): Promise<AdminSession> {
 }
 
 /**
- * Whether the UID is a designated owner: one of the ADMIN_OWNER_UIDS values
- * when set, otherwise the first approved admin (the bootstrap account).
+ * Whether the UID is a designated administrator owner.
+ *
+ * In production:
+ * - ADMIN_OWNER_UIDS is strictly required. If unset, access fails closed.
+ * - Dynamic ownership derivation from database record order is forbidden to prevent
+ *   accidental or implicit ownership transfer when accounts are revoked.
+ *
+ * In development / bootstrap fallback:
+ * - If ADMIN_OWNER_UIDS is unset, only the historical first approved administrator
+ *   row is recognized as the bootstrap owner.
+ * - If that account is revoked, ownership is NOT transferred to subsequent administrators;
+ *   owner permissions simply cease until an owner is explicitly designated.
  */
 export async function isOwnerAdmin(uid: string): Promise<boolean> {
   const ownerUid = uid.trim().toLowerCase();
@@ -172,17 +182,45 @@ export async function isOwnerAdmin(uid: string): Promise<boolean> {
     .filter(Boolean);
 
   if (configured.length > 0) {
-    return configured.includes(ownerUid);
+    if (!configured.includes(ownerUid)) return false;
+    // Verify that this configured owner is also an active (non-revoked) administrator
+    const { data, error } = await supabaseAdmin()
+      .from("admin_users")
+      .select("uid")
+      .eq("uid", ownerUid)
+      .is("revoked_at", null)
+      .maybeSingle();
+    return !error && !!data;
   }
 
+  // In production, explicit owner UIDs are mandatory. Never derive owner dynamically.
+  if (process.env.NODE_ENV === "production") {
+    logger.error(
+      "ADMIN_OWNER_UIDS is not configured in production. " +
+      "Explicit owner UIDs are required; refusing to derive ownership dynamically."
+    );
+    return false;
+  }
+
+  // Development / test bootstrap fallback: inspect the absolute earliest approved admin.
+  // Note: We deliberately do NOT filter on `revoked_at IS NULL` here so that revoking
+  // the first admin does not cause the second admin to implicitly become owner.
   const { data, error } = await supabaseAdmin()
     .from("admin_users")
-    .select("uid")
-    .is("revoked_at", null)
+    .select("uid, revoked_at")
     .order("approved_at", { ascending: true })
     .limit(1);
 
-  return !error && !!data?.[0] && data[0].uid.toLowerCase() === ownerUid;
+  if (error || !data?.[0]) return false;
+  const bootstrapAdmin = data[0];
+
+  // If the historical first admin is revoked, ownership is revoked.
+  // Do NOT implicitly transfer ownership to subsequent admins.
+  if (bootstrapAdmin.revoked_at !== null) {
+    return false;
+  }
+
+  return bootstrapAdmin.uid.toLowerCase() === ownerUid;
 }
 
 /**

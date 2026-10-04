@@ -11,7 +11,7 @@ const schema = z.object({ password: z.string().min(8).max(128) });
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    if (!(await checkRateLimit(`password-update:${ip}`, 5, 10 * 60_000))) {
+    if (!(await checkRateLimit(`password-update:${ip}`, 5, 10 * 60_000, { failClosed: true }))) {
       throw new ApiError(429, "rate_limited", "Too many password update attempts. Try again later.");
     }
 

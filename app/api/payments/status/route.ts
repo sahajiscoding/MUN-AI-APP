@@ -6,7 +6,12 @@ import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEntitlement, grantEntitlement } from "@/lib/server/entitlements";
 import { canonicalPlanId } from "@/lib/plans";
-import { getOrderStatus } from "@/lib/payments/uropay";
+import {
+  getOrderStatus,
+  getOrderByTenantRef,
+  validateAuthoritativeOrderBinding,
+  normalizeStatus,
+} from "@/lib/payments/uropay";
 import { processReferralCommission } from "@/lib/referrals";
 import { logger } from "@/lib/server/secure-logger";
 
@@ -19,34 +24,6 @@ const querySchema = z.object({
     .min(1)
     .max(100),
 });
-
-type PaymentStatus =
-  | "pending"
-  | "paid"
-  | "failed"
-  | "expired";
-
-/** Normalizes a payment status string to pending/paid/failed/expired. */
-function normalizeStatus(value: unknown): PaymentStatus | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  switch (value.trim().toUpperCase()) {
-    case "PAID":
-      return "paid";
-    case "FAILED":
-      return "failed";
-    case "EXPIRED":
-      return "expired";
-    case "PENDING":
-    case "PROCESSING":
-    case "CREATED":
-      return "pending";
-    default:
-      return null;
-  }
-}
 
 /** GET /api/payments/status — returns the authenticated user's payment status for an orderRef. */
 export async function GET(request: Request) {
@@ -90,6 +67,7 @@ export async function GET(request: Request) {
           order_ref,
           plan_id,
           amount,
+          currency,
           status,
           environment,
           uropay_order_id,
@@ -120,6 +98,48 @@ export async function GET(request: Request) {
 
     let status = normalizeStatus(payment.status) ?? "pending";
 
+    // Handle order-created-but-not-linked state: if uropay_order_id was not
+    // persisted at checkout, reconcile via merchant order reference.
+    if (!payment.uropay_order_id && (status === "pending" || status === "paid")) {
+      logger.warn("Reconciling unlinked provider order in status check:", {
+        orderRef: payment.order_ref,
+        paymentId: payment.id,
+      });
+
+      try {
+        const orderFromRef = await getOrderByTenantRef(payment.order_ref);
+        if (orderFromRef) {
+          const binding = validateAuthoritativeOrderBinding(orderFromRef, {
+            orderRef: payment.order_ref,
+            amountPaise: payment.amount,
+            currency: payment.currency,
+            environment: payment.environment,
+          });
+
+          if (binding.valid) {
+            const { error: linkError } = await admin
+              .from("payments")
+              .update({
+                uropay_order_id: binding.orderId,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", payment.id)
+              .eq("uid", user.uid);
+
+            if (!linkError) {
+              payment.uropay_order_id = binding.orderId;
+              logger.info("Successfully linked unlinked payment via tenant reference:", {
+                orderRef: payment.order_ref,
+                uropayOrderId: binding.orderId,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        logger.warn("Failed to reconcile unlinked order via tenantOrderRef:", err);
+      }
+    }
+
     // UroPay documents the webhook as best-effort/advisory and the
     // order GET endpoint as the authoritative source of truth. If the
     // webhook is delayed or never arrives, reconcile the order here.
@@ -134,67 +154,58 @@ export async function GET(request: Request) {
           payment.uropay_order_id
         );
 
-        const authoritativeStatus = normalizeStatus(
-          authoritativeOrder?.status
+        const binding = validateAuthoritativeOrderBinding(
+          authoritativeOrder,
+          {
+            orderRef: payment.order_ref,
+            amountPaise: payment.amount,
+            uropayOrderId: payment.uropay_order_id,
+            currency: payment.currency,
+            environment: payment.environment,
+          }
         );
 
-        if (!authoritativeStatus) {
+        if (!binding.valid) {
           logger.error(
-            "UroPay returned an unknown order status:",
-            authoritativeOrder?.status
-          );
-        } else {
-          const authoritativeAmount = Number(
-            authoritativeOrder?.amount
+            "UroPay authoritative binding check failed in status check:",
+            {
+              orderRef: payment.order_ref,
+              error: binding.error,
+              detail: binding.detail,
+            }
           );
 
-          const expectedAmountRupees =
-            Number(payment.amount) / 100;
+          throw new ApiError(
+            409,
+            binding.error,
+            "The payment details could not be verified with the payment provider."
+          );
+        }
 
-          if (
-            !Number.isFinite(authoritativeAmount) ||
-            authoritativeAmount !== expectedAmountRupees
-          ) {
+        status = binding.status;
+
+        if (status !== "pending") {
+          const { error: updateError } = await admin
+            .from("payments")
+            .update({
+              status,
+              uropay_order_id: payment.uropay_order_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", payment.id)
+            .eq("uid", user.uid);
+
+          if (updateError) {
             logger.error(
-              "UroPay authoritative amount mismatch:",
-              {
-                orderRef: payment.order_ref,
-                expectedAmountRupees,
-                authoritativeAmount,
-              }
+              "Failed to reconcile payment status:",
+              updateError
             );
 
             throw new ApiError(
-              409,
-              "payment_amount_mismatch",
-              "The payment amount could not be verified."
+              500,
+              "payment_reconciliation_failed",
+              "The payment was confirmed, but we could not update your payment record yet."
             );
-          }
-
-          status = authoritativeStatus;
-
-          if (status !== "pending") {
-            const { error: updateError } = await admin
-              .from("payments")
-              .update({
-                status,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", payment.id)
-              .eq("uid", user.uid);
-
-            if (updateError) {
-              logger.error(
-                "Failed to reconcile payment status:",
-                updateError
-              );
-
-              throw new ApiError(
-                500,
-                "payment_reconciliation_failed",
-                "The payment was confirmed, but we could not update your payment record yet."
-              );
-            }
           }
         }
       } catch (error) {

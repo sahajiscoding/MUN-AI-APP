@@ -31,8 +31,8 @@ export async function POST(request: Request) {
 
   const ip = getClientIp(request);
   if (
-    !(await checkRateLimit(`admin-reconcile:${admin.uid}`, 5, 60_000)) ||
-    !(await checkRateLimit(`admin-reconcile-ip:${ip}`, 10, 60_000))
+    !(await checkRateLimit(`admin-reconcile:${admin.uid}`, 5, 60_000, { failClosed: true })) ||
+    !(await checkRateLimit(`admin-reconcile-ip:${ip}`, 10, 60_000, { failClosed: true }))
   ) {
     return privateJson(
       { ok: false, error: "Too many reconciliation requests. Try again later." },

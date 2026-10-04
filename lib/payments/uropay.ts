@@ -171,7 +171,7 @@ export function verifyWebhookSignature(
     headers["x-nonce"] || "";
 
   const receivedSignature =
-    headers["x-signature"] || "";
+    (headers["x-signature"] || "").trim();
 
   if (!timestamp || !nonce || !receivedSignature) {
     return false;
@@ -198,6 +198,14 @@ export function verifyWebhookSignature(
   ) {
     logger.error("UroPay webhook rejected: timestamp outside replay window.");
 
+    return false;
+  }
+
+  // Require exactly 64 hexadecimal characters for SHA-256 HMAC (32 bytes).
+  // Reject malformed or non-hex encodings explicitly before decoding.
+  const HEX_64_REGEX = /^[0-9a-fA-F]{64}$/;
+  if (!HEX_64_REGEX.test(receivedSignature)) {
+    logger.error("UroPay webhook rejected: signature is not a valid 64-character hex string.");
     return false;
   }
 
@@ -235,15 +243,8 @@ export function verifyWebhookSignature(
   }
 
   if (
-    expectedBuffer.length === 0 ||
-    receivedBuffer.length === 0
-  ) {
-    return false;
-  }
-
-  if (
-    expectedBuffer.length !==
-    receivedBuffer.length
+    expectedBuffer.length !== 32 ||
+    receivedBuffer.length !== 32
   ) {
     return false;
   }
@@ -311,4 +312,240 @@ export async function getOrderStatus(
   }
 
   return json?.data || null;
+}
+
+/**
+ * Look up an authoritative order from UroPay by merchant tenant order reference.
+ * Used to reconcile orders created at UroPay when the local provider ID link was interrupted.
+ *
+ * UroPay guarantees the following authoritative response schema:
+ * - id: string — Provider order ID
+ * - tenantOrderRef: string — Merchant order reference (e.g. MUN-<uuid>)
+ * - amount: number — Order amount in whole INR (rupees)
+ * - currency: string — Currency ("INR")
+ * - status: string — Authoritative status ("PAID", "FAILED", "EXPIRED", "PENDING")
+ * - environment: string — Provider environment ("production" or "test")
+ */
+export async function getOrderByTenantRef(
+  tenantOrderRef: string
+) {
+  if (!tenantOrderRef) {
+    throw new Error("UroPay tenant order reference is required.");
+  }
+
+  const path = "/v1/orders";
+  const query = `tenantOrderRef=${encodeURIComponent(tenantOrderRef)}`;
+  const headers = signRequest("GET", path, query, "");
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}?${query}`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (err) {
+    logger.error("UroPay order lookup by tenantOrderRef network error:", err);
+    return null;
+  }
+
+  if (!response.ok) {
+    logger.warn(`UroPay order lookup by tenantOrderRef returned status ${response.status}`);
+    return null;
+  }
+
+  let json: any = null;
+  try {
+    json = await response.json();
+  } catch {
+    return null;
+  }
+
+  const data = json?.data;
+  if (!data) return null;
+
+  if (Array.isArray(data)) {
+    return (
+      data.find(
+        (o) =>
+          o?.tenantOrderRef === tenantOrderRef ||
+          o?.merchantOrderRef === tenantOrderRef ||
+          o?.orderRef === tenantOrderRef
+      ) ?? data[0] ?? null
+    );
+  }
+
+  return data;
+}
+
+export type NormalizedPaymentStatus = "paid" | "failed" | "expired" | "pending";
+
+/** Normalizes a payment status string from webhook or authoritative order. */
+export function normalizeStatus(
+  value: unknown
+): NormalizedPaymentStatus | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const status = value.trim().toUpperCase();
+
+  switch (status) {
+    case "PAID":
+      return "paid";
+    case "FAILED":
+      return "failed";
+    case "EXPIRED":
+      return "expired";
+    case "PENDING":
+    case "PROCESSING":
+    case "CREATED":
+      return "pending";
+    default:
+      return null;
+  }
+}
+
+export type AuthoritativeBindingResult =
+  | {
+      valid: true;
+      status: NormalizedPaymentStatus;
+      orderId: string;
+      orderRef: string;
+      amountPaise: number;
+      currency: string;
+      environment: string | null;
+      rawOrder: Record<string, unknown>;
+    }
+  | {
+      valid: false;
+      error:
+        | "order_status_unavailable"
+        | "unknown_order_status"
+        | "order_id_mismatch"
+        | "order_reference_mismatch"
+        | "invalid_order_amount"
+        | "amount_mismatch"
+        | "currency_mismatch"
+        | "environment_mismatch";
+      detail?: Record<string, unknown>;
+    };
+
+/**
+ * Validates complete binding between an authoritative UroPay order and local payment record.
+ * 
+ * Verifies:
+ * 1. Authoritative status is recognized
+ * 2. Provider Order ID matches (if expected ID is known)
+ * 3. Merchant Order Reference matches payment.order_ref
+ * 4. Amount in INR matches expected paise / 100
+ * 5. Currency matches (default INR)
+ * 6. Environment matches (production vs test)
+ */
+export function validateAuthoritativeOrderBinding(
+  authoritativeOrder: unknown,
+  expected: {
+    orderRef: string;
+    amountPaise: number | string;
+    uropayOrderId?: string | null;
+    currency?: string | null;
+    environment?: string | null;
+  },
+  receivedOrderId?: string
+): AuthoritativeBindingResult {
+  if (!authoritativeOrder || typeof authoritativeOrder !== "object") {
+    return { valid: false, error: "order_status_unavailable" };
+  }
+
+  const order = authoritativeOrder as Record<string, unknown>;
+
+  // 1. Authoritative status
+  const normalized = normalizeStatus(order.status);
+  if (!normalized) {
+    return {
+      valid: false,
+      error: "unknown_order_status",
+      detail: { status: order.status },
+    };
+  }
+
+  // 2. Provider Order ID binding
+  const authOrderId = typeof order.id === "string" ? order.id.trim() : "";
+  const expectedOrderId = (expected.uropayOrderId || receivedOrderId || "").trim();
+  if (expectedOrderId && authOrderId && authOrderId !== expectedOrderId) {
+    return {
+      valid: false,
+      error: "order_id_mismatch",
+      detail: { expected: expectedOrderId, authoritative: authOrderId },
+    };
+  }
+  const resolvedOrderId = authOrderId || expectedOrderId;
+
+  // 3. Merchant order reference binding
+  const authMerchantRef =
+    (typeof order.tenantOrderRef === "string" && order.tenantOrderRef.trim()) ||
+    (typeof order.merchantOrderRef === "string" && order.merchantOrderRef.trim()) ||
+    (typeof order.orderRef === "string" && order.orderRef.trim()) ||
+    "";
+
+  if (authMerchantRef && expected.orderRef && authMerchantRef !== expected.orderRef) {
+    return {
+      valid: false,
+      error: "order_reference_mismatch",
+      detail: { expected: expected.orderRef, authoritative: authMerchantRef },
+    };
+  }
+
+  // 4. Amount binding (authoritative order in whole rupees, expected in paise)
+  const authAmountRupees = Number(order.amount);
+  if (!Number.isFinite(authAmountRupees) || authAmountRupees <= 0) {
+    return {
+      valid: false,
+      error: "invalid_order_amount",
+      detail: { amount: order.amount },
+    };
+  }
+
+  const expectedAmountRupees = Number(expected.amountPaise) / 100;
+  if (authAmountRupees !== expectedAmountRupees) {
+    return {
+      valid: false,
+      error: "amount_mismatch",
+      detail: { expected: expectedAmountRupees, authoritative: authAmountRupees },
+    };
+  }
+
+  // 5. Currency binding
+  const authCurrency = typeof order.currency === "string" ? order.currency.trim().toUpperCase() : "";
+  const expectedCurrency = (expected.currency || "INR").trim().toUpperCase();
+  if (authCurrency && authCurrency !== expectedCurrency) {
+    return {
+      valid: false,
+      error: "currency_mismatch",
+      detail: { expected: expectedCurrency, authoritative: authCurrency },
+    };
+  }
+
+  // 6. Environment binding
+  const authEnvironment = typeof order.environment === "string" ? order.environment.trim().toLowerCase() : "";
+  const expectedEnv = (expected.environment || "").trim().toLowerCase();
+  if (authEnvironment && expectedEnv && authEnvironment !== expectedEnv) {
+    return {
+      valid: false,
+      error: "environment_mismatch",
+      detail: { expected: expectedEnv, authoritative: authEnvironment },
+    };
+  }
+
+  return {
+    valid: true,
+    status: normalized,
+    orderId: resolvedOrderId,
+    orderRef: expected.orderRef,
+    amountPaise: Math.round(authAmountRupees * 100),
+    currency: authCurrency || expectedCurrency,
+    environment: authEnvironment || expectedEnv || null,
+    rawOrder: order,
+  };
 }

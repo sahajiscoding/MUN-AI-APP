@@ -12,7 +12,7 @@ const schema = z.object({ email: z.string().trim().email().max(320) });
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    if (!(await checkRateLimit(`password-reset:${ip}`, 5, 10 * 60_000))) {
+    if (!(await checkRateLimit(`password-reset:${ip}`, 5, 10 * 60_000, { failClosed: true }))) {
       throw new ApiError(429, "rate_limited", "Too many password reset requests. Try again later.");
     }
 

@@ -103,8 +103,8 @@ export async function POST(
     // Prevents DB bloat and upstream UroPay quota exhaustion.
     const orderIp = getClientIp(request);
     if (
-      !(await checkRateLimit(`create-order:user:${user.uid}`, 10, 5 * 60_000)) ||
-      !(await checkRateLimit(`create-order:ip:${orderIp}`, 10, 5 * 60_000))
+      !(await checkRateLimit(`create-order:user:${user.uid}`, 10, 5 * 60_000, { failClosed: true })) ||
+      !(await checkRateLimit(`create-order:ip:${orderIp}`, 10, 5 * 60_000, { failClosed: true }))
     ) {
       throw new ApiError(
         429,
@@ -288,40 +288,54 @@ export async function POST(
     }
 
     // --------------------------------------------------
-    // 7. Store UroPay order ID.
+    // 7. Store UroPay order ID with transient retry and unlinked order alert.
     // --------------------------------------------------
 
-    const {
-      error:
-        paymentUpdateError,
-    } = await admin
-      .from("payments")
-      .update({
-        uropay_order_id:
-          uropayOrder.orderId,
+    let paymentUpdateError: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { error } = await admin
+        .from("payments")
+        .update({
+          uropay_order_id:
+            uropayOrder.orderId,
 
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq(
-        "id",
-        payment.id
-      )
-      .eq(
-        "uid",
-        user.uid
-      )
-      .eq(
-        "status",
-        "pending"
-      );
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "id",
+          payment.id
+        )
+        .eq(
+          "uid",
+          user.uid
+        )
+        .eq(
+          "status",
+          "pending"
+        );
+
+      paymentUpdateError = error;
+      if (!error) {
+        break;
+      }
+
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+      }
+    }
 
     if (
       paymentUpdateError
     ) {
       logger.error(
-        "Failed to save UroPay order ID:",
-        paymentUpdateError
+        "ALERT: Unlinked provider order detected. Order created at UroPay but failed to link to local payment row:",
+        {
+          orderRef,
+          uropayOrderId: uropayOrder.orderId,
+          paymentId: payment.id,
+          error: paymentUpdateError,
+        }
       );
 
       throw new ApiError(

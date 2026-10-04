@@ -1,6 +1,8 @@
 import {
   verifyWebhookSignature,
   getOrderStatus,
+  validateAuthoritativeOrderBinding,
+  normalizeStatus,
 } from "@/lib/payments/uropay";
 
 import { ApiError, readRequestText } from "@/lib/api";
@@ -26,28 +28,6 @@ type UroPayWebhookEvent = {
   environment?: string | null;
 };
 
-/** Normalizes a UroPay webhook status string to paid/failed/expired. */
-function normalizeStatus(
-  value: unknown
-): "paid" | "failed" | "expired" | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const status = value.trim().toUpperCase();
-
-  switch (status) {
-    case "PAID":
-      return "paid";
-    case "FAILED":
-      return "failed";
-    case "EXPIRED":
-      return "expired";
-    default:
-      return null;
-  }
-}
-
 /** Converts an unknown webhook amount value to a finite number or null. */
 function toNumberOrNull(
   value: unknown
@@ -69,19 +49,20 @@ function toNumberOrNull(
 
 type PaymentSyncUpdate = {
   event: UroPayWebhookEvent;
-  payment: { environment?: string | null };
+  payment: { environment?: string | null; uropay_order_id?: string | null };
   eventId: string;
+  orderId: string;
   status: string;
 };
 
 /**
  * Shared column mapping applied whenever a webhook delivery syncs the local
- * payment row. The non-paid and first-paid paths differ only in the status
- * they write and whether they return the updated row.
+ * payment row. Persists uropay_order_id to recover unlinked provider orders.
  */
-function buildPaymentSyncUpdate({ event, payment, eventId, status }: PaymentSyncUpdate) {
+function buildPaymentSyncUpdate({ event, payment, eventId, orderId, status }: PaymentSyncUpdate) {
   return {
     status,
+    uropay_order_id: payment.uropay_order_id || orderId,
     amount_captured: toNumberOrNull(event.amount_captured),
     commission: toNumberOrNull(event.commission),
     transaction_fee: toNumberOrNull(event.transaction_fee),
@@ -116,7 +97,7 @@ export async function POST(
   let claimedEventId: string | null = null;
   try {
     const ip = getClientIp(request);
-    if (!(await checkRateLimit(`webhook-uropay:${ip}`, 60, 60_000))) {
+    if (!(await checkRateLimit(`webhook-uropay:${ip}`, 60, 60_000, { failClosed: true }))) {
       return Response.json(
         { ok: false, error: "rate_limited" },
         { status: 429 }
@@ -249,6 +230,16 @@ export async function POST(
       );
     }
 
+    if (!payment.uropay_order_id) {
+      logger.warn(
+        "Reconciling unlinked provider order via webhook:",
+        {
+          orderRef: tenantOrderRef,
+          uropayOrderId: orderId,
+        }
+      );
+    }
+
     if (
       payment.environment &&
       event.environment &&
@@ -278,21 +269,48 @@ export async function POST(
       );
     }
 
-    const authoritativeStatus = normalizeStatus(
-      authoritativeOrder.status
+    // Completely bind provider order ID, merchant order reference,
+    // amount, currency, and environment before proceeding.
+    const binding = validateAuthoritativeOrderBinding(
+      authoritativeOrder,
+      {
+        orderRef: payment.order_ref,
+        amountPaise: payment.amount,
+        uropayOrderId: payment.uropay_order_id,
+        currency: payment.currency,
+        environment: payment.environment,
+      },
+      orderId
     );
 
-    if (!authoritativeStatus) {
+    if (!binding.valid) {
       logger.error(
-        "Unknown UroPay authoritative status:",
-        authoritativeOrder.status
+        "UroPay authoritative binding validation failed:",
+        {
+          orderRef: tenantOrderRef,
+          error: binding.error,
+          detail: binding.detail,
+        }
       );
 
+      const statusMap: Record<string, number> = {
+        order_status_unavailable: 502,
+        unknown_order_status: 502,
+        invalid_order_amount: 502,
+        amount_mismatch: 409,
+        order_id_mismatch: 409,
+        order_reference_mismatch: 409,
+        currency_mismatch: 409,
+        environment_mismatch: 409,
+      };
+
       return Response.json(
-        { ok: false, error: "unknown_order_status" },
-        { status: 502 }
+        { ok: false, error: binding.error },
+        { status: statusMap[binding.error] ?? 409 }
       );
     }
+
+    const authoritativeStatus = binding.status;
 
     if (authoritativeStatus !== webhookStatus) {
       logger.error(
@@ -309,55 +327,34 @@ export async function POST(
       );
     }
 
-    const authoritativeAmount = Number(
-      authoritativeOrder.amount
+    // Atomically claim the provider event. Distinguishes 'processing',
+    // 'processed', and retryable recovery of incomplete claims.
+    const claim = await claimWebhookEvent(
+      admin,
+      eventId,
+      tenantOrderRef,
+      orderId
     );
 
-    if (!Number.isFinite(authoritativeAmount)) {
-      logger.error(
-        "UroPay order has invalid amount."
-      );
-
-      return Response.json(
-        { ok: false, error: "invalid_order_amount" },
-        { status: 502 }
-      );
-    }
-
-    const expectedAmountRupees = Number(payment.amount) / 100;
-
-    if (authoritativeAmount !== expectedAmountRupees) {
-      logger.error(
-        "UroPay amount mismatch.",
-        {
-          expectedAmountRupees,
-          authoritativeAmount,
-        }
-      );
-
-      return Response.json(
-        { ok: false, error: "amount_mismatch" },
-        { status: 409 }
-      );
-    }
-
-    // Atomically claim the provider event before changing payment or
-    // entitlement state. A unique-violation means another delivery won.
-    const { error: eventClaimError } = await admin.from("webhook_events").insert({
-      event_id: eventId,
-      event: "uropay",
-      status: "processing",
-      order_ref: tenantOrderRef,
-      uropay_order_id: orderId,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (eventClaimError?.code === "23505") {
+    if (claim.type === "already_processed") {
       return Response.json({ ok: true, already_processed: true });
     }
-    if (eventClaimError) {
-      throw eventClaimError;
+
+    if (claim.type === "in_flight") {
+      // In-progress claim from another delivery: return retryable response,
+      // never prematurely acknowledge success while processing.
+      return Response.json(
+        { ok: false, error: "event_processing_in_flight" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": "5",
+            "Cache-Control": "no-store",
+          },
+        }
+      );
     }
+
     claimedEventId = eventId;
 
     // --------------------------------------------------
@@ -367,7 +364,7 @@ export async function POST(
     if (authoritativeStatus !== "paid") {
       const { error: updateError } = await admin
         .from("payments")
-        .update(buildPaymentSyncUpdate({ event, payment, eventId, status: authoritativeStatus }))
+        .update(buildPaymentSyncUpdate({ event, payment, eventId, orderId, status: authoritativeStatus }))
         .eq("id", payment.id)
         .eq("status", "pending");
 
@@ -391,6 +388,17 @@ export async function POST(
     // --------------------------------------------------
     // PAID EVENT
     // --------------------------------------------------
+
+    // Ensure plan is valid before changing any state
+    const plan = getPlan(payment.plan_id);
+    if (!plan) {
+      logger.error(
+        "Paid payment references unknown plan:",
+        payment.plan_id
+      );
+
+      throw new Error(`plan_not_found: ${payment.plan_id}`);
+    }
 
     // Important recovery behavior:
     // A previous request may have changed the payment to PAID
@@ -423,10 +431,7 @@ export async function POST(
         entitlement?.status === "active" &&
         entitlement.latest_payment_id === payment.id
       ) {
-        const plan = getPlan(payment.plan_id);
-        if (plan) {
-          await awardReferralCommission(payment, orderId, plan.id);
-        }
+        await awardReferralCommission(payment, orderId, plan.id);
         await markWebhookEventProcessed(admin, eventId);
         claimedEventId = null;
         return Response.json({
@@ -434,17 +439,6 @@ export async function POST(
           already_processed: true,
           entitlement_granted: true,
         });
-      }
-
-      const plan = getPlan(payment.plan_id);
-
-      if (!plan) {
-        logger.error(
-          "Paid payment references unknown plan:",
-          payment.plan_id
-        );
-
-        throw new Error("plan_not_found");
       }
 
       await grantEntitlement({
@@ -475,7 +469,7 @@ export async function POST(
       error: paymentUpdateError,
     } = await admin
       .from("payments")
-      .update(buildPaymentSyncUpdate({ event, payment, eventId, status: "paid" }))
+      .update(buildPaymentSyncUpdate({ event, payment, eventId, orderId, status: "paid" }))
       .eq("id", payment.id)
       .eq("status", "pending")
       .select("*")
@@ -487,33 +481,34 @@ export async function POST(
         paymentUpdateError
       );
 
-      return Response.json(
-        { ok: false, error: "payment_update_failed" },
-        { status: 500 }
-      );
+      throw new Error("payment_update_failed");
     }
 
     if (!updatedPayment) {
-      await markWebhookEventProcessed(admin, eventId);
-      claimedEventId = null;
-      return Response.json({
-        ok: true,
-        already_processed: true,
-      });
-    }
+      // Payment might have been marked paid concurrently
+      const { data: currentPayment } = await admin
+        .from("payments")
+        .select("status")
+        .eq("id", payment.id)
+        .maybeSingle();
 
-    const plan = getPlan(payment.plan_id);
-
-    if (!plan) {
-      logger.error(
-        "Paid payment references unknown plan:",
-        payment.plan_id
-      );
-
-      return Response.json(
-        { ok: false, error: "plan_not_found" },
-        { status: 500 }
-      );
+      if (currentPayment?.status === "paid") {
+        await grantEntitlement({
+          uid: payment.uid,
+          planId: plan.id,
+          source: "uropay",
+          paymentId: payment.id,
+          orderId,
+        });
+        await awardReferralCommission(payment, orderId, plan.id);
+        await markWebhookEventProcessed(admin, eventId);
+        claimedEventId = null;
+        return Response.json({
+          ok: true,
+          already_processed: true,
+          entitlement_granted: true,
+        });
+      }
     }
 
     await grantEntitlement({
@@ -541,7 +536,17 @@ export async function POST(
     });
   } catch (error) {
     if (claimedEventId) {
-      await supabaseAdmin().from("webhook_events").delete().eq("event_id", claimedEventId);
+      try {
+        await supabaseAdmin()
+          .from("webhook_events")
+          .update({
+            status: "failed",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("event_id", claimedEventId);
+      } catch (cleanupError) {
+        logger.error("Failed to mark webhook event as failed:", cleanupError);
+      }
     }
     logger.error(
       "UroPay webhook processing error:",
@@ -553,6 +558,110 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+const LEASE_DURATION_MS = 30_000;
+
+type WebhookClaimResult =
+  | { type: "claimed" }
+  | { type: "already_processed" }
+  | { type: "in_flight" };
+
+/**
+ * Atomically claims a webhook event in the database.
+ * 
+ * Correctly distinguishes:
+ * - 'claimed': Fresh claim or safe recovery of an incomplete/failed claim
+ * - 'already_processed': Previously completed event (status: 'processed')
+ * - 'in_flight': Currently being processed by another active delivery (< 30s lease)
+ */
+async function claimWebhookEvent(
+  admin: ReturnType<typeof supabaseAdmin>,
+  eventId: string,
+  tenantOrderRef: string,
+  orderId: string
+): Promise<WebhookClaimResult> {
+  const nowIso = new Date().toISOString();
+  const { error: insertError } = await admin.from("webhook_events").insert({
+    event_id: eventId,
+    event: "uropay",
+    status: "processing",
+    order_ref: tenantOrderRef,
+    uropay_order_id: orderId,
+    received_at: nowIso,
+    updated_at: nowIso,
+  });
+
+  if (!insertError) {
+    return { type: "claimed" };
+  }
+
+  if (insertError.code !== "23505") {
+    throw insertError;
+  }
+
+  // 23505 Unique collision: inspect existing row status
+  const { data: existing, error: fetchError } = await admin
+    .from("webhook_events")
+    .select("status, updated_at")
+    .eq("event_id", eventId)
+    .maybeSingle();
+
+  if (fetchError || !existing) {
+    throw fetchError || new Error("Failed to check existing webhook event.");
+  }
+
+  // Only acknowledged as processed if status is genuinely "processed"
+  if (existing.status === "processed") {
+    return { type: "already_processed" };
+  }
+
+  const updatedAtMs = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
+  const leaseActive = Date.now() - updatedAtMs < LEASE_DURATION_MS;
+
+  if (existing.status === "processing" && leaseActive) {
+    // Duplicate delivery arriving while delivery A is actively processing:
+    // Wait briefly (up to 1.5s) to allow delivery A to finish cleanly
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const { data: poll } = await admin
+        .from("webhook_events")
+        .select("status")
+        .eq("event_id", eventId)
+        .maybeSingle();
+
+      if (poll?.status === "processed") {
+        return { type: "already_processed" };
+      }
+      if (poll?.status === "failed") {
+        break; // First delivery failed, we can reclaim immediately
+      }
+    }
+    // Still in flight: do NOT acknowledge as processed! Return retryable in_flight
+    return { type: "in_flight" };
+  }
+
+  // Safe recovery of incomplete claim (status === 'failed' or expired lease):
+  const { data: reclaimed, error: reclaimError } = await admin
+    .from("webhook_events")
+    .update({
+      status: "processing",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("event_id", eventId)
+    .eq("status", existing.status)
+    .select("event_id")
+    .maybeSingle();
+
+  if (reclaimError) {
+    throw reclaimError;
+  }
+
+  if (reclaimed) {
+    return { type: "claimed" };
+  }
+
+  return { type: "in_flight" };
 }
 
 /** Marks a claimed UroPay webhook event as processed. */

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
+import { isStateChanging, isExemptMachineRoute, isSafeOrigin } from "@/lib/server/csrf";
 
 /** Build the Content-Security-Policy header value binding scripts to the request nonce. */
 function buildContentSecurityPolicy(nonce: string) {
@@ -20,22 +21,6 @@ function buildContentSecurityPolicy(nonce: string) {
   ].join("; ");
 }
 
-/** Check whether an HTTP method can change state and needs CSRF origin verification. */
-function isStateChanging(method: string) {
-  return ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
-}
-
-/** Verify a request Origin matches the app origin, allowing missing origins. */
-function isSafeOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true; // server-to-server requests commonly omit Origin
-  try {
-    return new URL(origin).origin === request.nextUrl.origin;
-  } catch {
-    return false;
-  }
-}
-
 /** Enforce HTTPS, CSRF origin checks, and security headers while refreshing the auth session. */
 export async function proxy(request: NextRequest) {
   // Explicitly force HTTPS at the application edge. Local development is
@@ -51,7 +36,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  if (isStateChanging(request.method) && !isSafeOrigin(request)) {
+  // Reject state-changing requests with absent, malformed, or foreign origins.
+  // Machine-to-machine routes (e.g. webhooks) are explicitly exempted and authenticate independently.
+  if (
+    isStateChanging(request.method) &&
+    !isExemptMachineRoute(request.nextUrl.pathname) &&
+    !isSafeOrigin(request)
+  ) {
     return NextResponse.json(
       { error: "Cross-site request blocked.", code: "csrf_origin_mismatch" },
       { status: 403 }

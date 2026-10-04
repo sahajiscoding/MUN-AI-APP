@@ -267,7 +267,9 @@ export function getRotatingStarters(mode: MuniToolMode, count = 3): string[] {
   const total = countStarterCombinations(mode);
   const picked = new Set<number>();
   while (picked.size < Math.min(count, total)) {
-    picked.add(Math.floor(Math.random() * total));
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    picked.add(array[0] % total);
   }
   return [...picked].map((index) => {
     const topic = Math.floor(index / (banks.verbs.length * banks.objects.length));

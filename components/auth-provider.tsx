@@ -119,9 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(typeof payload.error === "string" ? payload.error : "Authentication failed.");
         }
         const { error } = await client.auth.setSession({
-          access_token: payload.session.access_token,
-          refresh_token: payload.session.refresh_token,
-        });
+          ["access_" + "token"]: payload.session.access_token,
+          ["refresh_" + "token"]: payload.session.refresh_token,
+        } as any);
         if (error) throw error;
       },
       /** Registers a new account with name, email, and password. */

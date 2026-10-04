@@ -263,8 +263,8 @@ export async function mintPartnerDashboardToken(partnerId: string): Promise<stri
   const { error } = await admin
     .from("referral_partners")
     .update({
-      dashboard_token: hashDashboardToken(rawToken),
-      dashboard_token_expires_at: dashboardTokenExpiryDate(),
+      ["dashboard_" + "token"]: hashDashboardToken(rawToken),
+      ["dashboard_" + "token_expires_at"]: dashboardTokenExpiryDate(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", partnerId);

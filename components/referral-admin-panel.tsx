@@ -161,7 +161,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(adminResourcePath("partners", partner.id), {
+      const response = await fetch(`/api/admin/referrals/partners/${encodeURIComponent(partner.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -196,7 +196,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(adminResourcePath("partners", partner.id, "/dashboard-link"), {
+      const response = await fetch(`/api/admin/referrals/partners/${encodeURIComponent(partner.id)}/dashboard-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -245,7 +245,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(adminResourcePath("applications", application.id), { method: "DELETE" });
+      const response = await fetch(`/api/admin/referrals/applications/${encodeURIComponent(application.id)}`, { method: "DELETE" });
       const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not dismiss the application.");
       setApplications((current) => current.filter((item) => item.id !== application.id));
@@ -263,7 +263,7 @@ export function ReferralAdminPanel() {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(adminResourcePath("commissions", commission.id, "/pay"), { method: "POST" });
+      const response = await fetch(`/api/admin/referrals/commissions/${encodeURIComponent(commission.id)}/pay`, { method: "POST" });
       const body = (await readJsonResponse<{ error?: string }>(response)) ?? {};
       if (!response.ok) throw new Error(body.error || "Could not mark commission as paid.");
       setMessage("Commission marked as paid. No automatic transfer was made.");

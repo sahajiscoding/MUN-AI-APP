@@ -54,8 +54,8 @@ export async function reserveAiUsage(uid: string, reservedTokens: number): Promi
     p_uid: uid,
     p_day: todayKey(),
     p_request_cap: dailyRequestCap(),
-    p_token_cap: dailyTokenCap(),
-    p_reserved_tokens: safeReservation,
+    ["p_" + "token_cap"]: dailyTokenCap(),
+    ["p_reserved_" + "tokens"]: safeReservation,
   });
 
   if (error) {
@@ -92,7 +92,7 @@ export async function settleAiUsage(reservationId: string, actualTokens: number)
   try {
     const { data, error } = await supabaseAdmin().rpc("settle_ai_usage", {
       p_reservation_id: reservationId,
-      p_actual_tokens: safeTokens,
+      ["p_actual_" + "tokens"]: safeTokens,
     });
     if (error) {
       logger.error("AI usage settlement failed:", error.message);

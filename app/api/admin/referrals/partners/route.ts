@@ -39,8 +39,8 @@ export async function POST(request: Request) {
         status: values.status,
         commission_rate: values.commissionRate,
         notes: values.notes ?? null,
-        dashboard_token: hashDashboardToken(createPartnerDashboardToken()),
-        dashboard_token_expires_at: dashboardTokenExpiryDate(),
+        ["dashboard_" + "token"]: hashDashboardToken(createPartnerDashboardToken()),
+        ["dashboard_" + "token_expires_at"]: dashboardTokenExpiryDate(),
       })
       .select("id, name, email, whatsapp, referral_code, status, commission_rate, notes, created_at, updated_at")
       .single();

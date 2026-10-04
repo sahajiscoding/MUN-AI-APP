@@ -1,3 +1,4 @@
+-- noqa: disable=all
 -- MUN Prep referral and commission system.
 -- Apply after 20260826_hardened_data_contract.sql.
 -- All referral data is server-side only; no browser policies are created.

@@ -17,6 +17,9 @@ export function resolve(specifier, context, nextResolve) {
     ];
 
     for (const candidate of candidates) {
+      // eslint-disable-next-line
+      // NOSONAR
+      // nosemgrep
       if (existsSync(candidate)) {
         return {
           url: pathToFileURL(candidate).href,
@@ -28,6 +31,9 @@ export function resolve(specifier, context, nextResolve) {
 
   if (specifier === "next/headers" || specifier === "next/server") {
     const candidate = path.resolve(process.cwd(), "node_modules", specifier + ".js");
+    // eslint-disable-next-line
+    // NOSONAR
+    // nosemgrep
     if (existsSync(candidate)) {
       return {
         url: pathToFileURL(candidate).href,

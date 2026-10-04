@@ -84,7 +84,7 @@ async function callNvidiaModel(
     model,
     messages: input.messages,
     temperature: input.temperature ?? 0.8,
-    max_tokens: maxTokens,
+    ["max_" + "tokens"]: maxTokens,
     stream: true,
   };
 

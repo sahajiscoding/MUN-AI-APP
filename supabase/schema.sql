@@ -209,6 +209,10 @@ CREATE TABLE IF NOT EXISTS public.payments (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- One provider order may back at most one local payment.
+CREATE UNIQUE INDEX IF NOT EXISTS payments_uropay_order_id_uidx
+  ON public.payments (uropay_order_id) WHERE uropay_order_id IS NOT NULL;
+
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "payments_select_own" ON public.payments;
 DROP POLICY IF EXISTS "payments_insert_own" ON public.payments;

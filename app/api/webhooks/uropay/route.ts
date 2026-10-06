@@ -15,6 +15,9 @@ import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
+/** Local states a provider-confirmed PAID order may move to "paid". */
+const PAYABLE_LOCAL_STATUSES = ["pending", "expired", "failed"];
+
 type UroPayWebhookEvent = {
   eventId?: string;
   orderId?: string;
@@ -358,7 +361,102 @@ export async function POST(
     claimedEventId = eventId;
 
     // --------------------------------------------------
-    // NON-PAID EVENTS
+    // REFUNDED / REVERSED EVENTS
+    // --------------------------------------------------
+
+    if (authoritativeStatus === "refunded") {
+      const { error: updateError } = await admin
+        .from("payments")
+        .update(buildPaymentSyncUpdate({ event, payment, eventId, orderId, status: "refunded" }))
+        .eq("id", payment.id)
+        .in("status", ["paid", "pending", "failed", "expired"]);
+
+      if (updateError) {
+        logger.error(
+          "Failed to update refunded payment:",
+          updateError
+        );
+
+        throw new Error("payment_update_failed");
+      }
+
+      // 1. Revoke entitlement if granted by this payment
+      const { data: entitlement } = await admin
+        .from("entitlements")
+        .select("uid, status, latest_payment_id")
+        .eq("uid", payment.uid)
+        .maybeSingle();
+
+      if (
+        entitlement &&
+        entitlement.status === "active" &&
+        entitlement.latest_payment_id === payment.id
+      ) {
+        const nowIso = new Date().toISOString();
+        const { error: revokeError } = await admin
+          .from("entitlements")
+          .update({
+            status: "expired",
+            expires_at: nowIso,
+            updated_at: nowIso,
+          })
+          .eq("uid", payment.uid);
+
+        if (revokeError) {
+          logger.error("Failed to revoke entitlement on refund:", revokeError);
+        } else {
+          logger.info("Revoked entitlement due to refund/reversal", {
+            uid: payment.uid,
+            paymentId: payment.id,
+          });
+        }
+      }
+
+      // 2. Void any unpaid referral commission
+      const { data: cancelledCommission } = await admin
+        .from("referral_commissions")
+        .update({
+          status: "cancelled",
+          notes: "Cancelled due to payment refund/reversal",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("payment_id", payment.id)
+        .eq("status", "unpaid")
+        .select("id")
+        .maybeSingle();
+
+      if (cancelledCommission) {
+        logger.info("Cancelled unpaid referral commission due to refund", {
+          commissionId: cancelledCommission.id,
+          paymentId: payment.id,
+        });
+      } else {
+        const { data: paidCommission } = await admin
+          .from("referral_commissions")
+          .select("id, status")
+          .eq("payment_id", payment.id)
+          .eq("status", "paid")
+          .maybeSingle();
+
+        if (paidCommission) {
+          logger.error("ALERT: Refund on payment with already-paid referral commission:", {
+            commissionId: paidCommission.id,
+            paymentId: payment.id,
+          });
+        }
+      }
+
+      await markWebhookEventProcessed(admin, eventId);
+      claimedEventId = null;
+      return Response.json({
+        ok: true,
+        status: "refunded",
+        entitlement_revoked: true,
+      });
+    }
+
+    // --------------------------------------------------
+    // OTHER NON-PAID EVENTS (pending, failed, expired)
     // --------------------------------------------------
 
     if (authoritativeStatus !== "paid") {
@@ -462,7 +560,18 @@ export async function POST(
 
     // --------------------------------------------------
     // First successful PAID processing.
+    //
+    // UroPay is authoritative: a PAID order also upgrades a payment that was
+    // locally marked expired/failed (e.g. a late UPI settlement). Otherwise
+    // the customer is charged but never receives access.
     // --------------------------------------------------
+
+    if (payment.status !== "pending") {
+      logger.warn("Late payment recovery: provider confirmed PAID for non-pending payment.", {
+        paymentId: payment.id,
+        previousStatus: payment.status,
+      });
+    }
 
     const {
       data: updatedPayment,
@@ -471,7 +580,7 @@ export async function POST(
       .from("payments")
       .update(buildPaymentSyncUpdate({ event, payment, eventId, orderId, status: "paid" }))
       .eq("id", payment.id)
-      .eq("status", "pending")
+      .in("status", PAYABLE_LOCAL_STATUSES)
       .select("*")
       .maybeSingle();
 
@@ -509,6 +618,9 @@ export async function POST(
           entitlement_granted: true,
         });
       }
+
+      // Unknown local state: never fall through to a grant the DB will reject.
+      throw new Error(`payment_not_payable: ${currentPayment?.status ?? "missing"}`);
     }
 
     await grantEntitlement({

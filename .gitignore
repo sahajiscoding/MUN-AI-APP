@@ -206,6 +206,8 @@ config/jwt/*.pem
 *.db-journal
 *.db-wal
 *.sql
+# Database schema + migrations are source code and must always be committed.
+!supabase/**/*.sql
 *.dump
 /data/
 /db/

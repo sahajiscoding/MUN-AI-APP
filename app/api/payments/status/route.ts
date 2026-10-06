@@ -33,7 +33,9 @@ export async function GET(request: Request) {
     // Each poll can hit UroPay's authoritative endpoint plus DB repair
     // writes. Without a throttle one authenticated user can burn upstream
     // quota and write load at will; the checkout page polls this route.
-    if (!(await checkRateLimit(`payment-status:${user.uid}`, 10, 5 * 60_000))) {
+    // Sized above the checkout page's poll cadence (~22 polls / 5 min) so a
+    // paying customer is never locked out while a slow webhook lands.
+    if (!(await checkRateLimit(`payment-status:${user.uid}`, 30, 5 * 60_000))) {
       throw new ApiError(
         429,
         "rate_limited",
@@ -97,10 +99,12 @@ export async function GET(request: Request) {
     }
 
     let status = normalizeStatus(payment.status) ?? "pending";
+    const localStatus = status;
 
     // Handle order-created-but-not-linked state: if uropay_order_id was not
-    // persisted at checkout, reconcile via merchant order reference.
-    if (!payment.uropay_order_id && (status === "pending" || status === "paid")) {
+    // persisted at checkout, reconcile via merchant order reference. Done for
+    // expired/failed rows too, so a late payment can still be recovered.
+    if (!payment.uropay_order_id) {
       logger.warn("Reconciling unlinked provider order in status check:", {
         orderRef: payment.order_ref,
         paymentId: payment.id,
@@ -144,11 +148,9 @@ export async function GET(request: Request) {
     // order GET endpoint as the authoritative source of truth. If the
     // webhook is delayed or never arrives, reconcile the order here.
     // This is what prevents a genuinely PAID order from remaining
-    // stuck forever as pending in our database.
-    if (
-      payment.uropay_order_id &&
-      (status === "pending" || status === "paid")
-    ) {
+    // stuck forever as pending in our database. Expired/failed rows are
+    // re-checked too, so a late settlement still grants access.
+    if (payment.uropay_order_id) {
       try {
         const authoritativeOrder = await getOrderStatus(
           payment.uropay_order_id
@@ -175,25 +177,28 @@ export async function GET(request: Request) {
             }
           );
 
-          throw new ApiError(
-            409,
-            binding.error,
-            "The payment details could not be verified with the payment provider."
-          );
-        }
-
-        status = binding.status;
-
-        if (status !== "pending") {
-          const { error: updateError } = await admin
+          // A row already closed as expired/failed just keeps that state.
+          if (localStatus === "pending" || localStatus === "paid") {
+            throw new ApiError(
+              409,
+              binding.error,
+              "The payment details could not be verified with the payment provider."
+            );
+          }
+        } else if (binding.status === "paid" && localStatus !== "paid") {
+          // Compare-and-set: pending/expired/failed -> paid only.
+          const { data: promoted, error: updateError } = await admin
             .from("payments")
             .update({
-              status,
+              status: "paid",
               uropay_order_id: payment.uropay_order_id,
               updated_at: new Date().toISOString(),
             })
             .eq("id", payment.id)
-            .eq("uid", user.uid);
+            .eq("uid", user.uid)
+            .in("status", ["pending", "expired", "failed"])
+            .select("status")
+            .maybeSingle();
 
           if (updateError) {
             logger.error(
@@ -207,9 +212,102 @@ export async function GET(request: Request) {
               "The payment was confirmed, but we could not update your payment record yet."
             );
           }
+
+          if (localStatus !== "pending") {
+            logger.warn("Late payment recovery via status check:", {
+              paymentId: payment.id,
+              previousStatus: localStatus,
+            });
+          }
+
+          if (promoted) {
+            status = "paid";
+          } else {
+            // Lost a race (e.g. with the webhook): use the stored state.
+            const { data: current } = await admin
+              .from("payments")
+              .select("status")
+              .eq("id", payment.id)
+              .eq("uid", user.uid)
+              .maybeSingle();
+            status = normalizeStatus(current?.status) ?? localStatus;
+          }
+        } else if (binding.status === "refunded") {
+          const { error: updateError } = await admin
+            .from("payments")
+            .update({
+              status: "refunded",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", payment.id)
+            .eq("uid", user.uid);
+
+          if (!updateError) {
+            status = "refunded";
+            logger.info("Payment reconciled to refunded status via status check:", {
+              paymentId: payment.id,
+            });
+
+            // Revoke entitlement if granted by this payment
+            const { data: entitlement } = await admin
+              .from("entitlements")
+              .select("uid, status, latest_payment_id")
+              .eq("uid", user.uid)
+              .maybeSingle();
+
+            if (entitlement?.status === "active" && entitlement.latest_payment_id === payment.id) {
+              const nowIso = new Date().toISOString();
+              await admin
+                .from("entitlements")
+                .update({
+                  status: "expired",
+                  expires_at: nowIso,
+                  updated_at: nowIso,
+                })
+                .eq("uid", user.uid);
+            }
+
+            // Cancel unpaid referral commission
+            await admin
+              .from("referral_commissions")
+              .update({
+                status: "cancelled",
+                notes: "Cancelled due to payment refund",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("payment_id", payment.id)
+              .eq("status", "unpaid");
+          }
+        } else if (binding.status !== "paid" && localStatus === "paid") {
+          // Never downgrade a paid row from a poll. A paid order that the
+          // provider now reports otherwise is a possible reversal and
+          // needs manual review, not a silent overwrite.
+          logger.error("ALERT: Paid payment unexpectedly reported as non-paid by provider:", {
+            paymentId: payment.id,
+            providerStatus: binding.status,
+          });
+          status = "paid";
+        } else if (
+          (binding.status === "failed" || binding.status === "expired") &&
+          localStatus === "pending"
+        ) {
+          const { error: updateError } = await admin
+            .from("payments")
+            .update({
+              status: binding.status,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", payment.id)
+            .eq("uid", user.uid)
+            .eq("status", "pending");
+
+          if (updateError) {
+            logger.error("Failed to record terminal payment status:", updateError);
+          }
+          status = binding.status;
         }
       } catch (error) {
-        // Preserve an already-known paid state, but don't invent success
+        // Preserve an already-known local state, but don't invent success
         // when UroPay cannot be queried. For a pending payment, a temporary
         // UroPay/API failure simply means the page should keep checking.
         if (error instanceof ApiError) {
@@ -221,7 +319,8 @@ export async function GET(request: Request) {
           error
         );
 
-        if (status !== "paid") {
+        status = localStatus;
+        if (localStatus === "pending") {
           return Response.json({
             ok: true,
             status: "pending",
@@ -359,6 +458,16 @@ export async function GET(request: Request) {
         ok: true,
         status: "expired",
         reason: "payment_expired",
+        orderRef: payment.order_ref,
+        planId: payment.plan_id,
+      });
+    }
+
+    if (status === "refunded") {
+      return Response.json({
+        ok: true,
+        status: "refunded",
+        reason: "payment_refunded",
         orderRef: payment.order_ref,
         planId: payment.plan_id,
       });

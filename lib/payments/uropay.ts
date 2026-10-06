@@ -365,21 +365,34 @@ export async function getOrderByTenantRef(
   const data = json?.data;
   if (!data) return null;
 
-  if (Array.isArray(data)) {
+  // Fail closed: only an order whose merchant reference exactly matches is
+  // ever returned. Never fall back to an arbitrary list entry — if the
+  // provider ignored the filter, data[0] could be another customer's order.
+  const matchesRef = (o: unknown) => {
+    if (!o || typeof o !== "object") return false;
+    const order = o as Record<string, unknown>;
     return (
-      data.find(
-        (o) =>
-          o?.tenantOrderRef === tenantOrderRef ||
-          o?.merchantOrderRef === tenantOrderRef ||
-          o?.orderRef === tenantOrderRef
-      ) ?? data[0] ?? null
+      order.tenantOrderRef === tenantOrderRef ||
+      order.merchantOrderRef === tenantOrderRef ||
+      order.orderRef === tenantOrderRef
     );
+  };
+
+  if (Array.isArray(data)) {
+    const matches = data.filter(matchesRef);
+    if (matches.length !== 1) {
+      if (matches.length > 1) {
+        logger.error("UroPay returned multiple orders for one tenantOrderRef; refusing to bind.");
+      }
+      return null;
+    }
+    return matches[0];
   }
 
-  return data;
+  return matchesRef(data) ? data : null;
 }
 
-export type NormalizedPaymentStatus = "paid" | "failed" | "expired" | "pending";
+export type NormalizedPaymentStatus = "paid" | "failed" | "expired" | "pending" | "refunded";
 
 /** Normalizes a payment status string from webhook or authoritative order. */
 export function normalizeStatus(
@@ -394,6 +407,11 @@ export function normalizeStatus(
   switch (status) {
     case "PAID":
       return "paid";
+    case "REFUNDED":
+    case "REFUND":
+    case "REVERSED":
+    case "CHARGEBACK":
+      return "refunded";
     case "FAILED":
       return "failed";
     case "EXPIRED":
@@ -470,17 +488,25 @@ export function validateAuthoritativeOrderBinding(
     };
   }
 
-  // 2. Provider Order ID binding
+  // 2. Provider Order ID binding — fail closed: when an ID is expected, the
+  // authoritative order must carry that exact ID (a missing ID is a mismatch).
   const authOrderId = typeof order.id === "string" ? order.id.trim() : "";
   const expectedOrderId = (expected.uropayOrderId || receivedOrderId || "").trim();
-  if (expectedOrderId && authOrderId && authOrderId !== expectedOrderId) {
+  if (expectedOrderId && authOrderId !== expectedOrderId) {
     return {
       valid: false,
       error: "order_id_mismatch",
-      detail: { expected: expectedOrderId, authoritative: authOrderId },
+      detail: { expected: expectedOrderId, authoritative: authOrderId || null },
     };
   }
   const resolvedOrderId = authOrderId || expectedOrderId;
+  if (!resolvedOrderId) {
+    return {
+      valid: false,
+      error: "order_id_mismatch",
+      detail: { expected: null, authoritative: null },
+    };
+  }
 
   // 3. Merchant order reference binding
   const authMerchantRef =
@@ -489,11 +515,17 @@ export function validateAuthoritativeOrderBinding(
     (typeof order.orderRef === "string" && order.orderRef.trim()) ||
     "";
 
-  if (authMerchantRef && expected.orderRef && authMerchantRef !== expected.orderRef) {
+  // Without a stored provider order ID, the merchant reference is the ONLY
+  // thing tying this provider order to our local payment, so it is mandatory.
+  const hasTrustedStoredOrderId = Boolean(expected.uropayOrderId?.trim());
+  if (
+    (!hasTrustedStoredOrderId && !authMerchantRef) ||
+    (authMerchantRef && authMerchantRef !== expected.orderRef)
+  ) {
     return {
       valid: false,
       error: "order_reference_mismatch",
-      detail: { expected: expected.orderRef, authoritative: authMerchantRef },
+      detail: { expected: expected.orderRef, authoritative: authMerchantRef || null },
     };
   }
 

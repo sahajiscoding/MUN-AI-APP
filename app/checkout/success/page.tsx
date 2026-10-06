@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock3,
   XCircle,
+  AlertCircle,
   Loader2,
   RefreshCw,
 } from "lucide-react";
@@ -30,6 +31,7 @@ type PaymentStatus =
   | "paid"
   | "failed"
   | "expired"
+  | "refunded"
   | "error";
 
 type PaymentResponse = {
@@ -125,6 +127,22 @@ export default function CheckoutSuccessPage() {
           return;
         }
 
+        // Throttled: transient, so back off and keep polling rather than
+        // telling a paying customer the check failed.
+        if (response.status === 429) {
+          attemptsRef.current += 1;
+          if (attemptsRef.current >= MAX_ATTEMPTS) {
+            setPollTimedOut(true);
+            return;
+          }
+          const retryAfterSeconds = Number(response.headers.get("Retry-After"));
+          const delay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? Math.min(retryAfterSeconds * 1000, 60_000)
+            : 30_000;
+          timer = setTimeout(checkPayment, delay);
+          return;
+        }
+
         if (!response.ok || !data.ok) {
           throw new Error(data.error || "Unable to check payment status.");
         }
@@ -139,6 +157,10 @@ export default function CheckoutSuccessPage() {
         }
         if (data.status === "expired") {
           setPaymentStatus("expired");
+          return;
+        }
+        if (data.status === "refunded") {
+          setPaymentStatus("refunded");
           return;
         }
 
@@ -305,6 +327,51 @@ export default function CheckoutSuccessPage() {
           >
             Try again
           </Link>
+        </section>
+      </ProtectedAppShell>
+    );
+  }
+
+  // --------------------------------------------------
+  // REFUNDED
+  // --------------------------------------------------
+
+  if (
+    paymentStatus ===
+    "refunded"
+  ) {
+    return (
+      <ProtectedAppShell>
+        <StatementDescriptorNotice />
+        <section className="surface mx-auto max-w-2xl rounded-panel p-6 text-center sm:p-8">
+          <AlertCircle
+            className="mx-auto h-12 w-12 text-[var(--oxblood)]"
+            aria-hidden="true"
+          />
+
+          <h1 className="display-type mt-5 text-4xl sm:text-5xl">
+            Payment refunded
+          </h1>
+
+          <p className="mt-4 leading-7 text-[var(--muted)]">
+            This payment was refunded or reversed. If you have questions regarding your refund, please contact support.
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              className="button-primary inline-flex items-center justify-center px-5 font-semibold"
+              href="/pricing"
+            >
+              View plans
+            </Link>
+
+            <Link
+              className="button-secondary inline-flex items-center justify-center px-5 font-semibold"
+              href="/support"
+            >
+              Contact support
+            </Link>
+          </div>
         </section>
       </ProtectedAppShell>
     );

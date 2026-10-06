@@ -5,6 +5,7 @@ import {
   verifyWebhookSignature,
   validateAuthoritativeOrderBinding,
   normalizeStatus,
+  getOrderByTenantRef,
 } from "@/lib/payments/uropay";
 
 describe("Payment Hardening & Webhook Lifecycle Security", () => {
@@ -397,4 +398,175 @@ describe("Payment Hardening & Webhook Lifecycle Security", () => {
       }
     });
   });
+
+  // =========================================================================
+  // Audit P1: binding and tenant-ref lookup must fail CLOSED
+  // =========================================================================
+  describe("Audit P1: fail-closed order binding", () => {
+    const unlinked = {
+      orderRef: "MUN-victim-order",
+      amountPaise: 19900,
+      uropayOrderId: null,
+      currency: "INR",
+      environment: "production",
+    };
+
+    it("rejects an unlinked payment when the provider order has no merchant reference", () => {
+      const orderWithoutRef = {
+        id: "uro_ord_someone_else",
+        amount: 199,
+        currency: "INR",
+        environment: "production",
+        status: "PAID",
+      };
+
+      const result = validateAuthoritativeOrderBinding(orderWithoutRef, unlinked);
+      assert.equal(result.valid, false);
+      if (!result.valid) {
+        assert.equal(result.error, "order_reference_mismatch");
+      }
+    });
+
+    it("rejects when an order ID is expected but the provider order omits it", () => {
+      const orderWithoutId = {
+        tenantOrderRef: "MUN-order-uuid-1",
+        amount: 199,
+        currency: "INR",
+        environment: "production",
+        status: "PAID",
+      };
+
+      const result = validateAuthoritativeOrderBinding(orderWithoutId, {
+        orderRef: "MUN-order-uuid-1",
+        amountPaise: 19900,
+        uropayOrderId: "uro_ord_100",
+      });
+      assert.equal(result.valid, false);
+      if (!result.valid) {
+        assert.equal(result.error, "order_id_mismatch");
+      }
+    });
+
+    it("still binds a linked order that omits the merchant reference (ID is trusted)", () => {
+      const result = validateAuthoritativeOrderBinding(
+        { id: "uro_ord_100", amount: 199, currency: "INR", status: "PAID" },
+        { orderRef: "MUN-order-uuid-1", amountPaise: 19900, uropayOrderId: "uro_ord_100" }
+      );
+      assert.equal(result.valid, true);
+    });
+
+    describe("getOrderByTenantRef", () => {
+      const originalFetch = globalThis.fetch;
+      const originalKey = process.env.UROPAY_API_KEY;
+      const originalSecret = process.env.UROPAY_API_SECRET;
+
+      beforeEach(() => {
+        process.env.UROPAY_API_KEY = "test-key";
+        process.env.UROPAY_API_SECRET = "test-secret";
+      });
+
+      afterEach(() => {
+        globalThis.fetch = originalFetch;
+        process.env.UROPAY_API_KEY = originalKey;
+        process.env.UROPAY_API_SECRET = originalSecret;
+      });
+
+      function mockList(data: unknown) {
+        globalThis.fetch = (async () =>
+          new Response(JSON.stringify({ data }), { status: 200 })) as typeof fetch;
+      }
+
+      it("never falls back to an arbitrary order when the filter is ignored", async () => {
+        mockList([
+          { id: "uro_other_1", tenantOrderRef: "MUN-someone-else", amount: 199, status: "PAID" },
+          { id: "uro_other_2", amount: 199, status: "PAID" },
+        ]);
+        assert.equal(await getOrderByTenantRef("MUN-victim-order"), null);
+      });
+
+      it("returns only the exactly matching order", async () => {
+        mockList([
+          { id: "uro_other_1", tenantOrderRef: "MUN-someone-else", amount: 199, status: "PAID" },
+          { id: "uro_mine", tenantOrderRef: "MUN-victim-order", amount: 199, status: "PENDING" },
+        ]);
+        const order = (await getOrderByTenantRef("MUN-victim-order")) as { id: string } | null;
+        assert.equal(order?.id, "uro_mine");
+      });
+
+      it("refuses to bind when multiple orders claim the same reference", async () => {
+        mockList([
+          { id: "uro_a", tenantOrderRef: "MUN-victim-order", amount: 199, status: "PAID" },
+          { id: "uro_b", tenantOrderRef: "MUN-victim-order", amount: 199, status: "PAID" },
+        ]);
+        assert.equal(await getOrderByTenantRef("MUN-victim-order"), null);
+      });
+
+      it("rejects a single-object response with a different reference", async () => {
+        mockList({ id: "uro_other", tenantOrderRef: "MUN-someone-else", amount: 199, status: "PAID" });
+        assert.equal(await getOrderByTenantRef("MUN-victim-order"), null);
+      });
+    });
+  });
+
+  // =========================================================================
+  // Audit P3: Refund and Chargeback Handling
+  // =========================================================================
+  describe("Audit P3: Refund and chargeback status handling", () => {
+    it("normalizes refund and chargeback statuses to 'refunded'", () => {
+      assert.equal(normalizeStatus("REFUNDED"), "refunded");
+      assert.equal(normalizeStatus("refunded"), "refunded");
+      assert.equal(normalizeStatus("REFUND"), "refunded");
+      assert.equal(normalizeStatus("REVERSED"), "refunded");
+      assert.equal(normalizeStatus("CHARGEBACK"), "refunded");
+      assert.equal(normalizeStatus("  refunded  "), "refunded");
+    });
+
+    it("validates authoritative binding when order status is refunded", () => {
+      const validPayment = {
+        orderRef: "MUN-refund-test-1",
+        amountPaise: 19900,
+        uropayOrderId: "uro_ord_refund_100",
+        currency: "INR",
+        environment: "production",
+      };
+
+      const refundedOrder = {
+        id: "uro_ord_refund_100",
+        tenantOrderRef: "MUN-refund-test-1",
+        amount: 199,
+        currency: "INR",
+        environment: "production",
+        status: "REFUNDED",
+      };
+
+      const result = validateAuthoritativeOrderBinding(refundedOrder, validPayment);
+      assert.equal(result.valid, true);
+      if (result.valid) {
+        assert.equal(result.status, "refunded");
+        assert.equal(result.orderId, "uro_ord_refund_100");
+        assert.equal(result.orderRef, "MUN-refund-test-1");
+      }
+    });
+
+    it("accepts signed webhook event with REFUNDED status", () => {
+      const body = JSON.stringify({
+        eventId: "evt_refund_1",
+        orderId: "uro_ord_refund_100",
+        tenantOrderRef: "MUN-refund-test-1",
+        status: "REFUNDED",
+      });
+      const now = String(Math.floor(Date.now() / 1000));
+      const nonce = "nonce_ref_123";
+
+      const canonical = ["POST", "/tenant-webhook", now, nonce, "", body].join("\n");
+      const sig = createHmac("sha256", secret).update(canonical).digest("hex");
+
+      const valid = verifyWebhookSignature(
+        { "x-timestamp": now, "x-nonce": nonce, "x-signature": sig },
+        body
+      );
+      assert.equal(valid, true);
+    });
+  });
 });
+

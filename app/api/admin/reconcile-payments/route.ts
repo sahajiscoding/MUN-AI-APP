@@ -22,26 +22,27 @@ function privateJson(body: unknown, status = 200, extraHeaders?: Record<string, 
 
 /** POST /api/admin/reconcile-payments — repairs paid payments missing entitlements. */
 export async function POST(request: Request) {
-  // Authenticate first, throttle second. The previous order (IP bucket before
-  // auth) let unauthenticated requests burn the owner's bucket (self-DoS
-  // behind shared NAT) while IP rotation bypassed the throttle entirely.
-  // The bucket is keyed by the verified owner identity, with a looser
-  // per-IP bucket retained as a second layer.
-  const admin = await requireAdminOwner();
-
-  const ip = getClientIp(request);
-  if (
-    !(await checkRateLimit(`admin-reconcile:${admin.uid}`, 5, 60_000, { failClosed: true })) ||
-    !(await checkRateLimit(`admin-reconcile-ip:${ip}`, 10, 60_000, { failClosed: true }))
-  ) {
-    return privateJson(
-      { ok: false, error: "Too many reconciliation requests. Try again later." },
-      429,
-      { "Retry-After": "60" },
-    );
-  }
-
   try {
+    // Authenticate first, throttle second. The previous order (IP bucket before
+    // auth) let unauthenticated requests burn the owner's bucket (self-DoS
+    // behind shared NAT) while IP rotation bypassed the throttle entirely.
+    // The bucket is keyed by the verified owner identity, with a looser
+    // per-IP bucket retained as a second layer. Kept inside the try so a
+    // rejected caller gets a proper 401/403 instead of an unhandled 500.
+    const admin = await requireAdminOwner();
+
+    const ip = getClientIp(request);
+    if (
+      !(await checkRateLimit(`admin-reconcile:${admin.uid}`, 5, 60_000, { failClosed: true })) ||
+      !(await checkRateLimit(`admin-reconcile-ip:${ip}`, 10, 60_000, { failClosed: true }))
+    ) {
+      return privateJson(
+        { ok: false, error: "Too many reconciliation requests. Try again later." },
+        429,
+        { "Retry-After": "60" },
+      );
+    }
+
     const results = await reconcilePaidPayments(50);
     return privateJson({
       ok: true,

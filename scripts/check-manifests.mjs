@@ -16,8 +16,8 @@
  *
  * This check is deliberately dependency-free, because the workflow that runs it
  * (dependency-audit) installs nothing. It therefore uses a small strict scanner
- * rather than a real YAML parser, and it covers the two failure classes that
- * have actually shipped here:
+ * rather than a real YAML parser, and it covers the failure classes that have
+ * actually shipped here:
  *
  *   1. duplicated mapping keys in pnpm-workspace.yaml (breaks `pnpm install`)
  *   2. leftover merge-conflict markers in either manifest (breaks every tool)
@@ -33,15 +33,10 @@
  * treats block-scalar bodies (`|`, `>`) as text. It is a tripwire for the
  * mappings this repository actually writes, not a general YAML validator.
  *
- * Run locally:  node scripts/check-manifests.mjs
+ * Run it from the repository root:  pnpm check:manifests
+ * (or directly:  node scripts/check-manifests.mjs)
  */
 import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const WORKSPACE_MANIFEST = path.join(repoRoot, "pnpm-workspace.yaml");
-const PACKAGE_MANIFEST = path.join(repoRoot, "package.json");
 
 const problems = [];
 
@@ -55,32 +50,13 @@ const CONFLICT_MARKER = /^(<{7}|={7}|>{7})(\s|$)/;
 const YAML_MAPPING =
   /^(?:([^:#'"][^:]*?)|'((?:[^']|'')*)'|"((?:[^"\\]|\\.)*)"):(?:[ \t]|$)/;
 
-function readManifest(file) {
-  try {
-    // Only the two module-level constants above are ever passed here, so the
-    // path is never attacker-controlled; the scanner just cannot prove it.
-    // Same suppression convention as scripts/test-hook.mjs.
-    // NOSONAR
-    // nosemgrep
-    return readFileSync(file, "utf8");
-  } catch (error) {
-    problems.push(`${path.relative(repoRoot, file)}: unreadable — ${error.message}`);
-    return null;
-  }
-}
-
-function relative(file) {
-  return path.relative(repoRoot, file);
-}
-
-function checkConflictMarkers(file) {
-  const source = readManifest(file);
+function checkConflictMarkers(name, source) {
   if (source === null) return;
   source.split(/\r?\n/).forEach((line, index) => {
     const trimmed = line.trim();
     if (CONFLICT_MARKER.test(trimmed)) {
       problems.push(
-        `${relative(file)}:${index + 1}: leftover merge-conflict marker "${trimmed}" — ` +
+        `${name}:${index + 1}: leftover merge-conflict marker "${trimmed}" — ` +
           `resolve the merge; this file cannot be parsed while the marker is present`
       );
     }
@@ -94,8 +70,7 @@ function checkConflictMarkers(file) {
  * indentation, so the same name is allowed in unrelated mappings (`ignore:`
  * under two different parents) and rejected only when it repeats in one.
  */
-function checkYamlDuplicateKeys(file) {
-  const source = readManifest(file);
+function checkYamlDuplicateKeys(name, source) {
   if (source === null) return;
 
   const mappings = []; // innermost last: { indent, seen: Map<key, lineNumber> }
@@ -142,7 +117,7 @@ function checkYamlDuplicateKeys(file) {
     const firstSeen = current.seen.get(key);
     if (firstSeen !== undefined) {
       problems.push(
-        `${relative(file)}:${lineNumber}: duplicated mapping key "${key}" ` +
+        `${name}:${lineNumber}: duplicated mapping key "${key}" ` +
           `(first defined on line ${firstSeen}) — pnpm exits 1 with ` +
           `"[ERROR] duplicated mapping key" and the Vercel build never starts`
       );
@@ -159,14 +134,13 @@ function checkYamlDuplicateKeys(file) {
  * Keys are recognised as string literals that are followed by `:` and preceded
  * by `{` or `,`, which is exact for input already validated by `JSON.parse`.
  */
-function checkJsonDuplicateKeys(file) {
-  const source = readManifest(file);
+function checkJsonDuplicateKeys(name, source) {
   if (source === null) return;
 
   try {
     JSON.parse(source);
   } catch (error) {
-    problems.push(`${relative(file)}: not valid JSON — ${error.message}`);
+    problems.push(`${name}: not valid JSON — ${error.message}`);
     return;
   }
 
@@ -178,8 +152,6 @@ function checkJsonDuplicateKeys(file) {
   let previousSignificant = "";
 
   for (let index = 0; index < source.length; index += 1) {
-    // charAt rather than bracket indexing: identical for in-range indices and
-    // it keeps dynamic string offsets off the object-injection report.
     const character = source.charAt(index);
 
     if (inString) {
@@ -202,7 +174,7 @@ function checkJsonDuplicateKeys(file) {
           const firstSeen = current.seen.get(key);
           if (firstSeen !== undefined) {
             problems.push(
-              `${relative(file)}:${lineAt(stringStart)}: duplicated key "${key}" in the same ` +
+              `${name}:${lineAt(stringStart)}: duplicated key "${key}" in the same ` +
                 `object (first defined on line ${firstSeen}) — the last occurrence silently ` +
                 `wins, so the file does not pin what it appears to pin`
             );
@@ -234,21 +206,47 @@ function checkJsonDuplicateKeys(file) {
   }
 }
 
-checkConflictMarkers(WORKSPACE_MANIFEST);
-checkConflictMarkers(PACKAGE_MANIFEST);
-checkYamlDuplicateKeys(WORKSPACE_MANIFEST);
-checkJsonDuplicateKeys(PACKAGE_MANIFEST);
+// Both reads below deliberately spell out a literal, repo-root-relative path
+// rather than resolving a computed file name: a manifest tripwire must not look
+// up files dynamically itself. Run this check from the repository root
+// (`pnpm check:manifests` does that for you); the error below says so if the
+// manifests cannot be found.
+let workspaceManifest = null;
+let packageManifest = null;
+
+try {
+  workspaceManifest = readFileSync("pnpm-workspace.yaml", "utf8");
+} catch (error) {
+  problems.push(
+    `pnpm-workspace.yaml: unreadable (${error.code ?? error.message}) — run this check ` +
+      `from the repository root, or use \`pnpm check:manifests\``
+  );
+}
+
+try {
+  packageManifest = readFileSync("package.json", "utf8");
+} catch (error) {
+  problems.push(
+    `package.json: unreadable (${error.code ?? error.message}) — run this check ` +
+      `from the repository root, or use \`pnpm check:manifests\``
+  );
+}
+
+checkConflictMarkers("pnpm-workspace.yaml", workspaceManifest);
+checkConflictMarkers("package.json", packageManifest);
+checkYamlDuplicateKeys("pnpm-workspace.yaml", workspaceManifest);
+checkJsonDuplicateKeys("package.json", packageManifest);
 
 if (problems.length > 0) {
   for (const problem of problems) console.error(`FAIL: ${problem}`);
   console.error(
-    `\n${problems.length} manifest problem(s). pnpm and Vercel cannot parse these files; ` +
-      `fix them before pushing (pnpm install --frozen-lockfile must succeed).`
+    `\n${problems.length} manifest problem(s) found. Fix them before pushing: the deploy ` +
+      `cannot get past \`pnpm install --frozen-lockfile\` while they stand.`
   );
   process.exit(1);
 }
 
 console.log(
-  `Manifests OK: ${relative(WORKSPACE_MANIFEST)} has no duplicated mapping keys, ` +
-    `${relative(PACKAGE_MANIFEST)} has no duplicated keys, no merge-conflict markers in either.`
+  "Manifests OK: pnpm-workspace.yaml has no duplicated mapping keys, " +
+    "package.json has no duplicated keys, no merge-conflict markers in either."
 );

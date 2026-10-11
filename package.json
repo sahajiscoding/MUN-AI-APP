@@ -37,8 +37,18 @@
     "autoprefixer": "10.5.4",
     "eslint": "9.39.1",
     "eslint-config-next": "16.3.8",
+<<<<<<< Updated upstream
     "postcss": "8.5.29",
+=======
+    "postcss": "8.5.26",
+>>>>>>> Stashed changes
     "tailwindcss": "3.4.19",
     "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "source-map-js": "1.2.2",
+      "sharp": "0.35.5"
+    }
   }
 }

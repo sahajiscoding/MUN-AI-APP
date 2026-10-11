@@ -65,6 +65,22 @@ jobs:
             exit 1
           fi
 
+      - name: Manifests parse (no duplicated keys, no merge-conflict markers)
+        run: |
+          # `pnpm install` parses pnpm-workspace.yaml before it resolves a single
+          # dependency and refuses duplicated mapping keys:
+          #   [ERROR] duplicated mapping key (21:3)   ->  exit 1
+          # Vercel installs before it builds, so one duplicated key takes the
+          # deploy down before any application code compiles. That happened once
+          # already: a branch added a `source-map-js` override, main added the
+          # same override with different comments, git auto-merged both blocks
+          # (the text differed, the meaning did not), and the Vercel build died
+          # two seconds into `pnpm install`. This step fails in one second with
+          # the offending key and line instead of three minutes into resolution.
+          # Duplicated package.json keys are checked too: JSON.parse silently
+          # keeps the last one, so no other gate in this repo would see it.
+          node scripts/check-manifests.mjs
+
       - name: Known CVE overrides present (js-yaml, source-map-js, brace-expansion, sharp, postcss-selector-parser, braces waiver)
         run: |
           grep -q "js-yaml: 4.3.2" pnpm-workspace.yaml || { echo "FAIL: js-yaml 4.3.2 override missing"; exit 1; }

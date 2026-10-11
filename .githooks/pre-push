@@ -1,0 +1,30 @@
+#!/bin/sh
+# Backstop for commits the commit-msg hook never saw: `git commit-tree`, patches
+# applied from elsewhere, tooling that writes commits directly. Everything about
+# to leave this machine is re-checked against the policy in
+# scripts/check-commit-identity.mjs.
+#
+# stdin lines: <local ref> <local sha> <remote ref> <remote sha>
+#
+# The whole branch is re-scanned rather than just the new range: a few hundred
+# commits costs well under a second, and it means a remote sha that this clone
+# does not have (a fresh clone, a force-push) can never cause a false failure.
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -f "$root/scripts/check-commit-identity.mjs" ] || exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: node is unavailable, skipping the commit identity check (CI still enforces it)" >&2
+  exit 0
+fi
+
+zero=0000000000000000000000000000000000000000
+status=0
+
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ -n "$local_sha" ] || continue
+  # A deleted ref has an all-zero sha: nothing to check.
+  [ "$local_sha" = "$zero" ] && continue
+  node "$root/scripts/check-commit-identity.mjs" --rev "$local_sha" --quiet || status=1
+done
+
+exit $status

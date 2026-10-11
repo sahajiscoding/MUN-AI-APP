@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/"],
+        allow: ["/", "/api/x402/"],
         // NOTE: the obscured admin sign-in path is intentionally NOT listed
         // here. robots.txt is public, and naming it would advertise the URL.
         // It stays hidden via auth gates (and it was never linked publicly).

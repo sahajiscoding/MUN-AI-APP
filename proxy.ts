@@ -37,10 +37,18 @@ export async function proxy(request: NextRequest) {
   }
 
   // Reject state-changing requests with absent, malformed, or foreign origins.
-  // Machine-to-machine routes (e.g. webhooks) are explicitly exempted and authenticate independently.
+  // Machine-to-machine routes (e.g. webhooks) and x402 programmatic bot requests
+  // authenticate independently via cryptographic signatures and are exempted from browser CSRF.
+  const hasX402PaymentHeader =
+    request.headers.has("payment-signature") ||
+    request.headers.has("PAYMENT-SIGNATURE") ||
+    request.headers.has("x-payment") ||
+    request.headers.has("X-PAYMENT");
+
   if (
     isStateChanging(request.method) &&
     !isExemptMachineRoute(request.nextUrl.pathname) &&
+    !hasX402PaymentHeader &&
     !isSafeOrigin(request)
   ) {
     return NextResponse.json(

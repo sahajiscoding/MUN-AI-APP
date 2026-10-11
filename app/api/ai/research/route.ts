@@ -10,6 +10,14 @@ import { accumulateUsage, consumeSSEStream, parseSSEPayload } from "@/lib/ai/sse
 import { loadChatTranscript, saveChatTranscript, type ChatTurn } from "@/lib/server/chat-storage";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { logger } from "@/lib/server/secure-logger";
+import { isBotRequest } from "@/lib/server/bot-detection";
+import {
+  processX402Request,
+  buildX402Response,
+  recordX402Payment,
+  X402_ROUTE_PRICES,
+  getX402HttpServer,
+} from "@/lib/server/x402-server";
 
 export const runtime = "nodejs";
 
@@ -72,18 +80,71 @@ type StreamPersistenceDetails = Omit<GenerationDetails, "output"> & {
 export async function POST(request: Request) {
   try {
     let uid: string;
-    try {
-      const user = await requireUser(request);
-      await assertPaidAccess(user.uid);
-      uid = user.uid;
-    } catch (error) {
-      // A regular user who lacks Premium must still receive the paywall error;
-      // only a separately verified administrator session may bypass it.
-      if (!(error instanceof ApiError) || error.status !== 401) {
-        throw error;
+    let isX402Bot = false;
+    let x402SettlementHeaders: Record<string, string> = {};
+
+    // 1. Differentiate Bot vs Human User
+    if (isBotRequest(request)) {
+      // Process through x402 payment protocol
+      const x402Result = await processX402Request(
+        request,
+        "/api/ai/research",
+        "POST"
+      );
+
+      if (x402Result.type === "payment-error") {
+        // Return 402 Payment Required with PAYMENT-REQUIRED header
+        return buildX402Response(x402Result);
       }
-      const admin = await requireAdmin();
-      uid = admin.uid;
+
+      if (x402Result.type === "payment-verified") {
+        // Settle transaction on-chain via facilitator
+        const server = await getX402HttpServer();
+        const settleResult = await server.processSettlement(
+          x402Result.paymentPayload,
+          x402Result.paymentRequirements,
+          x402Result.declaredExtensions
+        );
+
+        if (!settleResult.success) {
+          return buildX402Response({ response: settleResult.response });
+        }
+
+        x402SettlementHeaders = settleResult.headers;
+        isX402Bot = true;
+        // Machine callers use deterministic synthetic UID for metering & chat storage
+        uid = "00000000-0000-0000-0000-000000000000";
+
+        // Audit log bot microtransaction in payments table
+        const orderRef = `x402-${crypto.randomUUID()}`;
+        await recordX402Payment({
+          orderRef,
+          amountUsd: X402_ROUTE_PRICES.aiResearch,
+          network: x402Result.paymentRequirements.network,
+          transactionHash: settleResult.transaction,
+          status: "paid",
+          metadata: { path: "/api/ai/research" },
+        });
+      } else {
+        // Fallback for no-payment-required if configured
+        isX402Bot = true;
+        uid = "00000000-0000-0000-0000-000000000000";
+      }
+    } else {
+      // Human browser: maintain existing session & UroPay entitlement gate
+      try {
+        const user = await requireUser(request);
+        await assertPaidAccess(user.uid);
+        uid = user.uid;
+      } catch (error) {
+        // A regular user who lacks Premium must still receive the paywall error;
+        // only a separately verified administrator session may bypass it.
+        if (!(error instanceof ApiError) || error.status !== 401) {
+          throw error;
+        }
+        const admin = await requireAdmin();
+        uid = admin.uid;
+      }
     }
 
     const body = schema.safeParse(await parseJson<unknown>(request));
@@ -184,13 +245,17 @@ export async function POST(request: Request) {
             : promptEstimate + estimateAiTokens(collected.content)
         );
       }
-      return Response.json({
+      const jsonResponse = Response.json({
         content: collected.content,
         chatId,
         provider: result.provider,
         model: result.model,
         finishReason: collected.finishReason || "stop",
       });
+      for (const [k, v] of Object.entries(x402SettlementHeaders)) {
+        jsonResponse.headers.set(k, v);
+      }
+      return jsonResponse;
     }
 
     if (result.stream) {
@@ -207,14 +272,19 @@ export async function POST(request: Request) {
         promptEstimate,
       });
 
+      const streamHeaders = new Headers({
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+        "X-Chat-Id": chatId,
+      });
+      for (const [k, v] of Object.entries(x402SettlementHeaders)) {
+        streamHeaders.set(k, v);
+      }
+
       return new Response(persistedStream, {
-        headers: {
-          "Content-Type": "text/event-stream; charset=utf-8",
-          "Cache-Control": "no-cache, no-transform",
-          Connection: "keep-alive",
-          "X-Accel-Buffering": "no",
-          "X-Chat-Id": chatId,
-        },
+        headers: streamHeaders,
       });
     }
 
@@ -242,7 +312,11 @@ export async function POST(request: Request) {
       );
     }
 
-    return Response.json({ ...result, chatId });
+    const standardResponse = Response.json({ ...result, chatId });
+    for (const [k, v] of Object.entries(x402SettlementHeaders)) {
+      standardResponse.headers.set(k, v);
+    }
+    return standardResponse;
   } catch (error) {
     return jsonError(error);
   }

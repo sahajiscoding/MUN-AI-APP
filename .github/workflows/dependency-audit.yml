@@ -46,6 +46,14 @@ jobs:
         run: |
           test -f pnpm-lock.yaml || { echo "FAIL: pnpm-lock.yaml is missing"; exit 1; }
           git ls-files | grep -qx "pnpm-lock.yaml" || { echo "FAIL: pnpm-lock.yaml is not tracked"; exit 1; }
+          # pnpm-lock.yaml is the ONLY manifest in this repo. A second lockfile
+          # (package-lock.json) used to be committed alongside it, drifted out of
+          # sync, and made Dependabot report every advisory twice — once per
+          # manifest. Keep it out. Run `pnpm install`, never `npm install`.
+          if [ -e package-lock.json ] || [ -e yarn.lock ]; then
+            echo "FAIL: a second lockfile is present. This repo is pnpm-only."
+            exit 1
+          fi
           echo "Lockfile OK"
 
       - name: No floating version ranges in production deps
@@ -57,11 +65,23 @@ jobs:
             exit 1
           fi
 
-      - name: Known CVE overrides present (js-yaml, brace-expansion, braces waiver)
+      - name: Known CVE overrides present (js-yaml, source-map-js, brace-expansion, sharp, postcss-selector-parser, braces waiver)
         run: |
           grep -q "js-yaml: 4.3.2" pnpm-workspace.yaml || { echo "FAIL: js-yaml 4.3.2 override missing"; exit 1; }
           grep -q "brace-expansion@1: 1.1.21" pnpm-workspace.yaml || { echo "FAIL: brace-expansion 1.x override missing"; exit 1; }
           grep -q "brace-expansion@5: 5.0.12" pnpm-workspace.yaml || { echo "FAIL: brace-expansion 5.x override missing"; exit 1; }
+          # GHSA-68fv-2mgg-jv7q — source-map-js event-loop DoS. Several independent
+          # postcss copies exist in the tree (next pins postcss@8.5.23 internally),
+          # so the direct `postcss` bump does not cover the whole graph.
+          grep -q "source-map-js: 1.2.2" pnpm-workspace.yaml || { echo "FAIL: source-map-js 1.2.2 override missing"; exit 1; }
+          # GHSA-wq5f-xc86-pv6w — sharp <0.35.5 vulnerable librsvg (CVE-2026-96889).
+          grep -q "sharp: 0.35.5" pnpm-workspace.yaml || { echo "FAIL: sharp 0.35.5 override missing"; exit 1; }
+          # GHSA-rj75-hqrm-r3gf (CVE-2026-104844) — postcss-selector-parser CPU
+          # exhaustion. No patched 6.x is published, so 7.x is the only version fix.
+          # Verified byte-identical Tailwind CSS output vs 6.1.4 in this app.
+          grep -q "postcss-selector-parser: 7.1.6" pnpm-workspace.yaml || { echo "FAIL: postcss-selector-parser 7.1.6 override missing"; exit 1; }
+          # GHSA-cjq9-62q9-8jv4 & 5 related Next.js advisories — all patched in 16.3.8.
+          node -e "const v=require('./package.json').dependencies.next; if(v!=='16.3.8'){console.error('FAIL: next is '+v+', expected 16.3.8');process.exit(1)}"
           # TEMPORARY WAIVER (GHSA-vfj7-8cjw-p6xm, braces DoS): no patched
           # release is published on npm yet (latest is 3.0.3), so a version
           # override is impossible today. The CVE is waived via

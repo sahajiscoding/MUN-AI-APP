@@ -25,8 +25,11 @@ jobs:
         run: |
           # These routes are intentionally public (login/signup/reset, public
           # news feed, public partner application, click capture, signed
-          # webhooks, catch-all 404). Everything else must call requireUser,
-          # requireAdmin, or requireAdminOwner (matched via requireAdmin).
+          # webhooks, catch-all 404). The one x402 content route is checked
+          # separately for payment gates: it serves shared educational content,
+          # not user data, and bot clients pay without an account session.
+          # Everything else must call requireUser, requireAdmin, or
+          # requireAdminOwner (matched via requireAdmin).
           public=$(cat <<'EOF'
           app/api/[...notFound]/route.ts
           app/api/auth/signin/route.ts
@@ -44,6 +47,26 @@ jobs:
           for f in $(git ls-files 'app/api/**/route.ts'); do
             # -F: paths contain regex chars ([...notFound]) — match literally.
             if echo "$public" | grep -qxF "$f"; then continue; fi
+            # Exact-path exception, NOT a blanket exemption for /api/x402/*.
+            # Keep verification, rejection, and settlement checks mandatory.
+            # Like the login-helper check below, these are static smoke checks,
+            # not a substitute for runtime payment-protocol tests.
+            if [ "$f" = "app/api/x402/content/route.ts" ]; then
+              for gate in \
+                'await processX402Request(' \
+                'processResult.type === "payment-error"' \
+                'return buildX402Response(processResult)' \
+                'processResult.type === "payment-verified"' \
+                'server.processSettlement(' \
+                'if (!settleResult.success)' \
+                'return buildX402Response({ response: settleResult.response })'; do
+                if ! grep -qF "$gate" "$f"; then
+                  echo "FAIL: $f is missing x402 payment gate: $gate"
+                  failed=1
+                fi
+              done
+              continue
+            fi
             if ! grep -qE "requireUser|requireAdmin" "$f"; then
               echo "FAIL: $f has no requireUser/requireAdmin/requireAdminOwner gate"
               failed=1

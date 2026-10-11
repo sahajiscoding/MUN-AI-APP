@@ -6,6 +6,9 @@ overrides:
   # Security override: CVE-2026-84375 (GHSA-2883-xcg3-v3hh) — js-yaml <4.3.2
   # DoS via unbounded merge-key expansion. Transitive via eslint toolchain.
   js-yaml: 4.3.2
+  # GHSA-68fv-2mgg-jv7q — indexed source-map offsets can cause event-loop DoS.
+  # Transitive via the PostCSS build toolchain; patched in 1.2.2.
+  source-map-js: 1.2.2
   # GHSA-6j4f-fj2g-mc7p / GHSA-qhr7-859c-m2p7 / GHSA-q2hr-2g5m-vwhr — DoS in
   # brace-expansion. Patched floors: 1.1.21 (1.x) and 5.0.12 (5.x).
   brace-expansion@1: 1.1.21

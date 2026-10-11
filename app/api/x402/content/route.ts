@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { courses } from "@/lib/courses";
 import { legalPages } from "@/lib/site-pages";
 import { isBotRequest } from "@/lib/server/bot-detection";
+import { requireUser } from "@/lib/server/auth";
+import { jsonError } from "@/lib/api";
 import {
   processX402Request,
   buildX402Response,
@@ -47,7 +49,12 @@ const glossaryTerms = [
  * Once verified/settled via x402, the content payload is returned with PAYMENT-RESPONSE headers.
  */
 export async function GET(request: Request) {
-  const url = new URL(request.url);
+  try {
+    if (!isBotRequest(request)) {
+      await requireUser(request);
+    }
+
+    const url = new URL(request.url);
   const resource = url.searchParams.get("resource") || "summary";
   const slug = url.searchParams.get("slug") || "";
 
@@ -141,5 +148,8 @@ export async function GET(request: Request) {
     response.headers.set(key, value);
   }
 
-  return response;
+    return response;
+  } catch (error) {
+    return jsonError(error);
+  }
 }

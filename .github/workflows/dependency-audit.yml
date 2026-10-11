@@ -57,9 +57,10 @@ jobs:
             exit 1
           fi
 
-      - name: Known CVE overrides present (js-yaml, brace-expansion, braces waiver)
+      - name: Known CVE overrides present (js-yaml, source-map-js, brace-expansion, braces waiver)
         run: |
           grep -q "js-yaml: 4.3.2" pnpm-workspace.yaml || { echo "FAIL: js-yaml 4.3.2 override missing"; exit 1; }
+          grep -q "source-map-js: 1.2.2" pnpm-workspace.yaml || { echo "FAIL: source-map-js 1.2.2 override missing"; exit 1; }
           grep -q "brace-expansion@1: 1.1.21" pnpm-workspace.yaml || { echo "FAIL: brace-expansion 1.x override missing"; exit 1; }
           grep -q "brace-expansion@5: 5.0.12" pnpm-workspace.yaml || { echo "FAIL: brace-expansion 5.x override missing"; exit 1; }
           # TEMPORARY WAIVER (GHSA-vfj7-8cjw-p6xm, braces DoS): no patched

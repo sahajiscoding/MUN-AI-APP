@@ -1,4 +1,25 @@
+/**
+ * Logging proxy: sits between the app under test and the local mock
+ * facilitator, printing the x402 fields the facilitator receives so tampered
+ * values are visible.
+ *
+ * Analysis fixture only — see README.md in this directory. Two details below
+ * are deliberate rather than incidental:
+ *
+ *   - Only three endpoints are forwarded, and each upstream URL is a string
+ *     literal in the map below. The caller's path selects an entry; it never
+ *     becomes part of the URL. A general forwarding proxy is the thing you
+ *     would not want here, even on localhost.
+ *   - An upstream failure is logged locally and never described to the caller.
+ */
 import http from "node:http";
+
+/** The only endpoints this proxy forwards: constant in, literal out. */
+const UPSTREAM = new Map([
+  ["/supported", "http://127.0.0.1:4199/supported"],
+  ["/verify", "http://127.0.0.1:4199/verify"],
+  ["/settle", "http://127.0.0.1:4199/settle"],
+]);
 
 const logger = http.createServer(async (req, res) => {
   let body = "";
@@ -17,15 +38,33 @@ const logger = http.createServer(async (req, res) => {
         console.log("    (non-JSON body)");
       }
     }
+
+    let pathname;
+    try {
+      pathname = new URL(req.url ?? "/", "http://127.0.0.1:4199").pathname;
+    } catch {
+      pathname = "";
+    }
+
+    const upstreamUrl = UPSTREAM.get(pathname);
+    if (!upstreamUrl) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "not_a_facilitator_endpoint" }));
+      return;
+    }
+
     const init = { method: req.method, headers: { "content-type": "application/json" } };
     if (body) init.body = body;
     try {
-      const up = await fetch(`http://127.0.0.1:4199${req.url}`, init);
+      const up = await fetch(upstreamUrl, init);
       res.writeHead(up.status, { "content-type": "application/json" });
       res.end(await up.text());
-    } catch (e) {
+    } catch (error) {
+      // Local diagnostic only. The caller learns that the upstream is down and
+      // nothing about the internals.
+      console.error("proxy: upstream fetch failed:", error);
       res.writeHead(502, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: String(e) }));
+      res.end(JSON.stringify({ error: "upstream_unreachable" }));
     }
   });
 });

@@ -14,7 +14,7 @@ Reproduces the findings in `../x402-security-review.md`. Everything runs locally
 | `seq.mjs` | 10 sequential replays of a single payment header. |
 | `pathbypass.mjs` | 11 path/encoding aliases of a paid route. |
 | `headers.mjs`, `rawdup.mjs` | Header precedence, v1 downgrade, garbage header, genuine duplicate-header bytes. |
-| `priv.mjs` | Logging proxy that shows exactly what a third-party facilitator receives. |
+| `priv.mjs` | Logging proxy that shows exactly what a third-party facilitator receives (forwards `/supported`, `/verify` and `/settle`, and nothing else). |
 
 ## Run
 

@@ -59,10 +59,12 @@ export interface BotClassificationResult {
  * Classifies whether an incoming request is from a bot / programmatic agent or a human browser.
  */
 export function classifyBotRequest(headers: Headers): BotClassificationResult {
-  // 1. Any request presenting x402 payment headers is definitively an x402 machine client
+  // 1. Any request presenting x402 payment or SIWX headers is definitively an x402 machine/wallet client
   if (
     headers.has("payment-signature") ||
     headers.has("PAYMENT-SIGNATURE") ||
+    headers.has("sign-in-with-x") ||
+    headers.has("SIGN-IN-WITH-X") ||
     headers.has("x-payment") ||
     headers.has("X-PAYMENT")
   ) {

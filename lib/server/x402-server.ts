@@ -6,6 +6,28 @@ import {
   type HTTPAdapter,
   type HTTPProcessResult,
 } from "@x402/core/http";
+import {
+  bazaarResourceServerExtension,
+  declareDiscoveryExtension,
+  BAZAAR,
+} from "@x402/extensions/bazaar";
+import {
+  builderCodeResourceServerExtension,
+  declareBuilderCodeExtension,
+  BUILDER_CODE,
+} from "@x402/extensions/builder-code";
+import {
+  paymentIdentifierResourceServerExtension,
+  declarePaymentIdentifierExtension,
+  extractPaymentIdentifier,
+  PAYMENT_IDENTIFIER,
+} from "@x402/extensions/payment-identifier";
+import {
+  createSIWxResourceServerExtension,
+  declareSIWxExtension,
+  SIGN_IN_WITH_X,
+  type SIWxStorage,
+} from "@x402/extensions/sign-in-with-x";
 import { logger } from "@/lib/server/secure-logger";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -15,6 +37,21 @@ export interface X402ServerConfig {
   payTo: string;
   network: NetworkCaip2;
   facilitatorUrl: string;
+  siteOrigin: string;
+  appBuilderCode: string;
+}
+
+/**
+ * Normalizes an origin URL into a standard valid origin string.
+ */
+function normalizeOrigin(urlStr?: string): string {
+  if (!urlStr) return "https://munprep.org";
+  try {
+    const parsed = new URL(urlStr.startsWith("http") ? urlStr : `https://${urlStr}`);
+    return parsed.origin;
+  } catch {
+    return "https://munprep.org";
+  }
 }
 
 /**
@@ -35,11 +72,170 @@ export function getX402Config(): X402ServerConfig {
     process.env.X402_FACILITATOR_URL?.trim() ||
     "https://x402.org/facilitator";
 
-  return { payTo, network, facilitatorUrl };
+  const siteOrigin = normalizeOrigin(
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.SITE_URL?.trim()
+  );
+
+  const appBuilderCode =
+    process.env.X402_BUILDER_CODE?.trim() || "bc_mun_prep_app";
+
+  return { payTo, network, facilitatorUrl, siteOrigin, appBuilderCode };
+}
+
+/**
+ * Storage provider for Sign-In-With-X (SIWX / CAIP-122).
+ * Tracks paid wallet addresses across memory and database records,
+ * and maintains nonces to prevent signature replay attacks.
+ */
+export class AppSIWxStorage implements SIWxStorage {
+  private readonly paidWallets = new Map<string, number>();
+  private readonly nonces = new Map<string, number>();
+
+  async hasPaid(resource: string, address: string): Promise<boolean> {
+    const normAddress = address.trim().toLowerCase();
+    const normResource = resource.trim().toLowerCase();
+    const key = `${normResource}::${normAddress}`;
+
+    // 1. Fast in-memory check
+    if (this.paidWallets.has(key)) {
+      return true;
+    }
+
+    // 2. Persistent check in database
+    try {
+      const admin = supabaseAdmin();
+      const { data, error } = await admin
+        .from("payments")
+        .select("id")
+        .eq("status", "paid")
+        .ilike("uropay_order_id", `%${normAddress}%`)
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        this.paidWallets.set(key, Date.now());
+        return true;
+      }
+    } catch {
+      // Gracefully continue with in-memory store
+    }
+
+    return false;
+  }
+
+  async recordPayment(resource: string, address: string): Promise<void> {
+    const normAddress = address.trim().toLowerCase();
+    const normResource = resource.trim().toLowerCase();
+    const key = `${normResource}::${normAddress}`;
+    this.paidWallets.set(key, Date.now());
+  }
+
+  getNonce(): string {
+    const nonce = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    this.recordNonce(nonce);
+    return nonce;
+  }
+
+  verifyNonce(nonce: string): boolean {
+    const ts = this.nonces.get(nonce);
+    if (!ts) return false;
+    // Check expiration (10 minutes)
+    if (Date.now() - ts > 10 * 60 * 1000) {
+      this.nonces.delete(nonce);
+      return false;
+    }
+    // Consume nonce to prevent replay
+    this.nonces.delete(nonce);
+    return true;
+  }
+
+  hasUsedNonce(nonce: string): boolean {
+    const ts = this.nonces.get(nonce);
+    if (!ts) return false;
+    // Exclude expired nonces (> 10 mins)
+    if (Date.now() - ts > 10 * 60 * 1000) {
+      this.nonces.delete(nonce);
+      return false;
+    }
+    return true;
+  }
+
+  recordNonce(nonce: string): void {
+    this.nonces.set(nonce, Date.now());
+    // Periodically prune stale nonces if map grows
+    if (this.nonces.size > 2000) {
+      const now = Date.now();
+      for (const [n, ts] of this.nonces.entries()) {
+        if (now - ts > 10 * 60 * 1000) {
+          this.nonces.delete(n);
+        }
+      }
+    }
+  }
+}
+
+let siwxStorageInstance: AppSIWxStorage | null = null;
+
+export function getSIWxStorage(): AppSIWxStorage {
+  if (!siwxStorageInstance) {
+    siwxStorageInstance = new AppSIWxStorage();
+  }
+  return siwxStorageInstance;
+}
+
+/**
+ * Idempotency store for payment-identifier extension.
+ * Caches settled results to safely handle client network retries.
+ */
+interface CachedIdempotentResult {
+  timestamp: number;
+  data: unknown;
+  headers: Record<string, string>;
+}
+
+const idempotencyCache = new Map<string, CachedIdempotentResult>();
+
+export function getCachedPaymentIdResult(paymentId: string): CachedIdempotentResult | null {
+  const cached = idempotencyCache.get(paymentId);
+  if (!cached) return null;
+  // TTL: 1 hour
+  if (Date.now() - cached.timestamp > 60 * 60 * 1000) {
+    idempotencyCache.delete(paymentId);
+    return null;
+  }
+  return cached;
+}
+
+export function setCachedPaymentIdResult(
+  paymentId: string,
+  data: unknown,
+  headers: Record<string, string> = {}
+): void {
+  idempotencyCache.set(paymentId, {
+    timestamp: Date.now(),
+    data,
+    headers,
+  });
+  if (idempotencyCache.size > 1000) {
+    const now = Date.now();
+    for (const [k, v] of idempotencyCache.entries()) {
+      if (now - v.timestamp > 60 * 60 * 1000) {
+        idempotencyCache.delete(k);
+      }
+    }
+  }
 }
 
 let cachedHttpServer: x402HTTPResourceServer | null = null;
 let initPromise: Promise<void> | null = null;
+
+/**
+ * Resets the HTTP resource server singleton (for testing).
+ */
+export function resetX402HttpServerForTesting(): void {
+  cachedHttpServer = null;
+  initPromise = null;
+}
 
 /**
  * Price catalog for bot microtransactions.
@@ -50,7 +246,11 @@ export const X402_ROUTE_PRICES = {
 } as const;
 
 /**
- * Builds and initializes the x402 HTTP resource server singleton.
+ * Builds and initializes the x402 HTTP resource server singleton with all V2 extensions:
+ * 1. Bazaar (Service Discovery Layer & Catalog)
+ * 2. Builder Code (ERC-8021 Calldata Attribution)
+ * 3. Payment-Identifier (Idempotency & Replay Protection)
+ * 4. Sign-In-With-X (CAIP-122 Wallet Authentication for repeat access)
  */
 export async function getX402HttpServer(): Promise<x402HTTPResourceServer> {
   if (cachedHttpServer && initPromise) {
@@ -59,37 +259,139 @@ export async function getX402HttpServer(): Promise<x402HTTPResourceServer> {
   }
 
   const config = getX402Config();
+  const siwxStorage = getSIWxStorage();
 
   const facilitatorClient = new HTTPFacilitatorClient({
     url: config.facilitatorUrl,
     timeoutMs: 15_000,
   });
 
-  const resourceServer = new x402ResourceServer(facilitatorClient).register(
-    "eip155:*",
-    new ExactEvmScheme()
-  );
+  const resourceServer = new x402ResourceServer(facilitatorClient)
+    .register("eip155:*", new ExactEvmScheme())
+    .registerExtension(bazaarResourceServerExtension)
+    .registerExtension(builderCodeResourceServerExtension)
+    .registerExtension(paymentIdentifierResourceServerExtension)
+    .registerExtension(
+      createSIWxResourceServerExtension({
+        storage: siwxStorage,
+        origin: config.siteOrigin,
+      })
+    );
 
   const routesConfig = {
     "POST /api/ai/research": {
-      accepts: {
-        scheme: "exact",
-        network: config.network as `eip155:${number}`,
-        payTo: config.payTo,
-        price: X402_ROUTE_PRICES.aiResearch,
-      },
+      accepts: [
+        {
+          scheme: "exact",
+          network: config.network as `eip155:${number}`,
+          payTo: config.payTo,
+          price: X402_ROUTE_PRICES.aiResearch,
+        },
+      ],
       description: "AI-powered MUN preparation and research query",
       mimeType: "application/json",
+      resource: `${config.siteOrigin}/api/ai/research`,
+      serviceName: "MUN Prep AI Research",
+      tags: ["mun", "ai", "research", "un", "diplomacy"],
+      iconUrl: `${config.siteOrigin}/favicon.ico`,
+      extensions: {
+        ...declareDiscoveryExtension({
+          input: {
+            committee: "UNEP",
+            agenda: "Renewable energy transition and sustainable technology transfer",
+            country: "France",
+            experienceLevel: "Intermediate",
+            tool: "research",
+          },
+          inputSchema: {
+            properties: {
+              committee: { type: "string", description: "UN committee name (e.g. UNSC, DISEC, UNEP, WHO)" },
+              agenda: { type: "string", description: "Agenda topic or problem statement being simulated" },
+              country: { type: "string", description: "Country assigned to the delegate" },
+              experienceLevel: { type: "string", description: "Delegate experience level (e.g. Beginner, Intermediate, Advanced)" },
+              tool: { type: "string", enum: ["research", "country-profile", "position-paper", "speech", "poi", "resolution"], description: "Specific MUN preparation tool to execute" },
+            },
+            required: ["committee", "agenda", "country", "experienceLevel"],
+          },
+          output: {
+            example: {
+              analysis: "Strategic committee analysis, previous UN resolutions, and national stance recommendations.",
+              countryStance: "Commitment to decarbonization, support for multilateral financing.",
+            },
+            schema: {
+              type: "object",
+              properties: {
+                analysis: { type: "string" },
+                countryStance: { type: "string" },
+              },
+            },
+          },
+        }),
+        [BUILDER_CODE]: declareBuilderCodeExtension(config.appBuilderCode),
+        [PAYMENT_IDENTIFIER]: declarePaymentIdentifierExtension(false),
+        ...declareSIWxExtension({
+          statement: "Sign in with your wallet to authenticate and access MUN Prep AI research",
+          expirationSeconds: 300,
+        }),
+      },
     },
     "GET /api/x402/content": {
-      accepts: {
-        scheme: "exact",
-        network: config.network as `eip155:${number}`,
-        payTo: config.payTo,
-        price: X402_ROUTE_PRICES.contentPage,
-      },
+      accepts: [
+        {
+          scheme: "exact",
+          network: config.network as `eip155:${number}`,
+          payTo: config.payTo,
+          price: X402_ROUTE_PRICES.contentPage,
+        },
+      ],
       description: "MUN Prep public educational knowledge base and course library",
       mimeType: "application/json",
+      resource: `${config.siteOrigin}/api/x402/content`,
+      serviceName: "MUN Prep Knowledge Base",
+      tags: ["mun", "education", "courses", "glossary", "un"],
+      iconUrl: `${config.siteOrigin}/favicon.ico`,
+      extensions: {
+        ...declareDiscoveryExtension({
+          input: { resource: "courses", slug: "mun-basics" },
+          inputSchema: {
+            properties: {
+              resource: {
+                type: "string",
+                enum: ["courses", "course", "glossary", "legal", "summary"],
+                description: "Educational resource collection to retrieve",
+              },
+              slug: {
+                type: "string",
+                description: "Optional course or legal document slug identifier",
+              },
+            },
+          },
+          output: {
+            example: {
+              service: "MUN Prep Bot Knowledge Base",
+              availableResources: [
+                { resource: "courses", description: "All available MUN courses" },
+                { resource: "glossary", description: "Full Model UN terminology reference" },
+              ],
+              price: "$0.005",
+              network: "Base (EVM USDC)",
+            },
+            schema: {
+              type: "object",
+              properties: {
+                service: { type: "string" },
+                availableResources: { type: "array" },
+              },
+            },
+          },
+        }),
+        [BUILDER_CODE]: declareBuilderCodeExtension(config.appBuilderCode),
+        [PAYMENT_IDENTIFIER]: declarePaymentIdentifierExtension(false),
+        ...declareSIWxExtension({
+          statement: "Sign in with your wallet to access purchased MUN preparation content",
+          expirationSeconds: 300,
+        }),
+      },
     },
   };
 
@@ -184,7 +486,8 @@ export function buildX402Response(processResult: {
 
 /**
  * Records a verified bot microtransaction in the payments table for reporting.
- * Provider is marked as 'x402'.
+ * Also registers the payer wallet address with the SIWX storage so repeat
+ * visits can be granted access via SIWX without repaying.
  */
 export async function recordX402Payment(params: {
   orderRef: string;
@@ -195,12 +498,19 @@ export async function recordX402Payment(params: {
   status: "paid" | "verified";
   metadata?: Record<string, unknown>;
 }) {
+  // If payerAddress is provided, record it in the SIWX storage for repeat access
+  if (params.payerAddress) {
+    const resourcePath = (params.metadata?.path as string) || "/api/x402/content";
+    const siwx = getSIWxStorage();
+    await siwx.recordPayment(resourcePath, params.payerAddress);
+  }
+
   try {
     const admin = supabaseAdmin();
     const { error } = await admin.from("payments").insert({
       uid: "00000000-0000-0000-0000-000000000000",
       order_ref: params.orderRef,
-      uropay_order_id: params.transactionHash || params.orderRef,
+      uropay_order_id: params.transactionHash || params.payerAddress || params.orderRef,
       plan_id: "x402-bot-microtransaction",
       amount: Math.round(Number(params.amountUsd.replace("$", "")) * 100),
       status: params.status,
@@ -211,8 +521,6 @@ export async function recordX402Payment(params: {
     });
 
     if (error) {
-      // Table may require foreign key on uid or unique index constraint in some environments.
-      // Log as structured notice without throwing to avoid failing payment fulfillment.
       logger.warn("x402 payment audit record notice:", {
         error: error.message,
         orderRef: params.orderRef,

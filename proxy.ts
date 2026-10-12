@@ -42,6 +42,8 @@ export async function proxy(request: NextRequest) {
   const hasX402PaymentHeader =
     request.headers.has("payment-signature") ||
     request.headers.has("PAYMENT-SIGNATURE") ||
+    request.headers.has("sign-in-with-x") ||
+    request.headers.has("SIGN-IN-WITH-X") ||
     request.headers.has("x-payment") ||
     request.headers.has("X-PAYMENT");
 

@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   getX402Config,
@@ -6,11 +6,15 @@ import {
   createWebAdapter,
   processX402Request,
   buildX402Response,
+  resetX402HttpServerForTesting,
   X402_ROUTE_PRICES,
 } from "@/lib/server/x402-server";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 
 describe("x402 Server Integration & Protocol Compliance", () => {
+  beforeEach(() => {
+    resetX402HttpServerForTesting();
+  });
   it("provides valid default configuration", () => {
     const config = getX402Config();
     assert.ok(config.payTo.startsWith("0x"));
@@ -55,6 +59,30 @@ describe("x402 Server Integration & Protocol Compliance", () => {
       assert.equal(option.amount, "50000");
       assert.ok(option.asset);
       assert.ok(option.payTo);
+
+      // Verify x402 V2 Extensions on the Payment-Required payload
+      // Extensions are declared at the route level and propagated to the decoded response or option
+      const extensions = (decoded as unknown as { extensions?: Record<string, unknown> }).extensions ||
+        (option as unknown as { extensions?: Record<string, unknown> }).extensions || {};
+      
+      // Bazaar discovery extension
+      assert.ok("bazaar" in extensions, "bazaar extension must be present");
+      const bazaar = extensions["bazaar"] as Record<string, unknown>;
+      assert.ok(bazaar.schema, "bazaar schema must be defined");
+      assert.ok(bazaar.info, "bazaar info must be defined");
+
+      // Builder code attribution extension
+      assert.ok("builder-code" in extensions, "builder-code extension must be present");
+
+      // Payment identifier extension
+      assert.ok("payment-identifier" in extensions, "payment-identifier extension must be present");
+
+      // Sign-In-With-X extension
+      assert.ok("sign-in-with-x" in extensions, "sign-in-with-x extension must be present");
+      const siwx = extensions["sign-in-with-x"] as Record<string, unknown>;
+      assert.ok(siwx.info, "siwx info must be defined");
+      const siwxInfo = siwx.info as Record<string, unknown>;
+      assert.ok(typeof siwxInfo.statement === "string");
     }
   });
 
@@ -96,4 +124,53 @@ describe("x402 Server Integration & Protocol Compliance", () => {
     assert.equal(adapter.getUserAgent(), "curl/8.0");
     assert.equal(adapter.getQueryParam?.("slug"), "foo");
   });
+
+  it("handles SIWxStorage lifecycle correctly (nonce generation, verification, and payment tracking)", async () => {
+    const { getSIWxStorage } = await import("@/lib/server/x402-server");
+    const storage = getSIWxStorage();
+
+    // 1. Nonce generation
+    const nonce = await storage.getNonce();
+    assert.ok(nonce);
+    assert.equal(typeof nonce, "string");
+    assert.ok(nonce.length >= 8);
+
+    // 2. Nonce verification (valid first time)
+    const isValid = await storage.verifyNonce(nonce);
+    assert.equal(isValid, true);
+
+    // 3. Replay attack prevention (nonce must be consumed and rejected second time)
+    const isReplay = await storage.verifyNonce(nonce);
+    assert.equal(isReplay, false);
+
+    // 4. Payment tracking & verification
+    const testAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+    const testResource = "https://munprep.org/api/ai/research";
+
+    const hasPaidBefore = await storage.hasPaid(testResource, testAddress);
+    assert.equal(hasPaidBefore, false);
+
+    await storage.recordPayment(testResource, testAddress);
+
+    const hasPaidAfter = await storage.hasPaid(testResource, testAddress);
+    assert.equal(hasPaidAfter, true);
+  });
+
+  it("handles payment identifier idempotency caching correctly", async () => {
+    const { getCachedPaymentIdResult, setCachedPaymentIdResult } = await import(
+      "@/lib/server/x402-server"
+    );
+
+    const paymentId = "pid_test_123456789";
+    assert.equal(getCachedPaymentIdResult(paymentId), null);
+
+    const sampleResult = { status: "success", research: "MUN UNEP strategy" };
+    setCachedPaymentIdResult(paymentId, sampleResult, { "x-custom": "cached" });
+
+    const cached = getCachedPaymentIdResult(paymentId);
+    assert.ok(cached);
+    assert.deepEqual(cached?.data, sampleResult);
+    assert.equal(cached?.headers["x-custom"], "cached");
+  });
 });
+

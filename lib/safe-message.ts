@@ -53,8 +53,19 @@ function applyRedactions(text: string): string {
  */
 export function sanitizePublicMessage(value: unknown, fallback: string): string {
   try {
-    if (typeof value !== "string") return fallback;
-    const cleaned = applyRedactions(value).replace(/\s+/g, " ").trim();
+    const raw =
+      typeof value === "string"
+        ? value
+        : value instanceof Error
+          ? value.message
+          : typeof value === "object" &&
+              value !== null &&
+              "message" in value &&
+              typeof (value as { message: unknown }).message === "string"
+            ? (value as { message: string }).message
+            : "";
+    if (!raw) return fallback;
+    const cleaned = applyRedactions(raw).replace(/\s+/g, " ").trim();
     if (!cleaned) return fallback;
     return cleaned.length > MAX_PUBLIC_MESSAGE_LENGTH
       ? `${cleaned.slice(0, MAX_PUBLIC_MESSAGE_LENGTH)}…`

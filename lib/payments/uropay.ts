@@ -131,8 +131,19 @@ export async function createUropayOrder(
     );
   }
 
-  const orderId = json?.data?.id;
-  const openUrl = json?.data?.openUrl;
+  const orderId =
+    json?.data?.id ??
+    json?.data?.orderId ??
+    json?.data?.order_id ??
+    json?.orderId ??
+    json?.id;
+  const openUrl =
+    json?.data?.openUrl ??
+    json?.data?.url ??
+    json?.data?.paymentUrl ??
+    json?.data?.checkoutUrl ??
+    json?.openUrl ??
+    json?.url;
 
   if (!orderId || !openUrl) {
     throw new Error(

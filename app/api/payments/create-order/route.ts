@@ -40,7 +40,7 @@ const schema =
 // (compromised/tampered provider response) must never reach the browser.
 const ALLOWED_CHECKOUT_HOSTS = (
   process.env.UROPAY_ALLOWED_HOSTS ||
-  "api.uropai.in,uropai.in,www.uropai.in,checkout.uropai.in"
+  "api.uropai.in,uropai.in,www.uropai.in,checkout.uropai.in,api.uropay.in,uropay.in,www.uropay.in,checkout.uropay.in,pay.uropai.in,pay.uropay.in"
 )
   .split(",")
   .map((host) => host.trim().toLowerCase())

@@ -1,6 +1,8 @@
 "use client";
 
 import { Check, Crown, Loader2, LockKeyhole } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { readJsonResponse } from "@/lib/http";
@@ -19,6 +21,7 @@ type EntitlementResponse = {
 
 /** Pricing checkout client with entitlement check and referral support. */
 export function PricingClient() {
+  const router = useRouter();
   const { user, getIdToken } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [entitlement, setEntitlement] = useState<EntitlementData | null>(null);
@@ -30,6 +33,7 @@ export function PricingClient() {
   const [referralBusy, setReferralBusy] = useState(false);
   const [checkoutConfirmOpen, setCheckoutConfirmOpen] = useState(false);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,14 +137,40 @@ export function PricingClient() {
     }
   }
 
+  /** Prepares checkout or redirects unauthenticated visitors to sign in. */
+  function handleSelectPlan(planId: string) {
+    setCheckoutError(null);
+    if (!user) {
+      router.push(`/auth/signin?next=${encodeURIComponent("/pricing")}`);
+      return;
+    }
+    setPendingPlanId(planId);
+    setCheckoutConfirmOpen(true);
+  }
+
   /** Creates a payment order and redirects to the checkout page. */
   async function confirmCheckout() {
     if (!pendingPlanId) return;
+    setCheckoutError(null);
+    if (!user) {
+      setCheckoutConfirmOpen(false);
+      router.push(`/auth/signin?next=${encodeURIComponent("/pricing")}`);
+      return;
+    }
+
     setCheckoutConfirmOpen(false);
     setLoading(pendingPlanId);
     try {
-      if (referralCode.trim()) {
-        await applyReferralCodeValue(referralCode.trim());
+      if (referralCode.trim() && appliedReferralCode !== referralCode.trim().toUpperCase()) {
+        try {
+          await applyReferralCodeValue(referralCode.trim());
+        } catch (refErr) {
+          const msg = sanitizePublicMessage(refErr, "That referral code could not be applied.");
+          setReferralMessage({ type: "error", text: msg });
+          setLoading(null);
+          setPendingPlanId(null);
+          return;
+        }
       }
 
       const token = await getIdToken();
@@ -157,13 +187,13 @@ export function PricingClient() {
 
       if (!res.ok) {
         const errValue: unknown = data.error;
-        throw new Error(
+        const msg =
           typeof errValue === "string"
             ? errValue
             : typeof (errValue as { message?: unknown } | null | undefined)?.message === "string"
               ? String((errValue as { message: string }).message)
-              : "Failed to create order"
-        );
+              : "Failed to create order";
+        throw new Error(msg);
       }
 
       if (!data.openUrl) {
@@ -172,7 +202,8 @@ export function PricingClient() {
 
       window.location.assign(data.openUrl);
     } catch (err) {
-      alert(sanitizePublicMessage(err, "Something went wrong. Try again."));
+      const sanitized = sanitizePublicMessage(err, "Something went wrong. Try again.");
+      setCheckoutError(sanitized);
       setLoading(null);
       setPendingPlanId(null);
     }
@@ -180,6 +211,41 @@ export function PricingClient() {
 
   return (
     <div className="space-y-4">
+      {checkoutError ? (
+        <div
+          className="surface rounded-panel border border-[var(--oxblood)]/40 bg-[var(--oxblood)]/10 p-4 text-sm text-[var(--ink)] flex items-start justify-between gap-3"
+          role="alert"
+        >
+          <div className="space-y-1">
+            <p className="font-semibold text-[var(--oxblood)]">{checkoutError}</p>
+            {checkoutError.toLowerCase().includes("verify your email") ? (
+              <p className="text-xs text-[var(--muted)]">
+                Please check your inbox or visit{" "}
+                <Link href="/auth/verify-email" className="font-semibold underline text-[var(--ink)]">
+                  verify email
+                </Link>{" "}
+                to unlock payment.
+              </p>
+            ) : null}
+            {checkoutError.toLowerCase().includes("sign in") ? (
+              <p className="text-xs text-[var(--muted)]">
+                <Link href="/auth/signin?next=%2Fpricing" className="font-semibold underline text-[var(--ink)]">
+                  Sign in
+                </Link>{" "}
+                to proceed with checkout.
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => setCheckoutError(null)}
+            className="text-xs font-bold text-[var(--muted)] hover:text-[var(--ink)] px-1"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
       {entitlementLoading ? (
         <div className="surface flex items-center gap-3 rounded-panel px-4 py-3 text-sm text-[var(--muted)]">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -275,10 +341,7 @@ export function PricingClient() {
               </ul>
 
               <button
-                onClick={() => {
-                  setPendingPlanId(plan.id);
-                  setCheckoutConfirmOpen(true);
-                }}
+                onClick={() => handleSelectPlan(plan.id)}
                 disabled={disabled}
                 className="button-primary mt-7 flex w-full items-center justify-center gap-2 px-4 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -297,6 +360,8 @@ export function PricingClient() {
                   "Current plan"
                 ) : hasActiveAccess ? (
                   "Extend access"
+                ) : !user ? (
+                  "Sign in to purchase"
                 ) : (
                   "Buy now"
                 )}

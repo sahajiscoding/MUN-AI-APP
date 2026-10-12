@@ -13,6 +13,14 @@ const schema = z.object({
 /** POST /api/auth/signin — signs in with email and password after verification. */
 export async function POST(request: Request) {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+      throw new ApiError(
+        503,
+        "auth_not_configured",
+        "Authentication service is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local."
+      );
+    }
+
     const ip = getClientIp(request);
     if (!(await checkRateLimit(`login:${ip}`, 8, 60_000, { failClosed: true }))) {
       throw new ApiError(429, "rate_limited", "Too many login attempts. Try again in a minute.");

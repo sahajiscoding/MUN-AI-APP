@@ -75,6 +75,17 @@ export const X402_PAYMENT_CACHE_CONTROL = "no-store";
  */
 export const X402_PAID_CONTENT_CACHE_CONTROL = "private, no-store, max-age=0";
 
+/**
+ * Applies payment-gated content cache policy to a response.
+ *
+ * Call this on every response that carries a granted resource. A paid body must
+ * not be storable by any shared cache.
+ */
+export function applyPaidContentCachePolicy(response: Response): Response {
+  response.headers.set("Cache-Control", X402_PAID_CONTENT_CACHE_CONTROL);
+  return response;
+}
+
 /** Merchant wallet addresses that can never receive a real payment. */
 function isPlaceholderPayTo(address: string): boolean {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return true;
@@ -660,7 +671,6 @@ export function applyPaidContentCachePolicy(response: Response): Response {
  *
  * If payerAddress is provided, the payer wallet will also be recorded in the
  * SIWX storage so repeat visits can be granted access via SIWX without repaying.
- */
  */
 export async function recordX402Payment(params: {
   orderRef: string;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
+import { sanitizePublicMessage } from "@/lib/safe-message";
 import { logger } from "@/lib/server/secure-logger";
 import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
@@ -17,6 +18,14 @@ const signupSchema = z.object({
 /** POST /api/auth/signup — creates a Supabase account with anti-spam checks. */
 export async function POST(request: Request) {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+      throw new ApiError(
+        503,
+        "auth_not_configured",
+        "Authentication service is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local."
+      );
+    }
+
     const ip = getClientIp(request);
     if (!(await checkRateLimit(`signup:${ip}`, 5, 10 * 60_000, { failClosed: true }))) {
       throw new ApiError(429, "rate_limited", "Too many signup attempts. Please try again later.");
@@ -45,7 +54,28 @@ export async function POST(request: Request) {
 
     if (error) {
       logger.error("Signup failed:", error.message);
-      throw new ApiError(400, "signup_failed", "Could not create account. Please try again.");
+      const errLower = error.message.toLowerCase();
+      if (
+        errLower.includes("already registered") ||
+        errLower.includes("already been registered") ||
+        errLower.includes("already exists")
+      ) {
+        throw new ApiError(409, "user_already_exists", "That email already has an account. Please sign in instead.");
+      }
+      if (
+        errLower.includes("rate limit") ||
+        errLower.includes("too many") ||
+        errLower.includes("security purposes")
+      ) {
+        throw new ApiError(429, "rate_limited", "Rate limit reached. Please wait a few minutes before trying again.");
+      }
+      if (errLower.includes("signups not allowed") || errLower.includes("disabled")) {
+        throw new ApiError(403, "signups_disabled", "Email signups are currently disabled in Supabase project settings.");
+      }
+      if (errLower.includes("password")) {
+        throw new ApiError(400, "weak_password", error.message);
+      }
+      throw new ApiError(400, "signup_failed", sanitizePublicMessage(error.message, "Could not create account. Please try again."));
     }
 
     return Response.json({

@@ -304,19 +304,48 @@ function getSafeNext(value: string | null) {
 }
 
 /** Maps a raw auth error to a safe user-facing message. */
-function formatAuthError(error: unknown) {
+function formatAuthError(error: unknown): string {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
 
-    if (msg.includes("invalid login credentials")) {
+    if (msg.includes("invalid login credentials") || msg.includes("email or password is incorrect")) {
       return "Email or password is incorrect.";
     }
-    if (msg.includes("already registered") || msg.includes("already been registered")) {
-      return "That email already has an account.";
+    if (
+      msg.includes("already registered") ||
+      msg.includes("already been registered") ||
+      msg.includes("already has an account") ||
+      msg.includes("user_already_exists")
+    ) {
+      return "That email already has an account. Please sign in instead.";
+    }
+    if (msg.includes("rate_limited") || msg.includes("rate limit") || msg.includes("too many")) {
+      return "Too many attempts. Please try again in a few minutes.";
+    }
+    if (msg.includes("not configured")) {
+      return "Authentication service is not configured. Please check your Supabase environment variables.";
+    }
+    if (msg.includes("signups are currently disabled") || msg.includes("signups not allowed")) {
+      return "Email signups are currently disabled in Supabase project settings.";
+    }
+    if (msg.includes("verify your email") || msg.includes("email_not_verified")) {
+      return "Please verify your email address before signing in.";
+    }
+    if (msg.includes("valid name") || msg.includes("invalid_signup")) {
+      return "Please provide a valid name, email, and password.";
     }
     if (msg.includes("password")) {
-      // Sanitize: provider messages occasionally echo request details.
-      return sanitizePublicMessage(error.message, "Authentication failed. Please try again.");
+      return sanitizePublicMessage(error.message, "Password does not meet requirements.");
+    }
+
+    // Preserve safe, actionable error messages
+    const sanitized = sanitizePublicMessage(error.message, "Authentication failed. Please try again.");
+    if (
+      sanitized &&
+      sanitized !== "Something went wrong. Please try again." &&
+      sanitized.length < 150
+    ) {
+      return sanitized;
     }
   }
 

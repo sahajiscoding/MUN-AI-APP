@@ -14,6 +14,7 @@
  * Only the on-chain side (nonce consumption, balances) is simulated.
  */
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { x402Facilitator } = require("@x402/core/facilitator");
 const { registerExactEvmScheme } = require("@x402/evm/exact/facilitator");
 const { verifyTypedData } = require("viem");
@@ -56,26 +57,22 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 // /verify and /settle validate a signed payment authorization, and a real
-// facilitator exposes them to the internet, so they are throttled here too.
-// Local-only, in-memory, deliberately simple: this is a fixture, not a
-// production limiter.
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX_PER_WINDOW = 120;
-const recentHits = new Map();
-
-const isRateLimited = (req) => {
-  const key = req.ip ?? "unknown";
-  const now = Date.now();
-  const hits = (recentHits.get(key) ?? []).filter((at) => now - at < RATE_WINDOW_MS);
-  hits.push(now);
-  recentHits.set(key, hits);
-  return hits.length > RATE_MAX_PER_WINDOW;
-};
+// facilitator exposes them to the internet, so they are throttled here too —
+// the same shape a production facilitator should have. The ceiling is
+// deliberately high because every PoC request comes from 127.0.0.1 and shares
+// one bucket.
+app.use(
+  rateLimit({
+    windowMs: 60_000,
+    limit: 600,
+    standardHeaders: false,
+    legacyHeaders: false,
+  }),
+);
 
 app.get("/supported", (req, res) => res.json(facilitator.getSupported()));
 
 app.post("/verify", async (req, res) => {
-  if (isRateLimited(req)) return res.status(429).json({ error: "rate_limited" });
   verifyCounter++;
   const { paymentPayload, paymentRequirements } = req.body;
   // NOTE: deliberately no idempotency / nonce-reuse store here, mirroring the
@@ -85,7 +82,6 @@ app.post("/verify", async (req, res) => {
 });
 
 app.post("/settle", async (req, res) => {
-  if (isRateLimited(req)) return res.status(429).json({ error: "rate_limited" });
   const { paymentPayload, paymentRequirements } = req.body;
   const nonce = paymentPayload?.payload?.authorization?.nonce;
   if (process.env.NAIVE === "1") {

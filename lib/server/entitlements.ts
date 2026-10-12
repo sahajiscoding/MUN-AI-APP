@@ -14,6 +14,8 @@ export type Entitlement = {
   planId?: string;
   expiresAt?: string;
   source?: string;
+  trialStartedAt?: string;
+  trialDeviceAddress?: string;
 };
 
 /** Load a user's premium entitlement, treating admins as always active. */
@@ -32,7 +34,7 @@ export async function getEntitlement(
   const { data, error } =
     await supabaseAdmin()
       .from("entitlements")
-      .select("uid, status, plan_id, source, starts_at, expires_at, latest_payment_id, latest_order_id, updated_at")
+      .select("uid, status, plan_id, source, starts_at, expires_at, trial_started_at, trial_device_address, latest_payment_id, latest_order_id, updated_at")
       .eq("uid", uid)
       .maybeSingle();
 
@@ -47,12 +49,20 @@ export async function getEntitlement(
       ? new Date(data.expires_at)
       : null;
 
+  const trialStartedAtIso = data.trial_started_at
+    ? new Date(data.trial_started_at).toISOString()
+    : undefined;
+
+  const trialDeviceAddress = data.trial_device_address ?? undefined;
+
   // No valid expiry means the entitlement cannot be considered active.
   if (!expiresAtDate || !Number.isFinite(expiresAtDate.getTime())) {
     return {
       status: data.status === "expired" ? "expired" : "inactive",
       planId: canonicalPlanId(data.plan_id) ?? data.plan_id ?? undefined,
       source: data.source,
+      trialStartedAt: trialStartedAtIso,
+      trialDeviceAddress,
     };
   }
 
@@ -67,6 +77,8 @@ export async function getEntitlement(
       expiresAt:
         expiresAtDate.toISOString(),
       source: data.source,
+      trialStartedAt: trialStartedAtIso,
+      trialDeviceAddress,
     };
   }
 
@@ -79,6 +91,8 @@ export async function getEntitlement(
     expiresAt:
       expiresAtDate.toISOString(),
     source: data.source,
+    trialStartedAt: trialStartedAtIso,
+    trialDeviceAddress,
   };
 }
 

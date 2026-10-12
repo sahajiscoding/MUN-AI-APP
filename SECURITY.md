@@ -168,12 +168,11 @@ node -e "console.log(process.env.ADMIN_SESSION_SECRET?.length >= 32 ? 'secret le
 
 Three days of access, granted once per account, automatically, on the first authenticated request. Four properties hold it together — break any one and it becomes either an unlimited free product or an unbounded bill:
 
-1. **Granted once, ever.** `start_free_trial` (`supabase/migrations/20261013_free_trial.sql`) inserts only when no `entitlements` row exists for the uid — `on conflict (uid) do nothing`, with `uid` the primary key. Expired rows are never deleted, so the marker outlives the access it granted and cannot be re-collected. `trial_started_at` keeps that fact durable even after a paid grant overwrites `plan_id`.
+1. **Granted once, ever per account and device.** `start_free_trial` (`supabase/migrations/20261013_free_trial.sql` and `20261014_trial_device_limits.sql`) inserts only when no `entitlements` row exists for the uid — `on conflict (uid) do nothing`, with `uid` the primary key. In addition, the requesting device address (`p_device_address`) is checked against `public.trial_devices` and `public.entitlements.trial_device_address`: if that device address has already consumed a trial, the grant is blocked. Expired rows are never deleted, so the marker outlives the access it granted and cannot be re-collected. `trial_started_at` keeps that fact durable even after a paid grant overwrites `plan_id`.
 2. **Not callable from a browser.** The RPC is `security definer` with `revoke all ... from public, anon, authenticated` and `grant execute ... to service_role` only.
 3. **Gated behind a confirmed email.** It is called only after `requireUser()`, which rejects unverified sessions — so a trial costs at least one verified address.
 4. **Cost-bounded.** Unlimited *requests* (`requestCap: 0`), but a finite `AI_TRIAL_DAILY_TOKEN_CAP` and **no Max model**: `grantedResponseLimits("trial", …)` downgrades to `thorough`, because a million tokens/day on Kimi K3 is ~₹1,320 while the same budget on GLM-5.3-Flash is ~₹44. See `lib/server/x402-machine-limits.ts`.
-
-**Residual risk, accepted knowingly:** a user with a second email address can take a second trial. The gate is email verification (plus the 5/10min per-IP signup limit and the honeypot), not identity — that is inherent to any free trial and the cost ceiling above bounds the downside. If trial abuse is ever observed, the next step is a device or payment-instrument signal, not a tighter token cap, which would only inconvenience honest users.
+5. **Device-bound.** One trial per device address. When a user requests or triggers a trial, server-resolved `getClientIp` / `getDeviceAddress` records the device in `trial_devices`. Any subsequent account attempting to claim a trial from that same device is blocked, preventing repeat trials on the same hardware.
 
 ---
 

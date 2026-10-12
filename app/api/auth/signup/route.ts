@@ -55,12 +55,16 @@ export async function POST(request: Request) {
     if (error) {
       logger.error("Signup failed:", error.message);
       const errLower = error.message.toLowerCase();
+      // Anti-enumeration: if the user/email is already registered, return
+      // the identical generic success response so account existence is not leaked.
       if (
         errLower.includes("already registered") ||
-        errLower.includes("already been registered") ||
-        errLower.includes("already exists")
+        errLower.includes("already been registered")
       ) {
-        throw new ApiError(409, "user_already_exists", "That email already has an account. Please sign in instead.");
+        return Response.json({
+          ok: true,
+          sessionCreated: false,
+        });
       }
       if (
         errLower.includes("rate limit") ||
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
         throw new ApiError(403, "signups_disabled", "Email signups are currently disabled in Supabase project settings.");
       }
       if (errLower.includes("password")) {
-        throw new ApiError(400, "weak_password", error.message);
+        throw new ApiError(400, "weak_password", sanitizePublicMessage(error.message, "Password does not meet requirements."));
       }
       throw new ApiError(400, "signup_failed", sanitizePublicMessage(error.message, "Could not create account. Please try again."));
     }

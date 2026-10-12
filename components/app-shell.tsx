@@ -17,6 +17,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { MobileNav, SidebarNav } from "@/components/sidebar-nav";
 import { SidebarToggle } from "@/components/sidebar-toggle";
+import { TrialGrantedModal } from "@/components/trial-granted-modal";
 import { readJsonResponse } from "@/lib/http";
 import { sanitizePublicMessage } from "@/lib/safe-message";
 import { cn } from "@/lib/utils";
@@ -399,6 +400,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileNav />
+      <TrialGrantedModal />
     </div>
   );
 }

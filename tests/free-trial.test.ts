@@ -14,6 +14,7 @@ import {
 import {
   ensureTrialEntitlement,
   freeTrialDays,
+  getDeviceAddress,
   isTrialEntitlement,
   trialDailyTokenCap,
   trialUsageLimits,
@@ -181,4 +182,94 @@ describe("a trial grant never breaks a request", () => {
     assert.equal(result.granted, false);
     assert.equal(result.errored, true);
   });
+
+  it("resolves entitlement with trialDays and trialJustGranted flags", async () => {
+    const { resolveEntitlementWithTrial } = await import("@/lib/server/trial");
+    const result = await resolveEntitlementWithTrial("00000000-0000-4000-8000-000000000000");
+    assert.ok(result);
+    assert.equal(typeof result.trialDays, "number");
+    assert.equal(result.trialDays, 3);
+    assert.equal(typeof result.trialJustGranted, "boolean");
+  });
 });
+
+describe("device address extraction and single-trial enforcement per device", () => {
+  it("resolves device address from x-device-address header when provided", () => {
+    const req = new Request("https://example.com/api/me/entitlement", {
+      headers: {
+        "x-device-address": "DEVICE-MAC-AA-BB-CC-11-22-33",
+        "x-vercel-forwarded-for": "198.51.100.5",
+      },
+    });
+    // Normalizes to lowercase
+    assert.equal(getDeviceAddress(req), "device-mac-aa-bb-cc-11-22-33");
+  });
+
+  it("falls back to server-resolved client IP when x-device-address is not set", () => {
+    const req = new Request("https://example.com/api/me/entitlement", {
+      headers: {
+        "x-vercel-forwarded-for": "203.0.113.88",
+      },
+    });
+    assert.equal(getDeviceAddress(req), "203.0.113.88");
+  });
+
+  it("resolves device address from x-real-ip proxy header", () => {
+    const req = new Request("https://example.com/api/me/entitlement", {
+      headers: {
+        "x-real-ip": "198.51.100.42",
+      },
+    });
+    assert.equal(getDeviceAddress(req), "198.51.100.42");
+  });
+
+  it("resolves device address from the tail of x-forwarded-for (spoof-resistant)", () => {
+    const req = new Request("https://example.com/api/me/entitlement", {
+      headers: {
+        "x-forwarded-for": "1.1.1.1, 192.0.2.77",
+      },
+    });
+    assert.equal(getDeviceAddress(req), "192.0.2.77");
+  });
+
+  it("normalizes addresses by trimming whitespace and converting to lowercase", () => {
+    assert.equal(getDeviceAddress("  DEVICE-ADDR-XYZ-123  "), "device-addr-xyz-123");
+    assert.equal(getDeviceAddress("2001:DB8::1"), "2001:db8::1");
+  });
+
+  it("returns 'unknown' when no request or IP is present", () => {
+    assert.equal(getDeviceAddress(null), "unknown");
+    assert.equal(getDeviceAddress(undefined), "unknown");
+    assert.equal(getDeviceAddress(""), "unknown");
+    assert.equal(getDeviceAddress("   "), "unknown");
+    const emptyReq = new Request("https://example.com/api/me/entitlement");
+    assert.equal(getDeviceAddress(emptyReq), "unknown");
+  });
+
+  it("binds device address in ensureTrialEntitlement without throwing", async () => {
+    const result = await ensureTrialEntitlement(
+      "00000000-0000-4000-8000-000000000001",
+      "203.0.113.99"
+    );
+    // When Supabase is unconfigured, it catches the error and reports errored: true, granted: false
+    assert.equal(result.granted, false);
+    assert.equal(result.errored, true);
+  });
+
+  it("passes request or device address into resolveEntitlementWithTrial safely", async () => {
+    const req = new Request("https://example.com/api/me/entitlement", {
+      headers: {
+        "x-device-address": "device-uuid-test-999",
+      },
+    });
+    const { resolveEntitlementWithTrial } = await import("@/lib/server/trial");
+    const result = await resolveEntitlementWithTrial(
+      "00000000-0000-4000-8000-000000000002",
+      req
+    );
+    assert.ok(result);
+    assert.equal(result.status, "inactive");
+    assert.equal(result.trialJustGranted, false);
+  });
+});
+

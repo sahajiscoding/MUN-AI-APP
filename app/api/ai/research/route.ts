@@ -210,8 +210,9 @@ export async function POST(request: Request) {
         // only for a confirmed-email session, and only when the account is
         // reaching for a tool, so trial days are never spent waiting for the
         // verification email. Idempotent and NOT repeatable — the database
-        // grants it only to an account with no entitlement row at all.
-        const entitlement = await assertPaidAccessOrStartTrial(user.uid);
+        // grants it only to an account with no entitlement row at all whose
+        // device address has not already claimed a trial.
+        const entitlement = await assertPaidAccessOrStartTrial(user.uid, request);
         accessKind = isTrialEntitlement(entitlement) ? "trial" : "paid";
         uid = user.uid;
       } catch (error) {

@@ -1,0 +1,13 @@
+{
+ "id": "P010",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "trust",
+ "reason": "I am not putting something I did not write in front of my chair. I would rather be weaker and honest.",
+ "objection": "Will my chair penalise me for AI-written work?",
+ "would_change_my_mind": "A clear explanation of how it is meant to be used, so I do not feel like I am cheating.",
+ "price_too_cheap": 100,
+ "price_cheap": 200,
+ "price_expensive": 600,
+ "price_too_expensive": 1000
+}

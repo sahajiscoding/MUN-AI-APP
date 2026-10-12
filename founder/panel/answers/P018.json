@@ -1,0 +1,13 @@
+{
+ "id": "P018",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "price",
+ "reason": "I am 14 and I run a club with no budget. 299 of my own money for a tool I have not seen is not happening.",
+ "objection": "299 is a lot of my pocket money.",
+ "would_change_my_mind": "A free school plan I could show my club.",
+ "price_too_cheap": 40,
+ "price_cheap": 100,
+ "price_expensive": 300,
+ "price_too_expensive": 600
+}

@@ -1,0 +1,38 @@
+{
+  "business": "MUN Prep App (AI preparation workspace for Model UN delegates, India-first, ₹199/week or ₹299/month)",
+  "target": "Model UN delegates in India, 14 to 22, English-medium, preparing for a specific conference date",
+  "where": "Online, India (tier-1 and tier-2 cities). Bought by the student, a parent, or the school",
+  "age": [14, 22],
+  "segments": [
+    {"name": "School delegate, parent pays", "share": 0.38, "income": [700000, 2500000]},
+    {"name": "College delegate, own pocket money", "share": 0.34, "income": [150000, 700000]},
+    {"name": "Circuit regular chasing awards", "share": 0.16, "income": [500000, 1800000]},
+    {"name": "Club head or coordinator buying for a group", "share": 0.12, "income": [600000, 2000000]}
+  ],
+  "behaviours": [
+    {"name": "Already uses ChatGPT for everything", "share": 0.22, "how": "Has ChatGPT (or Gemini) open on their phone for schoolwork and doesn't see why this is different."},
+    {"name": "Prepares the night before", "share": 0.20, "how": "Does almost nothing until the last evening, then panics and writes it all in one sitting."},
+    {"name": "First conference, no idea what to expect", "share": 0.16, "how": "Has never been in committee, is scared of speaking, and is looking for anything that makes the day survivable."},
+    {"name": "Taught by a school MUN coach", "share": 0.14, "how": "The school runs sessions and gives out templates, so they already have a method and a person to ask."},
+    {"name": "Award chaser, reads past papers", "share": 0.12, "how": "Studies previous winning material, knows the formats cold, and buys anything that might give an edge."},
+    {"name": "Deal hunter", "share": 0.09, "how": "Waits for a discount or a free trial, and will not pay full price for anything on the internet."},
+    {"name": "Reads reviews and asks seniors first", "share": 0.07, "how": "Checks whether anyone they know has used it and what they said before spending money."}
+  ],
+  "objections": [
+    "ChatGPT is free and it's already on my phone",
+    "299 is a lot of my pocket money",
+    "I don't trust AI facts in committee, the chair will catch me out",
+    "I only need this once, the night before the conference",
+    "My school coach already preps us for free",
+    "Why should I pay before I've seen if the output is any good?",
+    "I'll just ask a senior for their old position paper",
+    "Will my chair penalise me for AI-written work?"
+  ],
+  "habits": [
+    "your MUN club meets on Saturdays and the conference is three weeks away",
+    "you write your position paper at 11pm on your phone",
+    "you have ChatGPT open in another tab while you read this",
+    "your school already paid about 2500 rupees for your conference registration",
+    "you are in a WhatsApp group where seniors share their old papers and speeches"
+  ]
+}

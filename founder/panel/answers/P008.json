@@ -1,0 +1,13 @@
+{
+ "id": "P008",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "price",
+ "reason": "It is my pocket money, not my parents'. 299 is a whole week of lunch. I would only pay if I had nothing else.",
+ "objection": "299 is a lot of my pocket money.",
+ "would_change_my_mind": "If it was 99, or free for a week.",
+ "price_too_cheap": 50,
+ "price_cheap": 100,
+ "price_expensive": 300,
+ "price_too_expensive": 600
+}

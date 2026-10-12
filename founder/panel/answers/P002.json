@@ -1,0 +1,13 @@
+{
+ "id": "P002",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "trust",
+ "reason": "My coach gives us material I can check with him. If the AI says something wrong in an unmoderated caucus I am the one standing there.",
+ "objection": "I don't trust AI facts in committee, the chair will catch me out.",
+ "would_change_my_mind": "If every claim came with a source I could open.",
+ "price_too_cheap": 100,
+ "price_cheap": 200,
+ "price_expensive": 600,
+ "price_too_expensive": 1200
+}

@@ -1,0 +1,23 @@
+{
+  "business": "MUN Prep App — AI preparation workspace for Model UN delegates (India-first). All amounts in Indian rupees (INR); the tool prints '$' where it means rupees.",
+  "unit": "monthly pass (30 days of access)",
+  "price": 299,
+  "variable": [
+    {"label": "NVIDIA inference, GLM-5.3-Flash — ~28 Quick/Thorough requests at $0.15/M in, $0.50/M out", "cost": 7.00},
+    {"label": "NVIDIA inference, Kimi K3 — ~1.5 Max-mode requests at $3/M in, $15/M out", "cost": 18.00},
+    {"label": "Referral commission 16.72% of the first payment, amortised across all customers (assumes ~40% arrive via a partner)", "cost": 20.00}
+  ],
+  "fixed_monthly": [
+    {"label": "Vercel Pro (commercial use is not permitted on the free Hobby tier)", "cost": 1760},
+    {"label": "UroPay Growth plan (flat, up to 50 transactions/month, zero per-transaction commission)", "cost": 100},
+    {"label": "Domain name, annualised", "cost": 83},
+    {"label": "Supabase free tier", "cost": 0}
+  ],
+  "startup": [
+    {"label": "Domain and first year of tooling", "cost": 5000},
+    {"label": "Launch test budget (the real-buyer test in launch.md)", "cost": 10000}
+  ],
+  "days_per_month": 30,
+  "plan_per_day": 8.0,
+  "ramp_per_day": [0.2, 0.47, 0.87, 1.5, 2.27, 3.07, 4.0, 5.0, 5.93, 6.83, 7.67, 8.5]
+}

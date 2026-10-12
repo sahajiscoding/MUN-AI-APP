@@ -1,12 +1,18 @@
 /**
- * What one x402 payment actually buys.
+ * What each class of caller is allowed to spend per request.
  *
- * `X402_ROUTE_PRICES.aiResearch` is $0.05 per request. The machine daily cap
- * bounds how *many* requests a paying bot may make; nothing bounded how *large*
- * each one could be, because `responseMode` and `maxTokens` both arrive in the
- * caller's own request body and were passed straight through to the router.
+ * Three classes reach this product's AI route, and they are paying very
+ * different amounts for the same button:
  *
- * At the published provider rates (NVIDIA NIM, Sep–Oct 2026):
+ *   paid    — a ₹199/₹299 pass, metered by the 60-request / 300k-token ledger.
+ *   trial   — three free days. Unlimited requests (that is the feature), so the
+ *             only thing standing between a script and the founder's card is
+ *             the per-request cost ceiling below.
+ *   machine — one $0.05 x402 payment.
+ *
+ * ## The machine bound
+ *
+ * At the published NVIDIA NIM rates (Sep–Oct 2026):
  *
  *   Max      — Kimi K3, $3/M in, $15/M out:
  *              3,000 in + 12,000 out ≈ $0.189  → 3.8× the $0.05 price
@@ -14,18 +20,26 @@
  *   Thorough — GLM-5.3-Flash, $0.15/M in, $0.50/M out:
  *              10,000 in + 8,000 out ≈ $0.0055 → 89% margin
  *
- * So a paying bot could buy ~$0.19 of Kimi K3 inference for $0.05, and at the
+ * A paying bot could buy ~$0.19 of Kimi K3 inference for $0.05, and at the
  * 60-request daily cap that is ~$8.30 of net loss per bot per day. **No
- * completion length makes $0.05 cover the Max path** — even a near-empty answer
- * on K3 costs more than the price once the prompt is included — so a machine
- * caller is never routed to it. To sell Max to bots, raise
+ * completion length makes $0.05 cover the Max path**, so a machine caller is
+ * never routed to it. To sell Max to bots, raise
  * `X402_ROUTE_PRICES.aiResearch` and `X402_MACHINE_COMPLETION_CEILING` together
- * and re-do the arithmetic above; `tests/x402-machine-limits.test.ts` asserts
- * the cost bound and will fail if that is done carelessly.
+ * and re-do the arithmetic; `tests/x402-machine-limits.test.ts` asserts the
+ * cost bound and will fail if that is done carelessly.
  *
- * The human path is unaffected: it is metered by a 300,000-token daily budget on
- * the token ledger, which is what makes a Max request affordable for a ₹299
- * monthly subscriber.
+ * ## The trial bound
+ *
+ * A trial account has no request cap, so its exposure is
+ * `(requests the rate limiter allows) × (cost per request)`. On the cheap model
+ * the worst case is bounded by the trial's daily token budget — a million
+ * tokens is about ₹44/day even if every one of them were output. On Kimi K3 the
+ * same million tokens is about ₹1,320/day, which is why **Max is a paid-plan
+ * feature and is downgraded during the trial**. That does not cost the trial
+ * anything in experience: the workspace defaults to Quick.
+ *
+ * The human paid path is unaffected: the 300,000-token daily budget is what
+ * makes a Max request affordable for a subscriber who has actually paid.
  */
 
 /** The strongest mode one x402 payment covers. Both modes below run GLM-5.3-Flash. */
@@ -33,6 +47,11 @@ export const X402_MACHINE_RESPONSE_MODE = "thorough" as const;
 
 /** Completion ceiling for a paid machine caller, within the $0.05 price. */
 export const X402_MACHINE_COMPLETION_CEILING = 8000;
+
+/** The strongest mode the free trial covers. Max runs Kimi K3 and is paid-only. */
+export const TRIAL_MAX_RESPONSE_MODE = "thorough" as const;
+
+export type AiAccessKind = "paid" | "trial" | "machine";
 
 export type AiResponseMode = "quick" | "thorough" | "max";
 
@@ -44,29 +63,38 @@ export type GrantedResponseLimits = {
 /**
  * The mode and token budget a request is actually granted.
  *
- * A machine caller is clamped to what its payment covers; a human caller is
- * passed through untouched, because the token ledger is what bounds them.
- *
- * A *smaller* machine request is honoured, so a bot asking for fewer tokens
- * still gets fewer; a larger one is capped rather than rejected, so it receives
- * the answer its payment buys instead of an error it has already paid for.
+ * A *smaller* request is always honoured, so a caller asking for fewer tokens
+ * still gets fewer; a larger one is capped rather than rejected, so a caller
+ * receives the answer its access level buys instead of an error.
  */
 export function grantedResponseLimits(
-  isMachine: boolean,
+  kind: AiAccessKind,
   requestedMode: AiResponseMode | undefined,
   requestedMaxTokens: number | undefined
 ): GrantedResponseLimits {
-  if (!isMachine) {
+  if (kind === "paid") {
     // Mirrors the request schema's default, and otherwise preserves the exact
     // value the caller sent (including undefined = use the mode ceiling).
     return { responseMode: requestedMode ?? "quick", maxTokens: requestedMaxTokens };
   }
 
-  // The mode is fixed, not downgraded. Honouring "quick" would be cheaper, but
-  // it would also leave the caller in control of which model runs, and the
-  // point of this clamp is that the price — not the request body — decides the
-  // cost. A caller that wants a shorter answer can still ask for fewer tokens,
-  // which is honoured here.
+  if (kind === "trial") {
+    return {
+      // Quick and Thorough are honoured; Max is downgraded, not rejected, so a
+      // triallist who taps the premium toggle still gets a complete answer.
+      responseMode:
+        requestedMode === "max"
+          ? TRIAL_MAX_RESPONSE_MODE
+          : requestedMode ?? "quick",
+      maxTokens: requestedMaxTokens,
+    };
+  }
+
+  // Machine. The mode is fixed, not downgraded: honouring "quick" would be
+  // cheaper, but it would also leave the caller in control of which model runs,
+  // and the point of this clamp is that the price — not the request body —
+  // decides the cost. A caller that wants a shorter answer can still ask for
+  // fewer tokens, which is honoured here.
   const maxTokens =
     requestedMaxTokens && requestedMaxTokens < X402_MACHINE_COMPLETION_CEILING
       ? requestedMaxTokens

@@ -28,21 +28,21 @@ function inferenceCostUsd(model: keyof typeof RATES, inputTokens: number, output
 
 describe("grantedResponseLimits — human callers are untouched", () => {
   it("preserves the mode and an explicit token budget", () => {
-    assert.deepEqual(grantedResponseLimits(false, "max", 12000), {
+    assert.deepEqual(grantedResponseLimits("paid", "max", 12000), {
       responseMode: "max",
       maxTokens: 12000,
     });
   });
 
   it("preserves an undefined token budget so the mode ceiling applies", () => {
-    assert.deepEqual(grantedResponseLimits(false, "quick", undefined), {
+    assert.deepEqual(grantedResponseLimits("paid", "quick", undefined), {
       responseMode: "quick",
       maxTokens: undefined,
     });
   });
 
   it("defaults a missing mode to quick, matching the request schema", () => {
-    assert.deepEqual(grantedResponseLimits(false, undefined, undefined), {
+    assert.deepEqual(grantedResponseLimits("paid", undefined, undefined), {
       responseMode: "quick",
       maxTokens: undefined,
     });
@@ -53,33 +53,33 @@ describe("grantedResponseLimits — machine callers are clamped to what they pai
   it("refuses the Max model no matter what the caller asks for", () => {
     // The bug this exists to prevent: a $0.05 payment selecting Kimi K3.
     for (const requested of ["max", "thorough", "quick", undefined] as const) {
-      const granted = grantedResponseLimits(true, requested, 12000);
+      const granted = grantedResponseLimits("machine", requested, 12000);
       assert.equal(granted.responseMode, X402_MACHINE_RESPONSE_MODE);
       assert.notEqual(granted.responseMode, "max");
     }
   });
 
   it("caps a caller's token request at the paid ceiling", () => {
-    assert.equal(grantedResponseLimits(true, "max", 12000).maxTokens, X402_MACHINE_COMPLETION_CEILING);
+    assert.equal(grantedResponseLimits("machine", "max", 12000).maxTokens, X402_MACHINE_COMPLETION_CEILING);
     assert.equal(
-      grantedResponseLimits(true, "thorough", 999_999).maxTokens,
+      grantedResponseLimits("machine", "thorough", 999_999).maxTokens,
       X402_MACHINE_COMPLETION_CEILING
     );
   });
 
   it("defaults to the paid ceiling when no token budget is requested", () => {
-    assert.equal(grantedResponseLimits(true, "max", undefined).maxTokens, X402_MACHINE_COMPLETION_CEILING);
+    assert.equal(grantedResponseLimits("machine", "max", undefined).maxTokens, X402_MACHINE_COMPLETION_CEILING);
   });
 
   it("honours a smaller token request rather than inflating it", () => {
-    assert.equal(grantedResponseLimits(true, "thorough", 1800).maxTokens, 1800);
-    assert.equal(grantedResponseLimits(true, "max", 256).maxTokens, 256);
+    assert.equal(grantedResponseLimits("machine", "thorough", 1800).maxTokens, 1800);
+    assert.equal(grantedResponseLimits("machine", "max", 256).maxTokens, 256);
   });
 });
 
 describe("the x402 price covers the inference it is granted", () => {
   it("keeps worst-case cost for a machine request well under the price", () => {
-    const granted = grantedResponseLimits(true, "max", 12000);
+    const granted = grantedResponseLimits("machine", "max", 12000);
     const cost = inferenceCostUsd(
       "glm-5.3-flash",
       WORST_CASE_PROMPT_TOKENS,

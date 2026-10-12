@@ -5,12 +5,22 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { readJsonResponse } from "@/lib/http";
+import { isTrialPlanId } from "@/lib/plans";
 
 type EntitlementData = {
   status: "inactive" | "active" | "expired";
   planId?: string;
   expiresAt?: string;
+  source?: string;
 };
+
+/** Whole days left before `expiresAt`, floored at zero. */
+function daysLeft(expiresAt?: string) {
+  if (!expiresAt) return null;
+  const remaining = new Date(expiresAt).getTime() - Date.now();
+  if (!Number.isFinite(remaining)) return null;
+  return Math.max(0, Math.ceil(remaining / 86_400_000));
+}
 
 type EntitlementResponse = {
   entitlement?: EntitlementData;
@@ -75,6 +85,8 @@ export function EntitlementBanner() {
   }
 
   const active = data?.status === "active";
+  const trial = active && isTrialPlanId(data?.planId);
+  const remaining = trial ? daysLeft(data?.expiresAt) : null;
 
   return (
     <div className="surface flex flex-col gap-4 rounded-panel px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -84,19 +96,31 @@ export function EntitlementBanner() {
         </span>
         <div>
           <p className="font-semibold">
-            {active ? "Paid workspace active" : "Paid tools locked"}
+            {trial
+              ? "Free trial active"
+              : active
+                ? "Paid workspace active"
+                : "Paid tools locked"}
           </p>
           <p className="text-sm text-[var(--muted)]">
-            {active && data.expiresAt
-              ? `Access expires ${new Date(data.expiresAt).toLocaleDateString("en-IN")}.`
-              : "Unlock AI research, speeches, POIs, and resolution drafting for this account."}
+            {trial
+              ? `Everything is unlocked until ${data.expiresAt ? new Date(data.expiresAt).toLocaleDateString("en-IN") : "your trial ends"}${
+                  remaining === null
+                    ? "."
+                    : remaining <= 1
+                      ? " — last day."
+                      : ` — ${remaining} days left.`
+                } Keep it by choosing a plan.`
+              : active && data.expiresAt
+                ? `Access expires ${new Date(data.expiresAt).toLocaleDateString("en-IN")}.`
+                : "Unlock AI research, speeches, POIs, and resolution drafting for this account."}
           </p>
         </div>
       </div>
 
-      {!active ? (
+      {!active || trial ? (
         <Link className="button-primary inline-flex items-center justify-center px-4 text-sm font-semibold" href="/pricing">
-          Unlock access
+          {trial ? "Choose a plan" : "Unlock access"}
         </Link>
       ) : null}
     </div>

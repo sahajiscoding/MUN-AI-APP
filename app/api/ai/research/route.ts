@@ -2,7 +2,6 @@ import { z } from "zod";
 import { ApiError, jsonError, parseJson } from "@/lib/api";
 import { runMunResearch } from "@/lib/ai/router";
 import { requireUser } from "@/lib/server/auth";
-import { assertPaidAccess } from "@/lib/server/entitlements";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit";
 import {
@@ -21,7 +20,15 @@ import {
   fulfilX402Payment,
   X402_PAID_CONTENT_CACHE_CONTROL,
 } from "@/lib/server/x402-fulfil";
-import { grantedResponseLimits } from "@/lib/server/x402-machine-limits";
+import {
+  grantedResponseLimits,
+  type AiAccessKind,
+} from "@/lib/server/x402-machine-limits";
+import {
+  assertPaidAccessOrStartTrial,
+  isTrialEntitlement,
+  trialUsageLimits,
+} from "@/lib/server/trial";
 
 export const runtime = "nodejs";
 
@@ -138,6 +145,9 @@ export async function POST(request: Request) {
   try {
     let uid: string;
     let isX402Bot = false;
+    // Which spend class this request belongs to. Defaults to the human paid
+    // path, which is also what an administrator session gets.
+    let accessKind: AiAccessKind = "paid";
     let machinePayer: string | null = null;
     let x402SettlementHeaders: Record<string, string> = {};
 
@@ -186,6 +196,7 @@ export async function POST(request: Request) {
 
       x402SettlementHeaders = fulfilment.headers;
       isX402Bot = true;
+      accessKind = "machine";
       // Machine callers have no auth.users row. This sentinel is a storage
       // namespace only (chat transcripts) and is never written to a column
       // that references auth.users — see reserveMachineAiUsage below.
@@ -195,7 +206,13 @@ export async function POST(request: Request) {
       // Human browser: maintain existing session & UroPay entitlement gate
       try {
         const user = await requireUser(request);
-        await assertPaidAccess(user.uid);
+        // The one-time free trial starts here rather than at signup: this runs
+        // only for a confirmed-email session, and only when the account is
+        // reaching for a tool, so trial days are never spent waiting for the
+        // verification email. Idempotent and NOT repeatable — the database
+        // grants it only to an account with no entitlement row at all.
+        const entitlement = await assertPaidAccessOrStartTrial(user.uid);
+        accessKind = isTrialEntitlement(entitlement) ? "trial" : "paid";
         uid = user.uid;
       } catch (error) {
         // A regular user who lacks Premium must still receive the paywall error;
@@ -252,7 +269,7 @@ export async function POST(request: Request) {
     // decide what the provider work costs while the price stays $0.05. See
     // lib/server/x402-machine-limits.ts for the arithmetic.
     const granted = grantedResponseLimits(
-      Boolean(isX402Bot),
+      accessKind,
       body.data.responseMode,
       body.data.maxTokens
     );
@@ -263,9 +280,16 @@ export async function POST(request: Request) {
     // `reserveAiUsage` writes ai_usage_daily.uid, which references auth.users,
     // so the machine sentinel would fail its foreign key and turn every paid
     // request into a 503 — after the caller had already been charged.
+    // A trial account gets the feature it was promised — unlimited requests —
+    // while its daily token budget and the paid-only model clamp keep the cost
+    // of an abusive account bounded. See lib/server/trial.ts.
     const reservation = isX402Bot
       ? await reserveMachineAiUsage(machinePayer)
-      : await reserveAiUsage(uid, promptEstimate + completionCeiling);
+      : await reserveAiUsage(
+          uid,
+          promptEstimate + completionCeiling,
+          accessKind === "trial" ? trialUsageLimits() : undefined
+        );
 
     let result: Awaited<ReturnType<typeof runMunResearch>>;
     try {

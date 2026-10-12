@@ -47,12 +47,13 @@ jobs:
         # offline and pin the payment invariants: one grant per authorization
         # under concurrency, no grant when settlement reports success but the
         # claim is already taken, fail-closed when the claim store is down, an
-        # over-budget machine caller refused without being charged, and a paid
-        # machine request whose inference cost stays inside the price paid.
+        # over-budget machine caller refused without being charged, a paid
+        # machine request whose inference cost stays inside the price paid, and
+        # a free trial that cannot be bought, bought twice, or reach Max.
         run: >-
           pnpm exec node --import ./scripts/test-loader.mjs
           --experimental-strip-types --test tests/x402-payment-guard.test.ts
-          tests/x402-machine-limits.test.ts
+          tests/x402-machine-limits.test.ts tests/free-trial.test.ts
 
       - name: Lint
         run: pnpm lint

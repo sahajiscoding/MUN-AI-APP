@@ -39,11 +39,27 @@ export type AiUsageReservation = {
 };
 
 /**
+ * Per-call limit overrides.
+ *
+ * `0` means "no cap" to `reserve_ai_usage`, so these are resolved with `??`
+ * rather than `||` — a trial's `requestCap: 0` is a deliberate instruction to
+ * lift the limit, and `||` would silently replace it with the paid default.
+ */
+export type AiUsageLimits = {
+  requestCap?: number;
+  tokenCap?: number;
+};
+
+/**
  * Atomically checks daily limits and reserves both the request and its maximum
  * prompt/completion budget before any provider work begins. Missing RPCs or
  * ledger errors fail closed; there is deliberately no read-then-write fallback.
  */
-export async function reserveAiUsage(uid: string, reservedTokens: number): Promise<AiUsageReservation> {
+export async function reserveAiUsage(
+  uid: string,
+  reservedTokens: number,
+  limits?: AiUsageLimits
+): Promise<AiUsageReservation> {
   const safeReservation = Math.floor(reservedTokens);
   // Mirrors reserve_ai_usage: the reservation ledger requires 1..1,000,000 tokens.
   if (!uid || !Number.isSafeInteger(safeReservation) || safeReservation < 1 || safeReservation > 1_000_000) {
@@ -53,8 +69,8 @@ export async function reserveAiUsage(uid: string, reservedTokens: number): Promi
   const { data, error } = await supabaseAdmin().rpc("reserve_ai_usage", {
     p_uid: uid,
     p_day: todayKey(),
-    p_request_cap: dailyRequestCap(),
-    ["p_" + "token_cap"]: dailyTokenCap(),
+    p_request_cap: limits?.requestCap ?? dailyRequestCap(),
+    ["p_" + "token_cap"]: limits?.tokenCap ?? dailyTokenCap(),
     ["p_reserved_" + "tokens"]: safeReservation,
   });
 

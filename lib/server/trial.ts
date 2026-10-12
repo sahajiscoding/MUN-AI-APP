@@ -57,9 +57,7 @@ export function isTrialEntitlement(entitlement: Entitlement | null | undefined) 
  * Extract and normalize the device address from a Request or raw address string.
  *
  * In web and mobile clients:
- * - Checks `x-device-address` header first if present (e.g. native app / tester).
- * - Falls back to server-resolved `getClientIp(request)`, which securely evaluates
- *   `x-vercel-forwarded-for`, `x-real-ip`, or the tail of `x-forwarded-for` without spoofing.
+ * - Falls back to server-resolved `getClientIp(request)` without spoofing.
  * - Normalizes to lowercase and trims whitespace.
  * - Returns "unknown" if no valid address could be determined.
  */

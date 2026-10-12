@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PublicNav } from "@/components/public-nav";
 import { SiteFooter } from "@/components/site-pages";
 import { CloudShader } from "@/components/ui/cloud-shader";
+import { FREE_TRIAL_DAYS } from "@/lib/plans";
 
 const workspaces = [
   {
@@ -67,7 +68,10 @@ export function HomeLanding({ referralName }: { referralName?: string }) {
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-white/85">
               A focused Model UN workspace for research briefs, country policy, speeches,
-              POIs, and draft resolution strategy. Sign in to get started.
+              POIs, and draft resolution strategy.
+            </p>
+            <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-md">
+              Start with {FREE_TRIAL_DAYS} free days — no card, no payment
             </p>
             <div className="mt-9 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row sm:gap-4">
               <Link

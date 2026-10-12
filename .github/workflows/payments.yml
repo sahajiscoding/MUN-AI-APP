@@ -40,3 +40,56 @@ jobs:
           grep -q "processReferralCommission" lib/server/payment-reconciliation.ts || fail "reconciliation does not repair commissions"
           grep -q "requireAdmin" app/api/admin/reconcile-payments/route.ts || fail "reconciliation endpoint lacks admin gate"
           echo "Payment lifecycle OK"
+
+      - name: x402 one-payment-one-grant guard
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          grep -q "export async function fulfilX402Payment" lib/server/x402-fulfil.ts || fail "shared fulfilment pipeline is missing"
+          grep -q "export async function claimX402Payment" lib/server/x402-payment-guard.ts || fail "atomic claim primitive is missing"
+          grep -q "x402_payment_claims" supabase/migrations/20261012_x402_payment_guard.sql || fail "claim table migration is missing"
+          grep -q "payment_already_consumed" lib/server/x402-fulfil.ts || fail "replay rejection response is missing"
+          grep -q "payment_guard_unavailable" lib/server/x402-fulfil.ts || fail "fail-closed guard response is missing"
+          grep -q "assertValidPayTo" lib/server/x402-server.ts || fail "payout address validation is missing"
+          grep -q "X402_PAID_CONTENT_CACHE_CONTROL" lib/server/x402-server.ts || fail "paid-content cache policy is missing"
+          grep -q "applyPaidContentCachePolicy" app/api/x402/content/route.ts || fail "paid content is not marked non-cacheable"
+          grep -q "X402_PAID_CONTENT_CACHE_CONTROL" app/api/ai/research/route.ts || fail "paid AI responses are not marked non-cacheable"
+          # Every x402 handler must route through the shared pipeline, so a new
+          # paid route cannot re-implement settlement and lose the claim step.
+          if grep -rn "processSettlement" app/api --include='*.ts'; then fail "a route settles payments directly instead of using fulfilX402Payment"; fi
+          grep -q "fulfilX402Payment" app/api/ai/research/route.ts || fail "AI route bypasses the fulfilment pipeline"
+          grep -q "fulfilX402Payment" app/api/x402/content/route.ts || fail "content route bypasses the fulfilment pipeline"
+          # The machine-caller flag must be set in exactly one place, after the
+          # pipeline succeeded. The deleted fail-open branch set it unconditionally,
+          # so a second occurrence means that free-access path has come back.
+          flag_count=$(grep -rho "isX402Bot = true" app/api --include='*.ts' | wc -l | tr -d ' ')
+          echo "isX402Bot assignments: $flag_count"
+          [ "$flag_count" -eq 1 ] || fail "expected exactly 1 machine-caller flag assignment, found $flag_count"
+          # The placeholder payout default must never come back.
+          if grep -rn "0x0000000000000000000000000000000000000001" lib app --include='*.ts'; then fail "placeholder payout address default returned"; fi
+          # A $0.05 payment must not buy Kimi K3 inference. The clamp lives in
+          # one module and the provider call must use what it returns, not the
+          # caller's own responseMode/maxTokens.
+          grep -q "export function grantedResponseLimits" lib/server/x402-machine-limits.ts || fail "machine response limits module is missing"
+          grep -q "grantedResponseLimits" app/api/ai/research/route.ts || fail "AI route does not clamp machine callers to what they paid"
+          grep -q "responseMode: granted.responseMode" app/api/ai/research/route.ts || fail "provider call ignores the granted response mode"
+          grep -q "maxTokens: granted.maxTokens" app/api/ai/research/route.ts || fail "provider call ignores the granted token budget"
+          echo "x402 guard OK"
+
+      # This repo has no install-based CI job today, so the behavioural suite
+      # (`pnpm test`) is not executed here. These assertions pin that the
+      # invariants keep existing; they are textual tripwires, not proof of
+      # behaviour. To run the real suite:
+      #   pnpm exec node --import ./scripts/test-loader.mjs \
+      #     --experimental-strip-types --test tests/x402-payment-guard.test.ts
+      - name: x402 guard test suite is present and covers the invariants
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          test -f tests/x402-payment-guard.test.ts || fail "guard test suite is missing"
+          grep -q "grants exactly one claim under concurrency" tests/x402-payment-guard.test.ts || fail "concurrency single-use test is missing"
+          grep -q "withholds the resource when settlement succeeds but the claim is taken" tests/x402-payment-guard.test.ts || fail "non-authoritative facilitator test is missing"
+          grep -q "fails closed without granting when the claim store is unreachable" tests/x402-payment-guard.test.ts || fail "store-outage fail-closed test is missing"
+          grep -q "refuses an over-budget machine caller before charging it" tests/x402-payment-guard.test.ts || fail "machine budget pre-settlement test is missing"
+          test -f tests/x402-machine-limits.test.ts || fail "machine limits test suite is missing"
+          grep -q "refuses the Max model no matter what the caller asks for" tests/x402-machine-limits.test.ts || fail "max-mode clamp test is missing"
+          grep -q "keeps worst-case cost for a machine request well under the price" tests/x402-machine-limits.test.ts || fail "inference cost-bound test is missing"
+          echo "x402 guard tests present"

@@ -1,0 +1,13 @@
+{
+ "id": "P038",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "trust",
+ "reason": "I research properly and I have been burned by an AI making up a resolution number. I am not paying for a way to get embarrassed.",
+ "objection": "I don't trust AI facts in committee, the chair will catch me out.",
+ "would_change_my_mind": "A tool that only says things it can point to a source for.",
+ "price_too_cheap": 150,
+ "price_cheap": 350,
+ "price_expensive": 1000,
+ "price_too_expensive": 2400
+}

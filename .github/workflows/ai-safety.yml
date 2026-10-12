@@ -38,4 +38,18 @@ jobs:
           grep -rq "reserved_tokens" supabase/migrations || fail "reservation ledger column missing from migrations"
           grep -q "upstream.abort" lib/ai/nvidia.ts || fail "client cancellation is not propagated to the provider request"
           grep -q "getClientIp" app/api/ai/research/route.ts || fail "AI route does not use server-resolved client IP"
+          # Free trial: unlimited prompts, bounded cost, granted exactly once.
+          # The trial must stay out of the purchasable catalogue, because
+          # create-order resolves the amount it charges through getPlan().
+          grep -q "export function getPlanForDisplay" lib/plans.ts || fail "trial display resolver is missing"
+          grep -q "FREE_TRIAL_PLAN_ID" lib/plans.ts || fail "trial plan id is missing"
+          grep -q "start_free_trial" supabase/migrations/20261013_free_trial.sql || fail "trial grant RPC is missing"
+          grep -q "on conflict (uid) do nothing" supabase/migrations/20261013_free_trial.sql || fail "trial grant is not once-only"
+          grep -q "revoke all on function public.start_free_trial" supabase/migrations/20261013_free_trial.sql || fail "trial RPC is reachable from the browser"
+          grep -q "trialUsageLimits" app/api/ai/research/route.ts || fail "AI route does not apply trial limits"
+          grep -q "requestCap: 0" lib/server/trial.ts || fail "trial no longer lifts the request cap"
+          grep -q "trialDailyTokenCap" lib/server/trial.ts || fail "trial has no token ceiling"
+          grep -q "TRIAL_MAX_RESPONSE_MODE" lib/server/x402-machine-limits.ts || fail "trial no longer clamps the paid model"
+          grep -q "resolveEntitlementWithTrial" app/api/me/entitlement/route.ts || fail "trial never starts"
+          grep -q "assertPaidAccessOrStartTrial" app/api/ai/research/route.ts || fail "AI route bypasses the trial gate"
           echo "AI safety OK"

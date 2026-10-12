@@ -1,0 +1,13 @@
+{
+ "id": "P020",
+ "buys": true,
+ "purchases_first_month": 1,
+ "reason_code": "need",
+ "reason": "I only need help for one conference, and the weekly pass at 199 is exactly one conference. That is the only reason I would say yes.",
+ "objection": "I only need this once, the night before the conference, so a monthly plan is a waste.",
+ "would_change_my_mind": "The weekly price being the default, not the monthly.",
+ "price_too_cheap": 70,
+ "price_cheap": 199,
+ "price_expensive": 400,
+ "price_too_expensive": 800
+}

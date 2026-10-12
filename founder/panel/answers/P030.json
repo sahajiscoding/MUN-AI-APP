@@ -1,0 +1,13 @@
+{
+ "id": "P030",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "other",
+ "reason": "Our school has a coach and a shared drive full of material. I do not decide this kind of spending anyway.",
+ "objection": "My school coach already preps us for free.",
+ "would_change_my_mind": "Nothing I control.",
+ "price_too_cheap": 60,
+ "price_cheap": 150,
+ "price_expensive": 500,
+ "price_too_expensive": 1000
+}

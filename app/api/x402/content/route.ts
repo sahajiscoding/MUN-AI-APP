@@ -7,9 +7,10 @@ import { jsonError } from "@/lib/api";
 import {
   processX402Request,
   buildX402Response,
-  recordX402Payment,
+  applyPaidContentCachePolicy,
   X402_ROUTE_PRICES,
 } from "@/lib/server/x402-server";
+import { fulfilX402Payment } from "@/lib/server/x402-fulfil";
 
 export const runtime = "nodejs";
 
@@ -55,100 +56,106 @@ export async function GET(request: Request) {
     }
 
     const url = new URL(request.url);
-  const resource = url.searchParams.get("resource") || "summary";
-  const slug = url.searchParams.get("slug") || "";
+    const resource = url.searchParams.get("resource") || "summary";
+    const slug = url.searchParams.get("slug") || "";
 
-  // Run through x402 processor for the content route
-  const processResult = await processX402Request(
-    request,
-    "/api/x402/content",
-    "GET"
-  );
+    // The exact resource being bought. Bound to the payment claim so a single
+    // authorization can never be spent across two different resources.
+    const resourceKey = `${resource}${slug ? `:${slug}` : ""}`;
 
-  if (processResult.type === "payment-error") {
-    return buildX402Response(processResult);
-  }
+    // Run through x402 processor for the content route
+    const processResult = await processX402Request(
+      request,
+      "/api/x402/content",
+      "GET"
+    );
 
-  let settlementHeaders: Record<string, string> = {};
-  if (processResult.type === "payment-verified") {
-    // Settle with facilitator
-    const settleResult = await (
-      await import("@/lib/server/x402-server")
-    )
-      .getX402HttpServer()
-      .then((server) =>
-        server.processSettlement(
-          processResult.paymentPayload,
-          processResult.paymentRequirements,
-          processResult.declaredExtensions
-        )
-      );
-
-    if (!settleResult.success) {
-      return buildX402Response({ response: settleResult.response });
+    if (processResult.type === "payment-error") {
+      return buildX402Response(processResult);
     }
 
-    settlementHeaders = settleResult.headers;
+    let settlementHeaders: Record<string, string> = {};
 
-    // Record verified transaction in payments ledger
-    const orderRef = `x402-${crypto.randomUUID()}`;
-    await recordX402Payment({
-      orderRef,
-      amountUsd: X402_ROUTE_PRICES.contentPage,
-      network: processResult.paymentRequirements.network,
-      transactionHash: settleResult.transaction,
-      status: "paid",
-      metadata: { resource, slug },
-    });
-  }
+    if (processResult.type === "payment-verified") {
+      // Settle, then atomically consume the authorization for THIS resource.
+      // The resource is only released when the payment was both settled and
+      // successfully claimed single-use.
+      const fulfilment = await fulfilX402Payment({
+        verified: processResult,
+        resourceKey,
+        amountUsd: X402_ROUTE_PRICES.contentPage,
+        route: "/api/x402/content",
+      });
 
-  // Construct requested content data
-  let data: unknown;
+      if (!fulfilment.ok) {
+        return fulfilment.response;
+      }
 
-  if (resource === "courses") {
-    data = {
-      courses: courses.map((c) => ({
-        slug: c.slug,
-        title: c.title,
-        category: c.category,
-        description: c.description,
-        lessonCount: c.lessons.length,
-      })),
-    };
-  } else if (resource === "course" && slug) {
-    const course = courses.find((c) => c.slug === slug);
-    if (!course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
-    }
-    data = { course };
-  } else if (resource === "glossary") {
-    data = { glossary: glossaryTerms };
-  } else if (resource === "legal") {
-    if (slug && legalPages[slug]) {
-      data = { page: legalPages[slug] };
+      settlementHeaders = fulfilment.headers;
     } else {
-      data = { pages: legalPages };
+      // Any outcome that is neither a payment challenge nor a consumed payment
+      // must not yield content on a paid route. This is unreachable while the
+      // route configuration and this handler agree on path+method, but it fails
+      // closed if they ever drift — the alternative is free paid content.
+      return buildX402Response({
+        response: {
+          status: 402,
+          headers: { "Cache-Control": "no-store" },
+          body: { error: "Payment required.", code: "payment_required" },
+        },
+      });
     }
-  } else {
-    data = {
-      service: "MUN Prep Bot Knowledge Base",
-      availableResources: [
-        { resource: "courses", description: "All available MUN courses" },
-        { resource: "course", query: "?resource=course&slug=mun-basics", description: "Full course with lessons" },
-        { resource: "glossary", description: "Full Model UN terminology reference" },
-        { resource: "legal", description: "Terms, privacy, policies, and disclosures" },
-      ],
-      price: X402_ROUTE_PRICES.contentPage,
-      network: "Base (EVM USDC)",
-    };
-  }
 
-  const response = NextResponse.json(data);
-  for (const [key, value] of Object.entries(settlementHeaders)) {
-    response.headers.set(key, value);
-  }
+    // Construct requested content data
+    let data: unknown;
 
-    return response;
+    if (resource === "courses") {
+      data = {
+        courses: courses.map((c) => ({
+          slug: c.slug,
+          title: c.title,
+          category: c.category,
+          description: c.description,
+          lessonCount: c.lessons.length,
+        })),
+      };
+    } else if (resource === "course" && slug) {
+      const course = courses.find((c) => c.slug === slug);
+      if (!course) {
+        return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      }
+      data = { course };
+    } else if (resource === "glossary") {
+      data = { glossary: glossaryTerms };
+    } else if (resource === "legal") {
+      if (slug && legalPages[slug]) {
+        data = { page: legalPages[slug] };
+      } else {
+        data = { pages: legalPages };
+      }
+    } else {
+      data = {
+        service: "MUN Prep Bot Knowledge Base",
+        availableResources: [
+          { resource: "courses", description: "All available MUN courses" },
+          { resource: "course", query: "?resource=course&slug=mun-basics", description: "Full course with lessons" },
+          { resource: "glossary", description: "Full Model UN terminology reference" },
+          { resource: "legal", description: "Terms, privacy, policies, and disclosures" },
+        ],
+        price: X402_ROUTE_PRICES.contentPage,
+        network: "Base (EVM USDC)",
+      };
+    }
+
+    const response = NextResponse.json(data);
+    for (const [key, value] of Object.entries(settlementHeaders)) {
+      response.headers.set(key, value);
+    }
+
+    // Payment-gated content must not be storable by any shared cache. Without
+    // this, a CDN may serve the granted body to later unpaid callers for the
+    // whole length of its TTL.
+    return applyPaidContentCachePolicy(response);
   } catch (error) {
     return jsonError(error);
   }

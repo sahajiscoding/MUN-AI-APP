@@ -1,0 +1,13 @@
+{
+ "id": "P023",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "convenience",
+ "reason": "I have a folder of seniors' papers. It is free and the formats are already right.",
+ "objection": "I'll just ask a senior for their old position paper.",
+ "would_change_my_mind": "Nothing soon. Maybe next year when the seniors graduate.",
+ "price_too_cheap": 50,
+ "price_cheap": 120,
+ "price_expensive": 350,
+ "price_too_expensive": 700
+}

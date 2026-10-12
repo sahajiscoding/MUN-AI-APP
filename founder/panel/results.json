@@ -1,0 +1,219 @@
+{
+ "business": "MUN Prep App (AI preparation workspace for Model UN delegates, India-first, ₹199/week or ₹299/month)",
+ "seed": 11,
+ "dealt": 40,
+ "answered": 40,
+ "skipped": [],
+ "buys": 9,
+ "passes": 31,
+ "buy_rate": 0.225,
+ "by_segment": [
+  [
+   "Club head or coordinator buying for a group",
+   5,
+   0.4
+  ],
+  [
+   "Circuit regular chasing awards",
+   6,
+   0.3333333333333333
+  ],
+  [
+   "College delegate, own pocket money",
+   14,
+   0.21428571428571427
+  ],
+  [
+   "School delegate, parent pays",
+   15,
+   0.13333333333333333
+  ]
+ ],
+ "by_behaviour": [
+  [
+   "Award chaser, reads past papers",
+   5,
+   0.6
+  ],
+  [
+   "First conference, no idea what to expect",
+   6,
+   0.5
+  ],
+  [
+   "Taught by a school MUN coach",
+   6,
+   0.3333333333333333
+  ],
+  [
+   "Already uses ChatGPT for everything",
+   9,
+   0.1111111111111111
+  ],
+  [
+   "Prepares the night before",
+   8,
+   0.0
+  ],
+  [
+   "Reads reviews and asks seniors first",
+   3,
+   0.0
+  ],
+  [
+   "Deal hunter",
+   3,
+   0.0
+  ]
+ ],
+ "by_income": [
+  [
+   "$1,392,000 and up",
+   14,
+   0.2857142857142857
+  ],
+  [
+   "under $680,000",
+   13,
+   0.23076923076923078
+  ],
+  [
+   "$680,000 to $1,392,000",
+   13,
+   0.15384615384615385
+  ]
+ ],
+ "why_not": [
+  [
+   "trust",
+   10,
+   [
+    "My coach gives us material I can check with him. If the AI says something wrong in an unmoderated caucus I am the one standing there.",
+    "I always check reviews before paying and I could not find anyone who used this. That is not proof it works, that is proof nobody is saying it does."
+   ],
+   [
+    "P002",
+    "P004"
+   ]
+  ],
+  [
+   "price",
+   7,
+   [
+    "226000 a year is not a lot and it is my own money. I would panic-buy the night before, but I would rather phone a friend who has done it.",
+    "There is no free trial and I never pay full price for something I have not tested. I will wait for a discount."
+   ],
+   [
+    "P003",
+    "P005"
+   ]
+  ],
+  [
+   "other",
+   5,
+   [
+    "Our school coach runs sessions and my parents already paid 2500 for the conference. I will ask him, not an app.",
+    "My school coach hands us templates and checks our papers. I do not need to pay for the same thing."
+   ],
+   [
+    "P007",
+    "P026"
+   ]
+  ],
+  [
+   "convenience",
+   5,
+   [
+    "I do everything the night before and I reach for whatever is already open. Asking an app to do MUN specifically has never occurred to me.",
+    "A senior in my WhatsApp group sent me their whole folder of old papers. I have free material sitting right there."
+   ],
+   [
+    "P009",
+    "P012"
+   ]
+  ],
+  [
+   "quality",
+   3,
+   [
+    "I use ChatGPT every day and it is fine. I am not paying for a version of what I already have without seeing a difference.",
+    "At 11pm the night before I would pay anything, but you have to show me something first. 199 for a week I will only use once is not convincing either."
+   ],
+   [
+    "P024",
+    "P025"
+   ]
+  ],
+  [
+   "habit",
+   1,
+   [
+    "I already have ChatGPT and my coach has templates. Adding one more thing to pay for is friction I do not need this week."
+   ],
+   [
+    "P006"
+   ]
+  ]
+ ],
+ "why_yes": [
+  [
+   "quality",
+   5,
+   [
+    "I have three conferences this season and the difference between a good brief and a thin one is the difference between speaking and sitting silent. 299 is nothing next to what I spend on travel.",
+    "I have come second twice. Anything that sharpens my opening speech is worth a month of pocket money and 299 is nothing."
+   ],
+   [
+    "P011",
+    "P016"
+   ]
+  ],
+  [
+   "need",
+   4,
+   [
+    "I have never been in committee and I am honestly scared. Having a brief ready in my own committee's words is worth more than the money.",
+    "I run my school's club and I would spend 299 to test it for the whole team. If it works I want it for twenty people, not one."
+   ],
+   [
+    "P001",
+    "P013"
+   ]
+  ]
+ ],
+ "flip": [
+  "If every claim came with a source I could open.",
+  "It being free for one brief so I can see the quality.",
+  "Two or three awards from people I can look up.",
+  "Any free trial at all.",
+  "If it did the citations properly so I did not have to worry.",
+  "The coach telling us to use it.",
+  "If it was 99, or free for a week.",
+  "Seeing someone else's output from it, so I know it is better than my own prompting.",
+  "A clear explanation of how it is meant to be used, so I do not feel like I am cheating.",
+  "If it was about this year's agenda and not old stuff.",
+  "Someone showing me it is measurably better, not just faster.",
+  "It being framed as research I then write up myself.",
+  "Being able to pay with the money my college reimburses.",
+  "A free school plan I could show my club.",
+  "Reviews from delegates, and knowing where the facts come from.",
+  "Any free sample at all.",
+  "One free brief so I can judge it.",
+  "Nothing soon. Maybe next year when the seniors graduate.",
+  "A side-by-side showing it is better in committee.",
+  "One free brief, the night I actually need it.",
+  "The coach saying to use it.",
+  "A teacher recommending it in class.",
+  "A clear statement that it is for research and preparation, not submission.",
+  "Being genuinely cheaper than free, which is impossible, or much better.",
+  "Nothing I control.",
+  "A free trial and one real review.",
+  "Sources I can open and verify before I speak.",
+  "Citations I can check myself, and it being sold as a research aid.",
+  "The school buying it for us.",
+  "A tool that only says things it can point to a source for.",
+  "The club agreeing to use it together."
+ ],
+ "purchases_first_month_per_buyer": 2.0,
+ "price_answers": 40
+}

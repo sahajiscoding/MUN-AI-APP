@@ -1,0 +1,13 @@
+{
+ "id": "P011",
+ "buys": true,
+ "purchases_first_month": 3,
+ "reason_code": "quality",
+ "reason": "I have three conferences this season and the difference between a good brief and a thin one is the difference between speaking and sitting silent. 299 is nothing next to what I spend on travel.",
+ "objection": "ChatGPT is free and already on my phone, but the formatting it gives me is never conference-ready.",
+ "would_change_my_mind": "Nothing, I would buy it today.",
+ "price_too_cheap": 150,
+ "price_cheap": 300,
+ "price_expensive": 900,
+ "price_too_expensive": 2000
+}

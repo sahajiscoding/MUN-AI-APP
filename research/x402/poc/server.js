@@ -20,7 +20,10 @@ const NETWORK = process.env.NETWORK || "eip155:84532";
 const FACILITATOR_URL = process.env.FACILITATOR_URL || "http://127.0.0.1:4199";
 const PAY_TO = process.env.PAY_TO || "0x000000000000000000000000000000000000bEEF";
 
-const stats = { handlerRuns: {}, grants: 0 };
+// handlerRuns is a Map rather than a plain object so that the per-route counters
+// are never written through a computed property key (avoids prototype-pollution
+// / object-injection classes of bug).
+const stats = { handlerRuns: new Map(), grants: 0 };
 
 const facilitatorClient = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
 const server = new x402ResourceServer(facilitatorClient);
@@ -51,7 +54,12 @@ app.use(express.json());
 app.use(paymentMiddleware(routes, server));
 
 function count(key) {
-  stats.handlerRuns[key] = (stats.handlerRuns[key] || 0) + 1;
+  stats.handlerRuns.set(key, (stats.handlerRuns.get(key) || 0) + 1);
+}
+
+/** Serialize the Map-backed counters into the plain JSON shape /stats has always served. */
+function snapshot() {
+  return { handlerRuns: Object.fromEntries(stats.handlerRuns), grants: stats.grants };
 }
 
 app.get("/api/cheap", (req, res) => {
@@ -73,9 +81,9 @@ app.post("/api/expensive-sideeffect", async (req, res) => {
   count("sideeffect");
   // simulate expensive, non-idempotent work (LLM call, email, DB write...)
   await new Promise(r => setTimeout(r, 250));
-  res.json({ resource: "sideeffect", sendsEmail: true, runNumber: stats.handlerRuns.sideeffect });
+  res.json({ resource: "sideeffect", sendsEmail: true, runNumber: stats.handlerRuns.get("sideeffect") });
 });
 
-app.get("/stats", (req, res) => res.json(stats));
+app.get("/stats", (req, res) => res.json(snapshot()));
 
 app.listen(PORT, "0.0.0.0", () => console.log(`resource server listening on ${PORT}`));

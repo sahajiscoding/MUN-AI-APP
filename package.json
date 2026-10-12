@@ -9,6 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "check:manifests": "node scripts/check-manifests.mjs",
+    "check:identity": "node scripts/check-commit-identity.mjs",
+    "hooks:install": "node scripts/install-hooks.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import ./scripts/test-loader.mjs --experimental-strip-types --test tests/*.test.ts"
   },

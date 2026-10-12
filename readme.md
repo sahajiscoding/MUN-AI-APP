@@ -38,6 +38,8 @@ ADMIN_OWNER_UIDS=
 
 AI_DAILY_REQUEST_CAP=60
 AI_DAILY_TOKEN_CAP=300000
+AI_FREE_TRIAL_DAYS=3
+AI_TRIAL_DAILY_TOKEN_CAP=1000000
 
 UROPAY_API_KEY=
 UROPAY_API_SECRET=
@@ -65,6 +67,7 @@ Verify with the automated gates (all must stay green; never weaken a gate to mak
 
 ```bash
 corepack pnpm install --frozen-lockfile   # lockfile sync (SEC-DEP-03)
+pnpm check:manifests                      # manifests parse (no duplicate keys/conflict markers)
 pnpm lint
 pnpm typecheck
 pnpm build
@@ -72,7 +75,7 @@ pnpm audit                                # full tree; must be clean
 pnpm audit --prod                         # production tree; must be clean
 ```
 
-The per-area security contracts are `.github/workflows/*.yml` checks (grep-based tripwires for auth, admin MFA/revocation, AI quota reservation, certificate integrity, payments, RLS, headers, etc.). Run the relevant workflow's `grep` lines locally against a change; there is no `pnpm test` runner in this repository.
+The per-area security contracts are `.github/workflows/*.yml` checks (grep-based tripwires for auth, admin MFA/revocation, AI quota reservation, certificate integrity, payments, RLS, headers, etc.). Run the relevant workflow's `grep` lines locally against a change; `pnpm check:manifests` runs the dependency-free manifest tripwire (`.github/workflows/dependency-audit.yml`) without installing anything.
 
 ## Supabase Auth
 
@@ -119,7 +122,7 @@ Before a production release, run the lint, typecheck, build, and frozen-lockfile
 
 Security release gates (see [`SECURITY.md`](./SECURITY.md) §21–§22):
 
-- `pnpm lint`, `pnpm typecheck`, and `pnpm build` are green; `pnpm audit` and `pnpm audit --prod` are clean; `pnpm-lock.yaml` is in sync with `package.json`. The per-area contract checks under `.github/workflows/` are grep-based tripwires, not runtime tests — no `pnpm test` script or `scripts/*.mjs` runners exist in this repository.
+- `pnpm lint`, `pnpm typecheck`, and `pnpm build` are green; `pnpm check:manifests` reports no duplicated manifest keys or merge-conflict markers; `pnpm audit` and `pnpm audit --prod` are clean; `pnpm-lock.yaml` is in sync with `package.json`. The per-area contract checks under `.github/workflows/` are grep-based tripwires, not runtime tests, and they are what CI enforces — `pnpm test` (the x402/payment unit tests) is not wired into these workflows yet.
 - RLS verification queries (§8) pass on production; migrations applied in order including `20260827_security_hardening.sql` and the 2026-10-01 hardening set (`20261001_payment_entitlement_grants.sql`, `20261001_admin_revocation_tombstones.sql`, `20261001_ai_usage_reservations.sql`, `20261001_rate_limit_retention.sql`).
 - `ADMIN_SESSION_SECRET` is ≥32 random characters and distinct from `SUPABASE_SECRET_KEY`; every approved administrator has a verified TOTP factor, and the admin login path requires the session to have completed the MFA challenge (AAL2). `ADMIN_REQUIRE_MFA` is no longer used and can be deleted from Vercel.
 - No secret was pasted into chat, docs, or commits during this release — if one was, rotate it first (Supabase, NVIDIA, UroPay, admin secret), verify the old value is dead, and purge it from history per the §24 playbook. A green secret scan covers tracked files and post-baseline history only; pre-baseline history is treated as compromised until rotated and purged.

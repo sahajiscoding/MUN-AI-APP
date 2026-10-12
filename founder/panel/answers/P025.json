@@ -1,0 +1,13 @@
+{
+ "id": "P025",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "quality",
+ "reason": "At 11pm the night before I would pay anything, but you have to show me something first. 199 for a week I will only use once is not convincing either.",
+ "objection": "Why should I pay before I've seen if the output is any good?",
+ "would_change_my_mind": "One free brief, the night I actually need it.",
+ "price_too_cheap": 50,
+ "price_cheap": 199,
+ "price_expensive": 400,
+ "price_too_expensive": 800
+}

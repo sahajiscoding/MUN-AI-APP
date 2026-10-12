@@ -1,0 +1,13 @@
+{
+ "id": "P031",
+ "buys": true,
+ "purchases_first_month": 3,
+ "reason_code": "quality",
+ "reason": "I am one award away from a good university application. 299 a month during conference season is the cheapest thing I will buy this year.",
+ "objection": "ChatGPT is free but it never gives me the right structure or a resolution format.",
+ "would_change_my_mind": "Knowing it is accurate. I would still check everything myself.",
+ "price_too_cheap": 150,
+ "price_cheap": 300,
+ "price_expensive": 900,
+ "price_too_expensive": 2000
+}

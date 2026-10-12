@@ -1,0 +1,13 @@
+{
+ "id": "P039",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "convenience",
+ "reason": "I have a seniors' folder and a club to ask. I do my prep the night before like everyone else.",
+ "objection": "I'll just ask a senior for their old position paper.",
+ "would_change_my_mind": "The club agreeing to use it together.",
+ "price_too_cheap": 60,
+ "price_cheap": 150,
+ "price_expensive": 450,
+ "price_too_expensive": 900
+}

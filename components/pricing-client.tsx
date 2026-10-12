@@ -7,12 +7,19 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { readJsonResponse } from "@/lib/http";
 import { sanitizePublicMessage } from "@/lib/safe-message";
-import { canonicalPlanId, formatPlanPrice, getPlan, plans } from "@/lib/plans";
+import {
+  canonicalPlanId,
+  formatPlanPrice,
+  getPlanForDisplay,
+  isTrialPlanId,
+  plans,
+} from "@/lib/plans";
 
 type EntitlementData = {
   status: "inactive" | "active" | "expired";
   planId?: string;
   expiresAt?: string;
+  source?: string;
 };
 
 type EntitlementResponse = {
@@ -94,7 +101,10 @@ export function PricingClient() {
 
   const hasActiveAccess = entitlement?.status === "active";
   const hasAdminAccess = hasActiveAccess && entitlement.planId === "admin";
-  const currentPlan = hasActiveAccess ? getPlan(entitlement.planId) : undefined;
+  const onFreeTrial = hasActiveAccess && isTrialPlanId(entitlement?.planId);
+  // Display only. `getPlan` resolves purchasable plans and must not be used to
+  // label the trial, because the checkout path trusts it to decide a price.
+  const currentPlan = hasActiveAccess ? getPlanForDisplay(entitlement.planId) : undefined;
 
   /** Applies a referral code to the signed-in account. */
   async function applyReferralCodeValue(code: string) {
@@ -261,13 +271,15 @@ export function PricingClient() {
               <p className="font-semibold">
                 {hasAdminAccess
                   ? "You have admin access"
-                  : `You have ${currentPlan?.name ?? "an active plan"}`}
+                  : onFreeTrial
+                    ? "You are on the free trial"
+                    : `You have ${currentPlan?.name ?? "an active plan"}`}
               </p>
               <p className="text-sm text-[var(--muted)]">
                 {hasAdminAccess
                   ? "All paid tools are included for this account."
                   : entitlement.expiresAt
-                    ? `Expires ${new Date(entitlement.expiresAt).toLocaleDateString("en-IN")}.`
+                    ? `${onFreeTrial ? "Trial ends" : "Expires"} ${new Date(entitlement.expiresAt).toLocaleDateString("en-IN")}. Buy a pass and your remaining trial days are added on top.`
                     : "Your paid access is ready to use."}
               </p>
             </div>
@@ -358,6 +370,8 @@ export function PricingClient() {
                   "Included with admin access"
                 ) : isCurrentPlan ? (
                   "Current plan"
+                ) : onFreeTrial ? (
+                  "Keep access"
                 ) : hasActiveAccess ? (
                   "Extend access"
                 ) : !user ? (

@@ -1,0 +1,13 @@
+{
+ "id": "P036",
+ "buys": false,
+ "purchases_first_month": 0,
+ "reason_code": "trust",
+ "reason": "I have placed before and I do my own research. I would not risk a made-up statistic in front of a chair.",
+ "objection": "Will my chair penalise me for AI-written work?",
+ "would_change_my_mind": "Citations I can check myself, and it being sold as a research aid.",
+ "price_too_cheap": 150,
+ "price_cheap": 350,
+ "price_expensive": 1000,
+ "price_too_expensive": 2200
+}

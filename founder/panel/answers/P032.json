@@ -1,0 +1,13 @@
+{
+ "id": "P032",
+ "buys": true,
+ "purchases_first_month": 2,
+ "reason_code": "quality",
+ "reason": "I prep with my coach but she is not available at midnight. This is the thing I reach for when nobody is answering my messages.",
+ "objection": "ChatGPT is free and it is already on my phone, but I want MUN-shaped output without writing a long prompt.",
+ "would_change_my_mind": "Seeing committee-specific output rather than generic.",
+ "price_too_cheap": 150,
+ "price_cheap": 299,
+ "price_expensive": 1000,
+ "price_too_expensive": 2000
+}

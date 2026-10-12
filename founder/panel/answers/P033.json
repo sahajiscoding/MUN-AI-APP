@@ -1,0 +1,13 @@
+{
+ "id": "P033",
+ "buys": true,
+ "purchases_first_month": 1,
+ "reason_code": "need",
+ "reason": "I am running my club's prep and this is the first conference for most of us. I would buy one pass to see if it is worth telling everyone about.",
+ "objection": "ChatGPT is free and it is already on my phone, but my juniors do not know what to prompt it with.",
+ "would_change_my_mind": "The club finding it useful, then I want it for everyone.",
+ "price_too_cheap": 100,
+ "price_cheap": 250,
+ "price_expensive": 800,
+ "price_too_expensive": 1500
+}

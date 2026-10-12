@@ -148,20 +148,32 @@ node -e "console.log(process.env.ADMIN_SESSION_SECRET?.length >= 32 ? 'secret le
 * **SEC-API-02:** EVERY list endpoint MUST clamp pagination (`limit 1..100`, `page*pageSize` numeric-clamped) — see `app/api/chats/route.ts:12-15`, `app/api/c8f2x9/users/route.ts:31-32`.
 * **SEC-API-03:** NEVER trust client-supplied identity fields. Certificate route MUST ignore client `name` and use `user.name/email` (`app/api/courses/[slug]/certificate/route.ts:13-17,93`).
 * **SEC-API-04:** Dynamic route params MUST be allowlisted: `legal/[slug]` → `legalPages[slug]`, `status/[state]` → `states.has(state)`, referral paths → `REFERRAL_PATH_PATTERN`, partner tokens → `^[a-f0-9]{48}$`.
+* **SEC-API-05:** A non-purchasable plan MUST NOT be resolvable by the checkout path. `getPlan()` returns purchasable plans only and is what `create-order` uses to decide an amount; `getPlanForDisplay()` may additionally resolve the free trial, for labelling. Adding the trial to `plans[]`, or aliasing an id into `getPlan()`, would let a caller buy a ₹0 order and grant themselves access.
 
 ### Current route matrix (re-verify on every new route)
 
 | Route | Gate | Ownership |
 |---|---|---|
-| `api/ai/research` | `requireUser` (+admin fallback), `assertPaidAccess` | `loadOwnedChat` `.eq(id).eq(uid)` |
+| `api/ai/research` | `requireUser` (+admin fallback), `assertPaidAccessOrStartTrial` | `loadOwnedChat` `.eq(id).eq(uid)` |
 | `api/chats`, `api/chats/[id]` | `requireUser` | `.eq(uid)` + `storedChat.uid===uid` |
-| `api/me`, `api/me/entitlement`, `api/profile` | `requireUser` | `uid:user.uid` upserts, `.eq(uid)` reads |
+| `api/me`, `api/me/entitlement`, `api/profile` | `requireUser` (`/entitlement` also starts the one-time trial) | `uid:user.uid` upserts, `.eq(uid)` reads |
 | `api/progress`, `api/progress/checkpoint` | `requireUser` | `.eq(uid).eq(course_slug)` |
 | `api/payments/create-order`, `api/payments/status` | `requireUser` + limits | insert `uid:user.uid`; updates `.eq(id).eq(uid)` |
 | `api/courses/[slug]/certificate` | `requireUser` + limit | `.eq(uid).eq(course_slug)` |
 | `api/referrals/apply` | `requireUser` + limit | `applyReferralCodeToUser(user.uid, …)` |
 | `api/admin/*`, `api/c8f2x9/*` | `requireAdmin` / `requireAdminOwner` | owner-only for mutations |
 | `api/auth/*`, `api/news`, `api/referrals/capture`, `api/partner/applications`, `api/webhooks/uropay` | public by design (limits / HMAC / honeypot) | N/A — see their sections |
+
+### Free trial access model
+
+Three days of access, granted once per account, automatically, on the first authenticated request. Four properties hold it together — break any one and it becomes either an unlimited free product or an unbounded bill:
+
+1. **Granted once, ever.** `start_free_trial` (`supabase/migrations/20261013_free_trial.sql`) inserts only when no `entitlements` row exists for the uid — `on conflict (uid) do nothing`, with `uid` the primary key. Expired rows are never deleted, so the marker outlives the access it granted and cannot be re-collected. `trial_started_at` keeps that fact durable even after a paid grant overwrites `plan_id`.
+2. **Not callable from a browser.** The RPC is `security definer` with `revoke all ... from public, anon, authenticated` and `grant execute ... to service_role` only.
+3. **Gated behind a confirmed email.** It is called only after `requireUser()`, which rejects unverified sessions — so a trial costs at least one verified address.
+4. **Cost-bounded.** Unlimited *requests* (`requestCap: 0`), but a finite `AI_TRIAL_DAILY_TOKEN_CAP` and **no Max model**: `grantedResponseLimits("trial", …)` downgrades to `thorough`, because a million tokens/day on Kimi K3 is ~₹1,320 while the same budget on GLM-5.3-Flash is ~₹44. See `lib/server/x402-machine-limits.ts`.
+
+**Residual risk, accepted knowingly:** a user with a second email address can take a second trial. The gate is email verification (plus the 5/10min per-IP signup limit and the honeypot), not identity — that is inherent to any free trial and the cost ceiling above bounds the downside. If trial abuse is ever observed, the next step is a device or payment-instrument signal, not a tighter token cap, which would only inconvenience honest users.
 
 ---
 
@@ -291,7 +303,7 @@ Implementation: DB-backed `rpc(rate_limit_check)` + `getClientIp` (prefers `x-ve
 | `auth/signup` | `signup:{ip}` | 5/10min (+honeypot) |
 | `auth/reset-request`, `reset-password` | per-IP | 5/10min |
 | `c8f2x9/login` | `admin-login:{ip}` | 5/min |
-| `ai/research` | per-user + per-IP + daily ledger | 12/min/user, 30/min/IP, caps `AI_DAILY_REQUEST_CAP=60` / `AI_DAILY_TOKEN_CAP=300000` |
+| `ai/research` | per-user + per-IP + daily ledger | 12/min/user, 30/min/IP, caps `AI_DAILY_REQUEST_CAP=60` / `AI_DAILY_TOKEN_CAP=300000`. A **free-trial** account (see below) has **no request cap** and a `AI_TRIAL_DAILY_TOKEN_CAP=1000000` ceiling instead |
 | `payments/create-order` | user + IP | 10/5min |
 | `payments/status` | user | throttled |
 | `news` | `news:{ip}` | 30/min |

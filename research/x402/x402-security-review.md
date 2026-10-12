@@ -283,7 +283,7 @@ Two payment rails, deliberately split by payer type:
 | Rail | Payer | Mechanism | State |
 |---|---|---|---|
 | **UroPay** | Humans (browser sessions) | Server-side order creation → hosted checkout → HMAC-SHA256-signed webhook, 5-minute timestamp window, hex-64 signature compared with `timingSafeEqual`, order status re-fetched authoritatively, full binding validation (order id, merchant ref, amount, currency, environment), HTTPS checkout-host allowlist | **Sound.** Audited line by line; no changes required. |
-| **x402** | Bots / agents | `402` + `PAYMENT-REQUIRED` → `PAYMENT-SIGNATURE` → facilitator `/verify` + `/settle` | **Was vulnerable (F1–F8 below). Remediated 2026-10-12.** |
+| **x402** | Bots / agents | `402` + `PAYMENT-REQUIRED` → `PAYMENT-SIGNATURE` → facilitator `/verify` + `/settle` | **Was vulnerable (F1–F10 below). Remediated 2026-10-12.** |
 
 - **Do not replace UroPay for consumer subscriptions.** x402 adds refunds' absence, chargeback-free irreversibility, a facilitator dependency, key-management burden, and no consumer-protection story — none of which is compensated for by micropayment granularity on a subscription product. The UroPay flow is already server-side, webhook-verified, and UID-bound; x402 would weaken three of those four properties (UID binding becomes wallet binding; webhook verification becomes third-party ascertainment; server-side secrets remain, plus wallet keys now on the critical path).
 - **x402 is a plausible fit only for the narrow, metered, machine-facing surface it is already used for** — bot access to `/api/ai/research` and `/api/x402/content`, priced at $0.05 and $0.005, i.e. below the fee floor of any human checkout. Keep it there. Pilot on testnet first (`X402_NETWORK=eip155:84532`).

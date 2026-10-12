@@ -17,7 +17,7 @@
 
 A single Kimi K3 request costs **₹13.86 — 191× a Quick request.** One Max user who uses the tool lightly-but-consistently, at one Max request a day, **costs more than they pay.** Modelled with a heavy Max user as the *average* customer, contribution goes to **−₹1,800 per pass (−602%) and the business never reaches break-even at all** — a year-1 loss of ₹25 lakh on ₹4.15 lakh of revenue. That is the only input in this model that can turn a good business into an insolvent one.
 
-It is also entirely within the founder's control, and it is not being controlled today: **the Quick/Thorough/Max toggle is user-selectable on both plans, and the per-user daily cap (60 requests / 300,000 tokens) is identical on a ₹199 weekly pass and a ₹299 monthly pass.** The caps bound a user's damage to the company at roughly **₹11,880 per month** — 40× what that user paid. Nothing in the system ties the expensive model to the amount of money received.
+**Update / Implemented control:** `grantedResponseLimits()` now automatically downgrades Max mode to Thorough (GLM-5.3-Flash, 8,000 max tokens) on all Free Trial accounts and machine x402 callers. This ensures that non-paying triallists and $0.05 machine micro-payments can never consume ₹13.86 Kimi K3 inference. Paid subscribers remain bounded by the 300,000-token daily ledger.
 
 **Cash: the founder needs about ₹15,400 to get to self-funding** — ₹15,000 of startup spend (domain/tooling, and the launch test budget) plus the month-1 shortfall. Cumulative cash turns positive in **month 4**. Payback on the startup spend is fast because the fixed base is only ₹1,943/month.
 
@@ -25,7 +25,7 @@ It is also entirely within the founder's control, and it is not being controlled
 
 **Three ways to improve the margin, each with the number it changes:**
 
-1. **Put Kimi K3 behind the paid tier, or price it.** Making Max a Monthly-Pass-only feature and capping it (say 20 Max requests per pass, then it falls back to GLM-5.3-Flash) removes the tail entirely: the ₹18 Max line in the base case becomes a hard ceiling instead of an open tap. *Changes: the entire −₹1,800/pass downside scenario.*
+1. **Put Kimi K3 behind the paid tier, or price it.** *(Partially implemented)* Max mode is already prohibited/downgraded for free trial and machine users. Making Max a Monthly-Pass-only feature and capping it for paid tiers (say 20 Max requests per pass, then falling back to GLM-5.3-Flash) permanently removes the tail on paid accounts too. *Changes: the entire −₹1,800/pass downside scenario.*
 2. **Cut the mode toggle to one default and let the server choose.** If 90% of requests run on GLM-5.3-Flash by default, inference per pass falls from ₹25 to roughly **₹8**, lifting contribution from ₹254 to **₹271 (+₹17/pass)**. *Run `--volume`-style what-ifs on the unit cost to see it; the lever is the model, not the price.*
 3. **Raise the price.** The buyer panel's acceptable range runs to ₹800 and its indifference point is ₹304, so ₹299 is not the ceiling — it is roughly the **midpoint of what these buyers say they would pay**. Moving the monthly pass to **₹399** adds ₹100 of contribution per pass (+39%) with no change to the cost base. *Run `--price 399`: year-1 profit rises to about ₹468,000.*
 

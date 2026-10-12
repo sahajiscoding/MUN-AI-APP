@@ -113,9 +113,9 @@ The rewrite drops the promise that the product does the delegate's work, takes t
 
 ## The first five touchpoints
 
-1. **The homepage** (currently "Prepare like your committee starts tomorrow." **Change it.** It sells to the night-before crammer, the cohort that bought at 0%): → **"Three weeks to go. Your committee, your country, your brief — and the sources behind it."** *(drop the last clause until retrieval exists)*, with **the price visible and a free first brief button above the fold.**
-2. **The confirmation screen after payment** (the only warm moment the product currently has): not "Payment successful." → *"You're in. Tell us your conference date and we'll build your prep order backwards from it."* This is also where the countdown from the product lens gets born.
-3. **The receipt/email:** plain, branded, and it states the refund promise in the same words used on the site. A receipt is the first thing a parent reads; write it for the parent.
+1. **The homepage** (Previously "Prepare like your committee starts tomorrow." — **Implemented:** Updated in `components/home-landing.tsx` to **"Three weeks to your conference. Your committee, your country, your brief — before you pay."**, with **public pricing visible and the 3-day free trial CTA above the fold.**)
+2. **The confirmation screen after payment** (**Implemented:** Updated in `app/checkout/success/page.tsx` from "Access unlocked" to: *"You're in. Your pass is active. Tell us your conference date in your workspace and we'll build your prep order backwards from it."* with a direct CTA to the workspace.)
+3. **The receipt/email:** plain, branded, and it states the refund promise in the same words used on the site (7-day satisfaction guarantee). A receipt is the first thing a parent reads; write it for the parent.
 4. **The first social post:** the screen recording of a real brief being generated for a real committee. No music, no captions over the top, no cuts. The product is the proof.
 5. **The reply to the first complaint:** *"That's a fair complaint. Here's what I'm changing, and here's your refund if you want one."* Written by the founder, signed by the founder, no template. This reply will be screenshotted and posted in a WhatsApp group more often than any ad — it is a brand asset, and it should be treated like one.
 

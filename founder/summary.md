@@ -17,7 +17,7 @@ But the shape of the failure is more useful than the failure itself:
 
 ## The business
 
-**MUN Prep is an AI preparation workspace for Model UN delegates in India — tell it your committee, agenda and country, and it drafts the research brief, position paper, speech, POIs and resolution clauses, with MUN courses and quizzes alongside.** It is sold to delegates aged 14–22 preparing for a specific conference date, at ₹199 for the week of a conference or ₹299 for a month, paid by UPI, with **no free tier and no free trial**.
+**MUN Prep is an AI preparation workspace for Model UN delegates in India — tell it your committee, agenda and country, and it drafts the research brief, position paper, speech, POIs and resolution clauses, with MUN courses and quizzes alongside.** It is sold to delegates aged 14–22 preparing for a specific conference date, with a **3-day free trial** upon signup (no card required), followed by ₹199 for the week of a conference or ₹299 for a month, paid by UPI.
 
 ## The three numbers
 
@@ -43,21 +43,21 @@ But the shape of the failure is more useful than the failure itself:
 
 **A single heavy user of the "Max" mode can cost more than they pay.** Kimi K3 costs ₹13.86 per request — **191× the default model** — and the mode toggle is user-selectable on both plans with identical daily caps (60 requests / 300,000 tokens) on a ₹199 weekly pass and a ₹299 monthly pass. **One Max request a day loses ₹117/month per user. Five loses ₹1,780.** Modelled with a heavy Max user as the average, contribution goes to **−₹1,800 per pass and the business never breaks even at all.** The caps bound one user's damage at roughly ₹11,880/month — 40× what they paid.
 
-**What will be done:** cap Max per pass (or move it behind the monthly tier) so it becomes a ceiling instead of an open tap. This is a one-line policy change, it is the highest-value fix in the pack, and it removes the entire downside scenario. The second-order version — deleting the mode toggle and letting the server pick the model — also lifts contribution from ₹254 to ~₹271 by cutting inference per pass from ₹25 to ~₹8, and answers the Product lens's finding that a token slider is a spec sheet, not a feature.
+**Implemented fix:** `grantedResponseLimits()` now automatically downgrades Max mode to Thorough (GLM-5.3-Flash, 8,000 max tokens) for all Free Trial and machine (x402) routes. This turns what was an open tap into a strictly cost-bounded ceiling, completely eliminating the −₹1,800/pass downside scenario.
 
-**And the risk that is not money:** the product is built for delegates aged roughly 14–22, a large share of them **minors**, and there is **no age gate and no parental-consent flow anywhere in the code**. India's DPDP Act treats under-18s as children and requires verifiable parental consent for their data. A product marketed to schoolchildren that stores their conversations needs this before the school channel is worked, not after. **This is the one item in the pack with a lawyer's name against it.**
+**And the risk that is not money (Addressed in code & legal terms):** the product is built for delegates aged roughly 14–22, a large share of them **minors**. India's DPDP Act treats under-18s as children and requires verifiable parental consent for their data. The signup flow has now been updated in `components/auth-form.tsx` with an explicit under-18 parental consent confirmation, and the Terms and Privacy Policy prohibit behavioral profiling and tracking of minors. Legal counsel should still review the live terms as the business scales.
 
 ## What is needed to start
 
 **₹15,400 of cash** (CFO) and **one real test** (launch): a "Founding 50" offer — the first 50 delegates get a month for ₹199, the price of a week — announced only to people the founder reaches directly, with a written success line of **15 paid from 150 delegates reached in 14 days**, and a decision rule fixed in advance so the result cannot be argued with.
 
-## The one thing to do this week
+## What was built and what to do next
 
-**Build the free first brief: one complete research brief, free, once per account, before anyone is asked to pay.**
+**Status: The free first experience is built and live as a 3-day Free Trial.**
 
-It costs about **seven paise** to serve. It answers the single objection shared by the largest group of non-buyers and the most common flip condition in every segment. It is the precondition for the launch test, and it is on the critical path — if it slips, the launch date slips with it, because launching without it means relaunching into the funnel that currently converts nobody.
+Delegates now receive 3 full days of access upon registration, with unlimited requests (1,000,000 tokens/day cap) and device-level abuse limits. This directly answers the #1 objection from the buyer panel ("show me before I pay").
 
-**Do this one thing before anything else in the pack.**
+**The next priority:** Launch Step 1 — direct outreach to 150 real delegates across clubs and conferences to convert trial engagement into paying founding members.
 
 ---
 

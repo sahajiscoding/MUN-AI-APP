@@ -79,7 +79,7 @@ export async function checkRateLimit(
 
     if (error) {
       logFallback("DB rate limit check failed, falling back to memory", error.message);
-      if (options?.failClosed) {
+      if (options?.failClosed && process.env.NODE_ENV !== "development") {
         return false;
       }
       return memoryCheck(key, maxAttempts, windowMs);
@@ -91,7 +91,7 @@ export async function checkRateLimit(
       "DB rate limit unavailable, falling back to memory",
       error instanceof Error ? error.message : "unknown error"
     );
-    if (options?.failClosed) {
+    if (options?.failClosed && process.env.NODE_ENV !== "development") {
       return false;
     }
     return memoryCheck(key, maxAttempts, windowMs);

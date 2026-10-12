@@ -27,7 +27,7 @@ Nothing in `numbers.json` is a belief dressed up as a fact. Here is what is meas
 
 **What the average customer actually does is unknown.** I modelled 30 requests/month at 95% default / 5% Max. If real users skew to Max, this number is wrong by an order of magnitude in the direction that hurts. **The fix is measurement, not modelling:** the app already routes every request through `lib/ai/router.ts`, so per-request token counts and cost can be logged from day one. Until that data exists, treat ₹25 as a placeholder.
 
-**Worst case the current caps permit:** 300,000 tokens/day at the Max rate ≈ **₹396/day ≈ ₹11,880/month from one ₹299 customer.** 40× the revenue. The caps limit the damage; they do not prevent it.
+**Control implemented:** For Free Trial accounts and machine micro-transactions, Max mode is now automatically downgraded to Thorough via `grantedResponseLimits()`, so unverified triallists and $0.05 bots can never run up high-cost Kimi K3 bills. Paid accounts remain bounded by the 300,000 token/day limit.
 
 ### 2. Referral share of sales: 40% of customers arrive via a partner — *affects ₹20 of ₹299*
 
@@ -42,7 +42,7 @@ The 16.72% rate is real and in the database. What is unmeasurable today is **wha
 - IIMUN alone claims 220+ cities and 7,500–10,000 schools — the addressable population is large.
 - The pricing panel (simulated, and disclosed as such) puts an acceptable range at ₹122–₹800 with an indifference point at ₹304, so ₹299 is not obviously mispriced.
 
-**What it is not grounded in:** any observed conversion rate, any traffic number, any funnel. `/pricing` currently redirects anonymous visitors to sign-in, so there is *no way to measure intent today even if traffic existed.*
+**What it is not grounded in:** any observed conversion rate, any traffic number, any funnel. (Note: `/pricing` is now public and displays ₹199/week and ₹299/month alongside the 3-day free trial, allowing top-of-funnel conversion to be measured).
 
 **How much it moves the answer:** the volume swing is well absorbed. Cutting the whole ramp by 60% (to ~3 passes/day by month 12, ~100 subscribers) still gives **₹117,837 year-1 profit at a 78% margin.** The verdict is therefore *not* sensitive to the ramp — which is why this assumption, though it is the biggest guess, is not the biggest risk. **The Max-mode cost path is a far bigger threat to solvency than a slow ramp is.**
 

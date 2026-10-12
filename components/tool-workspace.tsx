@@ -94,7 +94,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
   const [chatId, setChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
-  const [responseMode, setResponseMode] = useState<ResponseMode>("quick");
+  const [responseMode] = useState<ResponseMode>("thorough");
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [status, setStatus] = useState("");
@@ -357,8 +357,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
 
     try {
       const token = await getIdToken();
-      const activeModel = responseMode === "max" ? "Kimi K3" : "GLM 5.3 Flash";
-      setStatus(`Connecting to ${activeModel} · ${responseMode}…`);
+      setStatus("Connecting to MUN Prep Engine…");
       const requestPayload = {
         committee: "General",
         agenda: prompt,
@@ -426,7 +425,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
         generationSucceeded = true;
         setOutput("");
         if (typeof data.chatId === "string" && data.chatId) savedChatId = data.chatId;
-        setStatus(`${activeModel} · ${responseMode}`);
+        setStatus("MUN Prep Engine · complete");
       }
 
       let response = await postResearch(true);
@@ -471,7 +470,7 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
                 }
                 if (parsed.content) {
                   if (!fullContent) {
-                    setStatus(`${activeModel} · ${responseMode} · writing`);
+                    setStatus("MUN Prep Engine · writing");
                   }
                   fullContent += parsed.content;
                   setOutput(fullContent);
@@ -490,8 +489,8 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
           generationSucceeded = true;
           setStatus(
             wasLengthLimited
-              ? `${activeModel} · ${responseMode} · provider output limit reached`
-              : `${activeModel} · ${responseMode} · complete`
+              ? "MUN Prep Engine · provider output limit reached"
+              : "MUN Prep Engine · complete"
           );
         } else if (!streamError) {
           // The stream opened but carried nothing and the provider reported
@@ -744,23 +743,6 @@ export function ToolWorkspace({ eyebrow, title, description, mode, greeting, sta
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex rounded-full border border-[var(--brass)]/40 bg-[var(--brass)]/10 p-0.5 overflow-hidden">
-                {(["quick", "thorough", "max"] as const).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => { setResponseMode(item); }}
-                    className={
-                      responseMode === item
-                        ? "rounded-full bg-[var(--ink)] text-[var(--paper)] px-2.5 py-1 text-xs font-semibold"
-                        : "rounded-full px-2.5 py-1 text-xs font-semibold text-[var(--muted)] hover:bg-black/5"
-                    }
-                  >
-                    {item === "quick" ? "Quick" : item === "thorough" ? "Thorough" : "Max"}
-                  </button>
-                ))}
-              </div>
-
               <button
                 type="submit"
                 disabled={loading || !input.trim()}

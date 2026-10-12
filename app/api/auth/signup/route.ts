@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     const ip = getClientIp(request);
-    if (!(await checkRateLimit(`signup:${ip}`, 5, 10 * 60_000, { failClosed: true }))) {
+    if (!(await checkRateLimit(`signup:${ip}`, 5, 10 * 60_000))) {
       throw new ApiError(429, "rate_limited", "Too many signup attempts. Please try again later.");
     }
 

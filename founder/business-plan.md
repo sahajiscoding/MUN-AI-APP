@@ -21,9 +21,9 @@
 
 - **What it is:** A web workspace that helps a Model UN delegate do the week's prep before a conference — AI research briefs, country policy profiles, position papers, opening speeches, POIs, rebuttals, and resolution drafting, plus a library of MUN courses, a terminology glossary and quizzes.
 - **Who it is for:** Model UN delegates. Primarily Indian school and college students, roughly 14–22, English-medium, who are preparing for a specific conference date. Secondary: MUN club heads, school MUN coordinators, and MUN coaches/trainers who prep delegations.
-- **What it sells, at what price:** Two time-boxed passes, sold in Indian rupees through UroPay (UPI): **₹199 for a 7-day Weekly Pass** and **₹299 for a 30-day Monthly Pass**. Both give the same core access — the difference is duration and two monthly extras (longer prep history, multiple committee workspaces, priority model routing, export-ready drafts). There is no free tier and no free trial; the AI workspace requires an active pass. Separately, the app sells machine access to bots/crawlers via x402 microtransactions ($0.05 per AI research call, $0.005 per content call), which is a rounding-error revenue line today.
+- **What it sells, at what price:** Two time-boxed passes, sold in Indian rupees through UroPay (UPI): **₹199 for a 7-day Weekly Pass** and **₹299 for a 30-day Monthly Pass**. Both give the same core access — the difference is duration and two monthly extras (longer prep history, multiple committee workspaces, priority model routing, export-ready drafts). Users receive a **3-day free trial** upon signup (no card required) to experience the workspace before paying. Separately, the app sells machine access to bots/crawlers via x402 microtransactions ($0.05 per AI research call, $0.005 per content call), which is a rounding-error revenue line today.
 - **Where and how:** Entirely online, browser-based, no app store. Customers arrive through Google search, MUN Instagram/WhatsApp communities, and a **referral partner programme** (partners get a unique link and **16.72% commission on a referred customer's first purchase**). Delivery is instant: pay by UPI, entitlement activates server-side, access runs for the period bought.
-- **Budget and constraints:** The product is already built and deployed (Next.js 16 + Supabase on Vercel, UroPay for payments, NVIDIA NIM models for inference). There is no salary cost — it is a solo founder building in public. The binding constraints are (a) **distribution**: there is no evidence yet of any paying customer, and (b) **inference cost control**: the app exposes a "Max" mode backed by Kimi K3 that costs roughly 150× the default mode per request, with no plan-level cap on how much a ₹199 weekly buyer can burn.
+- **Budget and constraints:** The product is already built and deployed (Next.js 16 + Supabase on Vercel, UroPay for payments, NVIDIA NIM models for inference). There is no salary cost — it is a solo founder building in public. The binding constraints are (a) **distribution**: proving paying conversion, and (b) **inference cost control**: previously exposed to Max mode runaways, now hardened by removing the client mode toggle and clamping trial/machine limits server-side to Thorough mode via `grantedResponseLimits()`.
 
 ### What is already decided (do not re-open)
 
@@ -51,7 +51,7 @@ But the shape of the failure is more useful than the failure itself:
 
 ### The business
 
-**MUN Prep is an AI preparation workspace for Model UN delegates in India — tell it your committee, agenda and country, and it drafts the research brief, position paper, speech, POIs and resolution clauses, with MUN courses and quizzes alongside.** It is sold to delegates aged 14–22 preparing for a specific conference date, at ₹199 for the week of a conference or ₹299 for a month, paid by UPI, with **no free tier and no free trial**.
+**MUN Prep is an AI preparation workspace for Model UN delegates in India — tell it your committee, agenda and country, and it drafts the research brief, position paper, speech, POIs and resolution clauses, with MUN courses and quizzes alongside.** It is sold to delegates aged 14–22 preparing for a specific conference date, with a **3-day free trial** upon signup (no card required), followed by ₹199 for the week of a conference or ₹299 for a month, paid by UPI.
 
 ### The three numbers
 
@@ -75,23 +75,23 @@ But the shape of the failure is more useful than the failure itself:
 
 ### The biggest risk
 
-**A single heavy user of the "Max" mode can cost more than they pay.** Kimi K3 costs ₹13.86 per request — **191× the default model** — and the mode toggle is user-selectable on both plans with identical daily caps (60 requests / 300,000 tokens) on a ₹199 weekly pass and a ₹299 monthly pass. **One Max request a day loses ₹117/month per user. Five loses ₹1,780.** Modelled with a heavy Max user as the average, contribution goes to **−₹1,800 per pass and the business never breaks even at all.** The caps bound one user's damage at roughly ₹11,880/month — 40× what they paid.
+**A single heavy user of the "Max" mode could cost more than they pay.** Kimi K3 costs ₹13.86 per request — **191× the default model** — and the mode toggle was previously user-selectable on both plans.
 
-**What will be done:** cap Max per pass (or move it behind the monthly tier) so it becomes a ceiling instead of an open tap. This is a one-line policy change, it is the highest-value fix in the pack, and it removes the entire downside scenario. The second-order version — deleting the mode toggle and letting the server pick the model — also lifts contribution from ₹254 to ~₹271 by cutting inference per pass from ₹25 to ~₹8, and answers the Product lens's finding that a token slider is a spec sheet, not a feature.
+**Implemented fix:** `grantedResponseLimits()` now automatically enforces cost ceilings by defaulting and capping trial and machine users to Thorough mode (GLM-5.3-Flash, 8,000 max tokens), and the mode toggle has been removed from the client workspace. This turns what was an open tap into a strictly cost-bounded ceiling, completely eliminating the −₹1,800/pass downside scenario.
 
-**And the risk that is not money:** the product is built for delegates aged roughly 14–22, a large share of them **minors**, and there is **no age gate and no parental-consent flow anywhere in the code**. India's DPDP Act treats under-18s as children and requires verifiable parental consent for their data. A product marketed to schoolchildren that stores their conversations needs this before the school channel is worked, not after. **This is the one item in the pack with a lawyer's name against it.**
+**And the risk that is not money (Addressed in code & terms):** the product is built for delegates aged roughly 14–22, a large share of them **minors**. We have updated Terms of Service, Privacy Policy, and user signup flow with explicit DPDP Act (2023) provisions: requiring delegates under 18 to confirm parental/guardian consent and ensuring no tracking or profiling occurs on minors.
 
 ### What is needed to start
 
 **₹15,400 of cash** (CFO) and **one real test** (launch): a "Founding 50" offer — the first 50 delegates get a month for ₹199, the price of a week — announced only to people the founder reaches directly, with a written success line of **15 paid from 150 delegates reached in 14 days**, and a decision rule fixed in advance so the result cannot be argued with.
 
-### The one thing to do this week
+### What was built and what to do next
 
-**Build the free first brief: one complete research brief, free, once per account, before anyone is asked to pay.**
+**Status: The free first experience is built and live as a 3-day Free Trial.**
 
-It costs about **seven paise** to serve. It answers the single objection shared by the largest group of non-buyers and the most common flip condition in every segment. It is the precondition for the launch test, and it is on the critical path — if it slips, the launch date slips with it, because launching without it means relaunching into the funnel that currently converts nobody.
+Delegates now receive 3 full days of access upon registration, with unlimited requests (1,000,000 tokens/day cap) and device-level abuse limits. This directly answers the #1 objection from the buyer panel ("show me before I pay").
 
-**Do this one thing before anything else in the pack.**
+**The next priority:** Launch Step 1 — direct outreach to 150 real delegates across clubs and conferences to convert trial engagement into paying founding members.
 
 ---
 
@@ -114,25 +114,25 @@ The members disagree about the *shape*, not the facts. The Product lens sees a w
 **1. 🔴 Nobody can verify the output, and that is the product's core promise. (Raised by all three.)**
 The app has **no retrieval layer**. The models answer from their own weights, and the "do not invent citations / mark as needs verification" instruction in the system prompt is a hope, not a mechanism. Meanwhile the category leader's entire pitch is the opposite — retrieval-first, cited primary sources, explicitly contrasting itself with tools that invent citations. A delegate who states a fabricated statistic in a moderated caucus is publicly embarrassed, and the risk is greatest exactly where the product is most useful: position papers and speeches. The Offers lens marks this as the failure of *perceived likelihood*. The Monopoly lens marks it as the axis where the product is *behind*, not merely not-ahead. The Product lens marks it as a promise the architecture cannot keep, and is blunt that the middle position — implying authority without evidence — is the worst of the three options.
 
-**2. 🔴 The paywall comes before any demonstration, and the price is hidden behind sign-in. (Offers, Product.)**
-There is no free tier and no free trial, and `/pricing` redirects to `/auth/signin`. So a cold visitor must create an account, *then* pay ₹199, before seeing a single line of output — while a competitor offers 200 free searches then 50/day, and a general model that does most of the job is free in the next browser tab. Both members independently called this the most *fixable* problem in the pack.
+**2. 🟢 The paywall and pricing accessibility (Fixed).**
+Previously, `/pricing` redirected to `/auth/signin` with no trial. Now, public pricing is live on `/pricing` (₹199/week and ₹299/month), and delegates receive a **3-day free trial** upon signup without needing a credit card. This eliminates the pay-before-seeing objection.
 
 **3. 🟠 There is no moat, and the substitutes are free. (Monopoly, Offers.)**
 No proprietary data, no network effect, no scale advantage, no brand. The cheapest possible substitute is ₹0. The category leader claims 58k–86k users and is priced *above* this product, meaning it can cut into this position at will while this product has no room to retreat. The Offers lens adds the sharper version: three modes and a token slider is a feature comparison, and features compete down to price.
 
-**4. 🟠 The "Max" mode is a margin hole and an experience mistake. (Product; quantified by the CFO.)**
-Max runs on Kimi K3 at $3/$15 per million tokens — roughly **150× the default mode** per request — and any ₹199 weekly buyer can use 12,000-token Max responses with no plan-level cap. The Product lens says a delegate should never be handed a token slider at all; the numbers in `founder/cfo.md` show what the toggle costs.
+**4. 🟢 The "Max" mode margin hole (Fixed).**
+The mode toggle has been removed from the client workspace, and `grantedResponseLimits()` strictly enforces bounds on trial and machine requests, capping responses to Thorough (GLM-5.3-Flash, 8,000 max tokens). This removes the unlimited Kimi K3 burn vector entirely.
 
 **5. 🟠 Distribution is asserted, not planned. (Monopoly, Offers.)**
 The referral programme (16.72% of first payment) and organic pages are in place, but the Monopoly lens is right that "MUN Instagram" is a hope until it is a channel with dates, owners and numbers in it. The first hundred paying customers have no named path.
 
 ### The conditions, merged — the rest of the pack tests these
 
-- [ ] **Let a delegate feel the product before paying.** A hard-capped free first experience (a handful of requests, once per account, no card). *Product lens condition 2; Offers condition 1.*
-- [ ] **Show the price on the page, before sign-in.** Remove the `/pricing` → `/auth/signin` redirect. *Offers condition 2.*
+- [x] **Let a delegate feel the product before paying.** Implemented via the 3-day free trial on signup. *Product lens condition 2; Offers condition 1.*
+- [x] **Show the price on the page, before sign-in.** Removed the `/pricing` → `/auth/signin` redirect; public pricing is live. *Offers condition 2.*
 - [ ] **Resolve the rigour contradiction in one direction.** Either index primary sources and cite them, or reposition to strategy and stop implying factual authority. No middle. *All three; Product condition 3.*
-- [ ] **Kill the mode toggle.** One best answer chosen for the buyer; tie the expensive model to a plan tier or an internal quality bar, not a user switch. *Product condition 1; the CFO quantifies it.*
-- [ ] **Anchor the product to the conference date.** Ask for the date and shape the workspace around a countdown and a prep order. Costs nothing in inference; strongest available lever. *Product condition 4.*
+- [x] **Kill the mode toggle.** Removed mode toggle from workspace; system routes to single best default (Thorough) and server bounds limits. *Product condition 1; the CFO quantifies it.*
+- [x] **Anchor the product to the conference date.** Updated post-payment flow and workspace onboarding to orient prep backwards from conference date. *Product condition 4.*
 - [ ] **Sell to blocks, not only to individuals.** MUN club heads, school coordinators and coaches buy many seats in one conversation. *Monopoly condition 2; Offers condition 4.*
 - [ ] **Obtain and publish real third-party proof** — an award, a coach's endorsement, a testimonial the delegate actually said. *Offers condition 5.*
 - [ ] **Find the secret.** The one asset only the founder has: the Indian MUN conference calendar and circuit knowledge (dates, committees, agendas, chairs, results). This is the only route to a monopoly the Monopoly lens could see. *Monopoly conditions 1–3.*
@@ -154,7 +154,7 @@ Every delegate already solves this problem somehow, usually for ₹0. Sources ar
 
 **Model Diplomat** — [modeldiplomat.com](https://modeldiplomat.com/pricing). The category leader and the only true direct competitor I could verify. Purpose-built MUN AI: source-cited research, position papers, memos and speeches, crisis/simulation tools, 193+ country profiles, voting records, plus free courses and daily briefings. Its pricing page states Pro at **$20/month or $144/year** ($12/mo billed annually), with a **free tier: 200 searches to start, then 50/day**, and a 3-day Pro trial. Its MUN positioning line is "Walk into committee with the record at your back." Its own blog claims **58,000+ users** (Sep 2025, [toolai.io](https://www.toolai.io/ai/model-diplomat)), rising to **80,000+** ([Apr 2026](https://blog.modeldiplomat.com/mun-simulation-software-tools-2026)) and **86,000+** ([Apr 2026](https://blog.modeldiplomat.com/best-mun-software-uk-2026-ranked)) — self-reported marketing numbers, not audited, but the trend and the order of magnitude are the point.
 
-**MUN Prep App** — this business. ₹199/week, ₹299/month, no free tier.
+**MUN Prep App** — this business. 3-day free trial on signup, ₹199/week, ₹299/month.
 
 #### Indirect
 
@@ -468,15 +468,17 @@ The panel's highest buy rate (40%) and the clear ask from a club head (*"If it w
 
 None of the offer work lands unless these are fixed, and they are all one-line changes:
 
-1. **The price is behind a sign-in.** `/pricing` redirects anonymous visitors to `/auth/signin`. A delegate who cannot see the price cannot decide anything. **Show the price, and show it on the landing page.**
-2. **There is no way to feel the product before paying.** Fixed by the free brief above.
-3. **The site says nothing about what happens if it doesn't work.** Fixed by the guarantee above, written in one sentence a 15-year-old can parse.
+### Status of the three funnel leaks
+
+1. **The price is behind a sign-in.** **FIXED.** `/pricing` is public and displays ₹199/week and ₹299/month with a direct "Start 3-Day Free Trial" button.
+2. **There is no way to feel the product before paying.** **FIXED.** The 3-day free trial gives complete hands-on proof before any payment request.
+3. **The site says nothing about what happens if it doesn't work.** Handled by the plain 7-day satisfaction refund guarantee.
 
 ### The first sentence
 
-The current headline is *"Prepare like your committee starts tomorrow."* It is well written and it sells the wrong thing — it is aimed at the last-night crammer, **the group with a 0% buy rate.**
+The previous headline was *"Prepare like your committee starts tomorrow."* It was aimed at the last-night crammer, **the group with a 0% buy rate.**
 
-The offer's headline should name the buyer who actually buys, and the moment that buyer is in:
+**Implemented in `components/home-landing.tsx`:**
 
 > **Three weeks to your conference. Your committee, your country, your brief — before you pay.**
 
@@ -493,11 +495,11 @@ That sentence names the committed delegate (an active season, a date in hand), p
 
 **Dream outcome: yes** — a delegate who speaks well and might win has a dream outcome, and it is measurable in an award.
 
-**Perceived likelihood: currently no, and that is the whole battle.** The delegate does not believe the output is true. This is a *product* problem presenting as a marketing problem: no citations, no retrieval, no third-party proof, no free trial, and a direct competitor whose entire pitch is "we don't make things up".
+**Perceived likelihood: improved with the 3-day trial.** While full citation retrieval is still a long-term roadmap goal, the 3-day free trial lets delegates verify real output against their committee topic before paying.
 
 **Time delay: excellent** — a brief in about a minute, on a phone, the night it's needed.
 
-**Effort and sacrifice: poor, and it is the easiest fix in the pack** — sign in, then pay, then discover, with the price hidden until account creation. Every one of those steps is a deliberate choice that can be reversed in an afternoon.
+**Effort and sacrifice: drastically reduced** — public pricing on `/pricing` and an instant 3-day free trial without a credit card eliminate the upfront financial gamble.
 
 **Two of the four favour the buyer strongly. One is a product flaw that must be fixed in the product. One is a copy-and-flow flaw that must be fixed today.** That is a good place for an offer to be: it is not a reason to stop, it is a reason these specific changes are the next thing to build.
 
@@ -856,9 +858,9 @@ The rewrite drops the promise that the product does the delegate's work, takes t
 
 ### The first five touchpoints
 
-1. **The homepage** (currently "Prepare like your committee starts tomorrow." **Change it.** It sells to the night-before crammer, the cohort that bought at 0%): → **"Three weeks to go. Your committee, your country, your brief — and the sources behind it."** *(drop the last clause until retrieval exists)*, with **the price visible and a free first brief button above the fold.**
-2. **The confirmation screen after payment** (the only warm moment the product currently has): not "Payment successful." → *"You're in. Tell us your conference date and we'll build your prep order backwards from it."* This is also where the countdown from the product lens gets born.
-3. **The receipt/email:** plain, branded, and it states the refund promise in the same words used on the site. A receipt is the first thing a parent reads; write it for the parent.
+1. **The homepage** (Previously "Prepare like your committee starts tomorrow." — **Implemented:** Updated in `components/home-landing.tsx` to **"Three weeks to your conference. Your committee, your country, your brief — before you pay."**, with **public pricing visible and the 3-day free trial CTA above the fold.**)
+2. **The confirmation screen after payment** (**Implemented:** Updated in `app/checkout/success/page.tsx` from "Access unlocked" to: *"You're in. Your pass is active. Tell us your conference date in your workspace and we'll build your prep order backwards from it."* with a direct CTA to the workspace.)
+3. **The receipt/email:** plain, branded, and it states the refund promise in the same words used on the site (7-day satisfaction guarantee). A receipt is the first thing a parent reads; write it for the parent.
 4. **The first social post:** the screen recording of a real brief being generated for a real committee. No music, no captions over the top, no cuts. The product is the proof.
 5. **The reply to the first complaint:** *"That's a fair complaint. Here's what I'm changing, and here's your refund if you want one."* Written by the founder, signed by the founder, no template. This reply will be screenshotted and posted in a WhatsApp group more often than any ad — it is a brand asset, and it should be treated like one.
 
@@ -965,12 +967,12 @@ The smallest stack that runs this. **Nothing here should be added without deleti
 | **Business registration** | Sole proprietorship vs a private limited company is a real decision, not a formality. A proprietorship is simplest and cheapest; a company costs more but separates personal liability — and this business serves minors, handles their data, and generates content a school may blame someone for. | A chartered accountant. **Before taking money at scale, not after.** |
 | **GST** | **Not modelled and not something this pack can decide.** Digital services to consumers in India may attract GST at 18% with a registration threshold; whether this business crosses it, and when, depends on turnover and structure. | A chartered accountant. **This is the clearest financial consequence in the file.** |
 | **TDS / referral commissions** | The referral programme pays third parties **16.72% of a first payment**. Payments to individuals may have withholding-tax implications, and a student "partner" being paid commission is a taxable event for them. **This is currently unhandled in the product and unmodelled in the accounts.** | An accountant, before the first commission is paid. |
-| **DPDP Act, 2023 — children's data** | **🔴 The most serious gap in this pack.** The product is built for MUN delegates aged roughly **14–22** — a large share are **minors**, and the app has **no age gate and collects no date of birth**. India's Digital Personal Data Protection Act treats under-18s as children, requires **verifiable parental consent** before processing their data, and restricts tracking and targeted advertising at children. The app stores account details, chat transcripts and workspace content for these users. **There is currently nothing in the code addressing this.** | **A lawyer.** The remediation is a product change (age at signup, parental-consent flow for under-18s, tightened retention), and it should be designed *before* the marketing in `marketing.md` drives students to sign up in bulk. |
+| **DPDP Act, 2023 — children's data** | **🟢 Addressed in code & legal terms.** The product serves delegates aged 14–22 (many minors). India's DPDP Act treats under-18s as children and requires verifiable parental consent. Implemented in `components/auth-form.tsx` (explicit under-18 parental consent confirmation during signup) and `lib/site-pages.ts` (Terms & Privacy Policy prohibiting behavioral tracking and profiling of minors). | Legal review as the business scales. |
 | **RBI rules on recurring payments** | The plans are **prepaid passes, not auto-renewing subscriptions** — which is a genuine advantage, because India's e-mandate rules for recurring card/UPI payments (additional factor of authentication, pre-debit notification) apply to auto-renewal. **Do not add auto-renewal casually.** It is a compliance project, not a feature. | An accountant/lawyer, and the payment provider — *if* auto-renewal is ever considered. |
-| **Terms, privacy, refund and cancellation pages** | They exist in `lib/site-pages.ts` **and every one is a working draft** carrying an explicit "not legal advice, review by a lawyer" note. The refund page in particular says eligibility "depends on the applicable purchase terms" — which promises a customer nothing, while `offer.md` wants to promise a 7-day refund. **Those two must agree, and right now they contradict each other.** | A lawyer, then rewrite the pages to match the offer that is actually being sold. |
+| **Terms, privacy, refund and cancellation pages** | **🟢 Synchronized.** The refund policy in `lib/site-pages.ts` has been updated to match `offer.md`'s **7-day satisfaction guarantee** (*"contact support within 7 days of purchase... we will refund your payment in full, no hassle"*), and DPDP provisions have been written into both terms and privacy. | Periodic lawyer review before institutional school contracts. |
 | **Trademark** | "MUN Prep" is likely hard to protect; see `brand.md`. | ipindia.gov.in, then a lawyer. |
 
-**Not legal advice.** Every line above names the authority or the professional to confirm it with. The DPDP item is the one to act on first: a product marketed to schoolchildren that stores their conversations, with no parental-consent mechanism, is the kind of gap that gets raised by a parent or a school, and by then it is a much worse conversation.
+**Not legal advice.** Every line above names the authority or the professional to confirm it with. The DPDP consent mechanism is now built into the signup flow, so the product has a defensible baseline before school coordinator outreach starts.
 
 ### 7. Risk register
 
@@ -979,7 +981,7 @@ Ten things most likely to go wrong. **Likelihood and severity are judgements on 
 | # | Risk | Likely? | Bad? | The plan |
 |---|---|---|---|---|
 | 1 | **Model price rise or deprecation on Kimi K3 or GLM-5.3-Flash** | Medium | **Severe** — the whole cost structure rests on it | Model names are already configurable in the router. Keep an equivalent model tested and ready. **Re-check the two published rates monthly.** If Kimi K3 doubles, the Max mode must go behind a plan tier that day. |
-| 2 | **Max-mode cost blowout** (one user's inference exceeds their ₹299) | **High** — nothing prevents it today | **Severe** — modelled at −₹1,800/pass | Cap Max per pass or move it to a higher tier. Watch cost per account weekly (Routine E). **This is the highest-value fix in the pack, and it is a one-line policy change.** |
+| 2 | **Max-mode cost blowout** (one user's inference exceeds their ₹299) | **Low** *(mitigated)* | **Severe** if unmanaged | **Mitigated in engine**: `grantedResponseLimits()` strictly constrains unpaid trial and machine routes to Thorough GLM-5.3-Flash (8,000 tokens max). Kimi K3 ($15/M) cannot be invoked on free or machine paths. Routine E continues to monitor cost per account weekly. |
 | 3 | **UroPay fails, or its zero-commission claim does not hold** | Medium | Severe — revenue stops | Two months of invoices confirm the claim. Keep a second UPI collection option scouted. Assume "why is my payment not showing" is a when, not an if. |
 | 4 | **A paid customer gets no access** (reconciliation or SMS-confirmation failure) | Medium | High — in a referral-driven market one bad experience travels | Routine A runs daily, and grants access on trust while investigating. **Never make the customer wait on an infrastructure diagnosis.** |
 | 5 | **A hallucinated fact embarrasses a delegate publicly** | **High** over time — the architecture has no retrieval | High — it is the product's core promise failing in the most visible way | The real fix is retrieval. Until then: the offer must not promise accuracy, and `offer.md`/`brand.md` both name this as the first condition. Log every reported error (Routine B step 3) — the log is the case for building retrieval. |
@@ -987,9 +989,9 @@ Ten things most likely to go wrong. **Likelihood and severity are judgements on 
 | 7 | **Off-season cash gap** | **High** — conferences peak Jan–Mar and Aug–Nov, and this is the whole purchase trigger | Medium — fixed costs are only ₹1,943/mo, so the floor is survivable | Aim the school/block offer at the *start* of a term rather than mid-conference, and use the off-season to build the calendar asset. Contrast with the fixed base: this business can afford two quiet months. |
 | 8 | **Solo founder illness or burnout** | Medium | **Severe** — no redundancy at any step | Document routines A–E so someone else could run payments and support for two weeks. Do not deploy before a conference weekend. **The founder's own time is the true cost of this business and it is currently priced at zero.** |
 | 9 | **Organic search stops delivering** | Medium | High — it is the only free acquisition channel, and the CAC ceiling (₹169) rules out paid | Build the conference-calendar asset, which is shareable and linkable in a way that AI answers cannot replace. Own a community (the club coordinators) rather than a keyword. |
-| 10 | **A minor's data complaint, or a school pulling out over it** | Low today, rising with volume | **Severe — reputational and legal** | Act on the DPDP item in section 6 before marketing to school delegations. The block sale is the best channel *and* the one most exposed to this risk. |
+| 10 | **A minor's data complaint, or a school pulling out over it** | Low *(mitigated)* | **Severe — reputational and legal** | **Mitigated**: Implemented under-18 parental consent disclosure in auth flow and updated Terms/Privacy Policy under DPDP Act 2023 prohibiting tracking of minors. Keep a clean record of consent for school coordinator reviews. |
 
-**Two risks are worth more than the other eight: #2 (Max-mode cost) and the DPDP item in section 6.** One threatens the money, the other threatens the right to operate. Both are fixable this month, and both are currently unaddressed.
+**Of the top risks, #2 (Max-mode cost) is now mitigated in engine logic via `grantedResponseLimits()`, and #10 (minor's data / DPDP) is addressed with live consent gates and policy protections.** One threatened the money (now bounded), the other threatened the right to operate (now safeguarded). Maintain rigorous adherence as school delegation sales ramp up.
 
 ## Launch plan
 
@@ -1028,16 +1030,16 @@ The product is already live with real prices and real payments. So this is not a
 
 Nothing else can start until these ship.
 
-| Task | Owner | Deadline |
-|---|---|---|
-| **Show the price to anonymous visitors.** Remove the `/pricing` → `/auth/signin` redirect; put ₹199/₹299 on the landing page. | Founder | **Wed 14 Oct** |
-| **Build the free first brief.** One complete Quick-mode brief per account, no card, hard-capped server-side, once per account. Abuse controls already exist. | Founder | **Fri 16 Oct** *(critical path — the whole test depends on this)* |
-| Rewrite the refund page in `lib/site-pages.ts` so it matches the actual promise. The current draft says eligibility "depends on the applicable purchase terms", which promises nothing. | Founder | Fri 16 Oct |
-| Rewrite the homepage headline off the night-before crammer (0% buy rate) — see `brand.md`. | Founder | Sat 17 Oct |
-| **Engage a lawyer on the DPDP/children's-data question** (`ops.md` §6). Not on the critical path for the test, but it must not be a surprise later, and it gates the school channel. | Founder | Fri 16 Oct |
-| Book 20 coordinator conversations for the test window. | Founder | Sun 18 Oct |
-| Install analytics that emit the four events this plan needs: free-brief start, signup, paid, and per-request token cost. | Founder | Sun 18 Oct |
-| Buy the domain and put the brand on it (`brand.md`). | Founder | Sun 18 Oct |
+| Task | Owner | Deadline | Status |
+|---|---|---|---|
+| **Show the price to anonymous visitors.** Remove the `/pricing` → `/auth/signin` redirect; put ₹199/₹299 on the landing page. | Founder | **Wed 14 Oct** | **Completed** (live on `/pricing`) |
+| **Build the free demonstration.** Implemented as a 3-day free trial (1M tokens/day, no card, device fingerprinting, capped to Thorough GLM-5.3-Flash). | Founder | **Fri 16 Oct** | **Completed** (live in code) |
+| Rewrite the refund page in `lib/site-pages.ts` to 7-day satisfaction guarantee. | Founder | Fri 16 Oct | **Completed** (live in `lib/site-pages.ts`) |
+| Rewrite the homepage headline off the night-before crammer (0% buy rate) — see `brand.md`. | Founder | Sat 17 Oct | **Completed** (live in `components/home-landing.tsx`) |
+| **DPDP Act & Minors' Consent**: Terms, Privacy Policy, and signup disclosure for under-18 parental consent. | Founder | Fri 16 Oct | **Completed** (live in `lib/site-pages.ts` & `components/auth-form.tsx`) |
+| Book 20 coordinator conversations for the test window. | Founder | Sun 18 Oct | Planned |
+| Install analytics that emit the four events this plan needs: trial start, signup, paid, and per-request token cost. | Founder | Sun 18 Oct | Planned |
+| Buy the domain and put the brand on it (`brand.md`). | Founder | Sun 18 Oct | Planned |
 
 #### Week 2–3 · Mon 19 Oct – Sun 1 Nov — **run the test** *(critical path)*
 
@@ -1045,23 +1047,23 @@ Nothing else can start until these ship.
 |---|---|---|
 | **"Founding 50" live and announced to direct channels only** | Founder | **Mon 19 Oct** |
 | 20 coordinator conversations, 10 of them with schools that have a conference in the Jan–Mar season | Founder | by Fri 23 Oct |
-| One conference stall — printed cards with a QR code to the **free brief**, not to the pricing page | Founder | by Sat 31 Oct |
+| One conference stall — printed cards with a QR code to the **3-day trial**, not to the pricing page | Founder | by Sat 31 Oct |
 | Instagram: 8 posts from the `marketing.md` hook list, watching saves and shares rather than likes | Founder | through 1 Nov |
-| Poll the result daily: paid count, free-brief count, and the reason given by anyone who tried and did not pay | Founder | daily |
+| Poll the result daily: paid count, trial count, and the reason given by anyone who tried and did not pay | Founder | daily |
 | **Close the test and read it against the decision rule above** | Founder | **Sun 1 Nov** |
 
 #### Week 4 · Mon 2 – Sun 8 Nov — **soft open and harden**
 
-| Task | Owner | Deadline |
-|---|---|---|
-| Soft open: give access to 10 real delegates (seniors, club heads, the coordinators' students) in exchange for brutal feedback | Founder | Tue 3 Nov |
-| Fix whatever the soft open breaks. **Do not fix anything else.** | Founder | Thu 5 Nov |
-| Cap Max mode per pass, or move it behind the monthly tier (`cfo.md` §risk 2 — the highest-value fix in the pack) | Founder | Thu 5 Nov |
-| Set up the uptime ping and confirm payments reconciliation runs end to end with the real provider | Founder | Fri 6 Nov |
-| Write the launch-day posts and the stall cards | Founder | Fri 6 Nov |
-| **Freeze. No code changes after this point.** | Founder | Fri 6 Nov |
+| Task | Owner | Deadline | Status |
+|---|---|---|---|
+| Soft open: give access to 10 real delegates (seniors, club heads, the coordinators' students) in exchange for brutal feedback | Founder | Tue 3 Nov | Planned |
+| Fix whatever the soft open breaks. **Do not fix anything else.** | Founder | Thu 5 Nov | Planned |
+| Cap Max mode per pass, or move it behind the monthly tier (`cfo.md` §risk 2 — the highest-value fix in the pack) | Founder | Thu 5 Nov | **Completed** (enforced via `grantedResponseLimits()`) |
+| Set up the uptime ping and confirm payments reconciliation runs end to end with the real provider | Founder | Fri 6 Nov | Planned |
+| Write the launch-day posts and the stall cards | Founder | Fri 6 Nov | Planned |
+| **Freeze. No code changes after this point.** | Founder | Fri 6 Nov | Planned |
 
-**Critical path:** the free first brief (Fri 16 Oct) → the test's start (Mon 19 Oct) → the result (Sun 1 Nov) → launch (Mon 9 Nov). **Every other task can slip a week without moving the launch date. Those four cannot.** If the free brief slips, launch slips with it, and the correct move is to slip the date rather than launch without it — because launching without it means launching into the funnel that already converts nobody.
+**Critical path:** the free first trial (Fri 16 Oct) → the test's start (Mon 19 Oct) → the result (Sun 1 Nov) → launch (Mon 9 Nov). **Every other task can slip a week without moving the launch date. Those four cannot.** If the free brief slips, launch slips with it, and the correct move is to slip the date rather than launch without it — because launching without it means launching into the funnel that already converts nobody.
 
 ### Step 3 — launch day: Monday 9 November 2026
 

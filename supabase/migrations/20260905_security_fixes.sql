@@ -45,7 +45,7 @@ begin
   end if;
 
   insert into public.rate_limits (key, count, reset_at)
-  values (p_key, 1, now() + make_interval(msecs => p_window_ms))
+  values (p_key, 1, now() + (p_window_ms * interval '1 millisecond'))
   on conflict (key) do update
     set count = case
           when public.rate_limits.reset_at <= now() then 1

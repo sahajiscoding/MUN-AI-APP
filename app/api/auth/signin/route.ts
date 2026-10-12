@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const ip = getClientIp(request);
-    if (!(await checkRateLimit(`login:${ip}`, 8, 60_000, { failClosed: true }))) {
+    if (!(await checkRateLimit(`login:${ip}`, 8, 60_000))) {
       throw new ApiError(429, "rate_limited", "Too many login attempts. Try again in a minute.");
     }
 

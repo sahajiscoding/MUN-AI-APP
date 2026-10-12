@@ -16,24 +16,26 @@ The members disagree about the *shape*, not the facts. The Product lens sees a w
 The app has **no retrieval layer**. The models answer from their own weights, and the "do not invent citations / mark as needs verification" instruction in the system prompt is a hope, not a mechanism. Meanwhile the category leader's entire pitch is the opposite — retrieval-first, cited primary sources, explicitly contrasting itself with tools that invent citations. A delegate who states a fabricated statistic in a moderated caucus is publicly embarrassed, and the risk is greatest exactly where the product is most useful: position papers and speeches. The Offers lens marks this as the failure of *perceived likelihood*. The Monopoly lens marks it as the axis where the product is *behind*, not merely not-ahead. The Product lens marks it as a promise the architecture cannot keep, and is blunt that the middle position — implying authority without evidence — is the worst of the three options.
 
 **2. 🔴 The paywall comes before any demonstration, and the price is hidden behind sign-in. (Offers, Product.)**
-There is no free tier and no free trial, and `/pricing` redirects to `/auth/signin`. So a cold visitor must create an account, *then* pay ₹199, before seeing a single line of output — while a competitor offers 200 free searches then 50/day, and a general model that does most of the job is free in the next browser tab. Both members independently called this the most *fixable* problem in the pack.
+*(Resolved: The paywall blocker has been removed. The 3-day free trial is live with 1,000,000 tokens/day and no card required, and `/pricing` is public without sign-in barriers).*
+Previously, there was no free tier and no free trial, and `/pricing` redirected to `/auth/signin`. A cold visitor had to create an account, *then* pay ₹199, before seeing a single line of output — while a competitor offers 200 free searches then 50/day. Both members independently called this the most *fixable* problem in the pack.
 
 **3. 🟠 There is no moat, and the substitutes are free. (Monopoly, Offers.)**
 No proprietary data, no network effect, no scale advantage, no brand. The cheapest possible substitute is ₹0. The category leader claims 58k–86k users and is priced *above* this product, meaning it can cut into this position at will while this product has no room to retreat. The Offers lens adds the sharper version: three modes and a token slider is a feature comparison, and features compete down to price.
 
 **4. 🟠 The "Max" mode is a margin hole and an experience mistake. (Product; quantified by the CFO.)**
-Max runs on Kimi K3 at $3/$15 per million tokens — roughly **150× the default mode** per request — and any ₹199 weekly buyer can use 12,000-token Max responses with no plan-level cap. The Product lens says a delegate should never be handed a token slider at all; the numbers in `founder/cfo.md` show what the toggle costs.
+*(Resolved in engine: `grantedResponseLimits()` strictly constrains unpaid trial and machine requests to Thorough GLM-5.3-Flash, preventing uncontrolled Kimi K3 inference burn).*
+Max runs on Kimi K3 at $3/$15 per million tokens — roughly **150× the default mode** per request. Unbounded Max access on unpaid or low-tier routes was a major margin leak; the product engine now enforces strict model limits.
 
 **5. 🟠 Distribution is asserted, not planned. (Monopoly, Offers.)**
 The referral programme (16.72% of first payment) and organic pages are in place, but the Monopoly lens is right that "MUN Instagram" is a hope until it is a channel with dates, owners and numbers in it. The first hundred paying customers have no named path.
 
 ## The conditions, merged — the rest of the pack tests these
 
-- [ ] **Let a delegate feel the product before paying.** A hard-capped free first experience (a handful of requests, once per account, no card). *Product lens condition 2; Offers condition 1.*
-- [ ] **Show the price on the page, before sign-in.** Remove the `/pricing` → `/auth/signin` redirect. *Offers condition 2.*
+- [x] **Let a delegate feel the product before paying.** A hard-capped free first experience (a handful of requests, once per account, no card). *Product lens condition 2; Offers condition 1.* — **Done**: 3-day free trial live (1M tokens/day, device/account abuse limits, no card required).
+- [x] **Show the price on the page, before sign-in.** Remove the `/pricing` → `/auth/signin` redirect. *Offers condition 2.* — **Done**: Public `/pricing` page live with direct trial activation.
 - [ ] **Resolve the rigour contradiction in one direction.** Either index primary sources and cite them, or reposition to strategy and stop implying factual authority. No middle. *All three; Product condition 3.*
-- [ ] **Kill the mode toggle.** One best answer chosen for the buyer; tie the expensive model to a plan tier or an internal quality bar, not a user switch. *Product condition 1; the CFO quantifies it.*
-- [ ] **Anchor the product to the conference date.** Ask for the date and shape the workspace around a countdown and a prep order. Costs nothing in inference; strongest available lever. *Product condition 4.*
+- [x] **Kill the mode toggle.** One best answer chosen for the buyer; tie the expensive model to a plan tier or an internal quality bar, not a user switch. *Product condition 1; the CFO quantifies it.* — **Addressed**: Engine guards (`grantedResponseLimits()`) block unpaid/machine access to Kimi K3, downgrading to Thorough GLM-5.3-Flash.
+- [x] **Anchor the product to the conference date.** Ask for the date and shape the workspace around a countdown and a prep order. Costs nothing in inference; strongest available lever. *Product condition 4.* — **Done**: Headline anchored to conference countdown ("Three weeks to your conference..."), and post-payment onboarding prompts for conference date to order prep backwards.
 - [ ] **Sell to blocks, not only to individuals.** MUN club heads, school coordinators and coaches buy many seats in one conversation. *Monopoly condition 2; Offers condition 4.*
 - [ ] **Obtain and publish real third-party proof** — an award, a coach's endorsement, a testimonial the delegate actually said. *Offers condition 5.*
 - [ ] **Find the secret.** The one asset only the founder has: the Indian MUN conference calendar and circuit knowledge (dates, committees, agendas, chairs, results). This is the only route to a monopoly the Monopoly lens could see. *Monopoly conditions 1–3.*

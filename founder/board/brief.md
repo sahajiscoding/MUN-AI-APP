@@ -24,15 +24,18 @@ Alongside the AI tools: a library of ~16 MUN courses, a terminology glossary, qu
 | **Thorough** | GLM-5.3-Flash | 8,000 |
 | **Max** | Kimi K3 | 12,000 |
 
+*(Note: On unpaid trial and machine routes, `grantedResponseLimits()` automatically constrains Max requests to Thorough GLM-5.3-Flash at 8,000 tokens to prevent runaway inference cost).*
+
 The system prompt instructs the model to separate verified facts from strategic recommendations, not to invent citations, and to mark source-backed claims it cannot support as "needs verification". **There is no retrieval layer:** the models answer from their own weights, with no indexed source corpus and no citation database behind them.
 
 ## Price and packaging
 
+- **3-Day Free Trial — ₹0**, 3 days of full access, 1,000,000 tokens/day cap, no credit card required.
 - **Weekly Pass — ₹199**, 7 days of access.
 - **Monthly Pass — ₹299**, 30 days of access, plus longer prep history, multiple committee workspaces, priority model routing, export-ready drafts.
-- **No free tier. No free trial.** A visitor cannot see the price without first creating an account — `/pricing` redirects to `/auth/signin`.
+- **Public pricing:** `/pricing` is public and accessible without signing in, displaying direct "Start 3-Day Free Trial" CTAs alongside transparent plan pricing.
 
-Usage caps are identical on both plans: 60 AI requests/day and 300,000 tokens/day per user.
+Usage caps: Trial users receive 1,000,000 tokens/day (with Max mode bounded to GLM-5.3-Flash Thorough). Paid plans receive 60 AI requests/day and 300,000 tokens/day per user.
 
 ## Who buys
 

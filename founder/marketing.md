@@ -23,7 +23,7 @@ Three versions, then the one to use.
 *Evidence:* the club-head cohort had the **highest buy rate in the panel (40%)** and asked for it directly: *"If it works I want it for twenty people, not one."* This is the version with the biggest money behind it, and the one that requires a sales conversation rather than a landing page.
 
 **C — the honest anti-positioning (use in comparison content only)**
-> MUN Prep is cheaper than the specialist tools and faster than prompting a general chatbot — and we will show you a brief free before you pay, because we know the only question that matters is whether the output is any good.
+> MUN Prep is cheaper than the specialist tools and faster than prompting a general chatbot — and we give you a 3-day free trial before you pay, because we know the only question that matters is whether the output is any good.
 
 *Evidence:* the top flip condition in every single panel segment was *show me the output first*. This version makes a weakness into a demonstration and is the only positioning that answers the trust objection head-on without claiming a rigour the product does not yet have.
 
@@ -60,12 +60,12 @@ Now the reality of Indian paid social: a click on a student-interest ad costs ro
 
 | Day | What goes out | Channel | Message |
 |---|---|---|---|
-| **-14** | Fix the funnel: price visible on the landing page, `/pricing` no longer redirects to sign-in, the free brief built and working | Product | *(not marketing — but nothing below works until this ships)* |
+| **-14** | Fix the funnel: price visible on the landing page, `/pricing` no longer redirects to sign-in, 3-day free trial built and live | Product | *(Completed: live on `/pricing` and in code)* |
 | **-10** | 20 coordinator conversations booked, 10 conferences picked from the mymun calendar for Oct 2026 – 2027 (season peaks Jan–Mar and Aug–Nov) | Direct outreach | "I built a prep tool for MUN delegates. Can I show it to your club for free and hear what's wrong with it?" |
 | **-7** | The first 5 real delegate briefs generated and read end to end, on real committees, by real delegates | Product + DM | Nothing public. This is the honesty check: if the output is not good, the launch stops here. |
 | **-3** | Launch post #1: the problem, told straight | Instagram | "Every delegate writes their position paper at 11pm the night before. Here's what that looks like for your committee." |
 | **-1** | Coordinator emails sent to all 20, individually written | Email | "Free for your club's delegates for the first conference this season. One account, tell me if it's useful." |
-| **0 (launch)** | The free brief goes live. Launch post #2: the demonstration | Site + Instagram | Screen-recorded: committee + agenda + country in, complete brief out, in real time. No cuts. |
+| **0 (launch)** | 3-day free trial live. Launch post #2: the demonstration | Site + Instagram | Screen-recorded: committee + agenda + country in, complete brief out, in real time. No cuts. |
 | **1** | Launch post #3: the honest comparison | Instagram + site FAQ | "This is what ChatGPT gives you (screenshot). This is what we give you (screenshot). Judge for yourself — the first one's free." |
 | **2** | First coordinator call | Call | Listen, do not pitch. Every objection goes into a file. |
 | **3** | Post #4: the conference countdown | Instagram | "Your conference is in 19 days. Here's the prep order that actually works: research → position → speech → POIs → clauses." *(links to a free in-app checklist, paywalled at the writing step)* |

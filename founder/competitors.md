@@ -8,7 +8,7 @@ Every delegate already solves this problem somehow, usually for ₹0. Sources ar
 
 **Model Diplomat** — [modeldiplomat.com](https://modeldiplomat.com/pricing). The category leader and the only true direct competitor I could verify. Purpose-built MUN AI: source-cited research, position papers, memos and speeches, crisis/simulation tools, 193+ country profiles, voting records, plus free courses and daily briefings. Its pricing page states Pro at **$20/month or $144/year** ($12/mo billed annually), with a **free tier: 200 searches to start, then 50/day**, and a 3-day Pro trial. Its MUN positioning line is "Walk into committee with the record at your back." Its own blog claims **58,000+ users** (Sep 2025, [toolai.io](https://www.toolai.io/ai/model-diplomat)), rising to **80,000+** ([Apr 2026](https://blog.modeldiplomat.com/mun-simulation-software-tools-2026)) and **86,000+** ([Apr 2026](https://blog.modeldiplomat.com/best-mun-software-uk-2026-ranked)) — self-reported marketing numbers, not audited, but the trend and the order of magnitude are the point.
 
-**MUN Prep App** — this business. ₹199/week, ₹299/month, no free tier.
+**MUN Prep App** — this business. 3-day free trial (1M tokens/day, no credit card required), ₹199/week, ₹299/month. Public `/pricing` page with instant trial start.
 
 ### Indirect
 
@@ -78,13 +78,13 @@ What is defensible without review counts:
 
 1. **Model Diplomat's model is credit-metered and capped.** Its own pricing page distinguishes free ("daily refill doesn't stack", no citations, no drafting) from Pro ("400 AI searches every month", "buy non-expiring credits"). A delegate who hits the cap mid-conference must buy more. *Theme thin — one source, the vendor's own page.*
 2. **The whole category's credibility problem is one a competitor is actively campaigning on.** Model Diplomat's comparison pages repeatedly attack general assistants for invented citations ("Does it invent citations like ChatGPT? No... It cannot cite a document that is not in its index"). That is a public claim that MUN-prep-by-general-model is untrustworthy — aimed squarely at products like MUN Prep App. *Linked, dated 2026-08-28.*
-3. **Pricing opacity elsewhere in the category** — the same "best AI tools for MUN" listicle notes of the leader that "pricing is not transparent; users must inquire or sign up for details" ([2026-04-23](https://blog.modeldiplomat.com/best-ai-tools-for-mun-delegates-2026)). MUN Prep App's ₹199/₹299 is clear and low — but currently hidden behind a sign-in, which forfeits that advantage.
+3. **Pricing opacity elsewhere in the category** — the same "best AI tools for MUN" listicle notes of the leader that "pricing is not transparent; users must inquire or sign up for details" ([2026-04-23](https://blog.modeldiplomat.com/best-ai-tools-for-mun-delegates-2026)). MUN Prep App's ₹199/₹299 is clear, low, and now publicly displayed on `/pricing` without any sign-in gate, alongside direct trial access.
 
 ## 5. The gap
 
 **The gap is real, and it is not "an AI for MUN" — that position is taken.** Three gaps are genuinely open on this evidence:
 
-1. **A free first experience is table stakes and only one player offers it.** The leader gives 50 free searches a day; MUN Prep App gives none. Everyone offering free is ahead of this product on the only metric that matters at the top of the funnel.
+1. **A free first experience is table stakes:** The leader gives 50 free searches a day; MUN Prep App has closed this gap by shipping a 3-day full-access free trial (1,000,000 tokens/day cap, no credit card required) so delegates can verify output quality before paying.
 2. **Nobody has built for the Indian circuit specifically.** Every competitor is global and generic in currency, in pricing psychology and in what a delegate actually needs: Indian school delegations, teachers who approve spending, WhatsApp-based club coordination, and the specific conferences on the circuit. The competitor's product is priced at ₹1,060–1,760/month, which is not an Indian school student's pocket money; ₹199 for the week of one conference is a different product shape entirely, and it is unoccupied.
 3. **Nobody has indexed current-event facts for Indian MUN committees with verifiable sources**, and the leader's index is a general treaty/UN-vote corpus, not "what is actually being debated in committees on the Indian circuit this season". That is an open and defensible gap — but it must be *built*, not asserted.
 

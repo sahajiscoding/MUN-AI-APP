@@ -207,20 +207,18 @@ export default function CheckoutSuccessPage() {
           />
 
           <h1 className="display-type mt-5 text-4xl">
-            Access unlocked.
+            You&apos;re in.
           </h1>
 
           <p className="mt-4 leading-7 text-[var(--muted)]">
-            Your payment has been
-            confirmed and Premium
-            access is now active.
+            Your pass is active. Tell us your conference date in your workspace and we&apos;ll build your prep order backwards from it.
           </p>
 
           <Link
             className="button-primary mt-7 inline-flex items-center justify-center px-5 font-semibold"
             href="/dashboard"
           >
-            Return to dashboard
+            Open workspace
           </Link>
         </section>
       </ProtectedAppShell>

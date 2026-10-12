@@ -64,7 +64,7 @@ export function HomeLanding({ referralName }: { referralName?: string }) {
           <div className="flex flex-1 flex-col items-center justify-center py-14 text-center sm:py-16 lg:py-20">
             <p className="label-text tracking-[0.14em] text-white/80">Delegate command center</p>
             <h1 className="display-type mx-auto mt-5 max-w-4xl text-balance text-5xl leading-[1.02] text-white drop-shadow-lg sm:text-6xl lg:text-7xl">
-              Prepare like your committee starts tomorrow.
+              Three weeks to your conference. Your committee, your country, your brief — before you pay.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-white/85">
               A focused Model UN workspace for research briefs, country policy, speeches,

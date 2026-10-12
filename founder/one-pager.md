@@ -17,7 +17,7 @@ An AI preparation workspace: give it the committee, the agenda and the country, 
 - **₹199 for one week** — matched to the week of a conference
 - **₹299 for one month**
 - Paid by **UPI**, through **UroPay** — which charges **zero per-transaction commission** (a flat ₹0–1,000/month by volume), meaning no payment fee comes off any sale
-- **Planned change:** a **free first brief, once per account, before any payment** — it costs about seven paise to serve and it answers the most common objection in the panel
+- **Free experience:** **3-day free trial on signup** (unlimited requests, 1,000,000 tokens/day cap, no card required) — answers the panel's top objection ("show me before I pay") before asking for a rupee
 
 ## The numbers
 
@@ -44,7 +44,7 @@ An AI preparation workspace: give it the committee, the agenda and the country, 
 
 Three lenses, two fund-if and one pass, average **5.7/10** — agreed on the product's craft and on the two funnel defects, disagreed on whether a well-built product with no moat is a business. The strength of the case: a genuinely small, ownable market (a delegation preparing for one conference, bought as a block) with a cost structure that breaks even at eight sales a month. The gap: no proprietary data, no network effect, no brand, and a copy time measured in a weekend.
 
-**The biggest risk is not demand — it is the "Max" mode.** Kimi K3 costs ₹13.86 per request, **191× the default model**, on a user-selectable toggle with identical daily caps on both plans. One Max request a day loses ₹117/month per user. Capped per pass, the scenario disappears.
+**The biggest cost risk was the "Max" mode — now safely bounded.** Kimi K3 costs ₹13.86 per request (191× the default model); `grantedResponseLimits()` now automatically downgrades Max mode to Thorough (GLM-5.3-Flash) for all trial and machine callers, protecting unit economics from runaway inference.
 
 ## What the money is for
 
@@ -58,8 +58,8 @@ None, in the sense of investment — **this starts on ₹15,400 of the founder's
 
 ## The one thing to do this week
 
-**Build the free first brief** — one complete research brief, once per account, before anyone is asked to pay. Seven paise to serve, and it is on the critical path: the launch test cannot start without it.
+**Run the Founding 50 launch test** — the 3-day free trial is already live. Put it in front of 150 real delegates, track trial activations, and close the first 15 paid conversions.
 
 ---
 
-*The panel is simulated buyers and the money figures are projections from modelled inputs; real customers and real quotes are what confirm them. Not financial, legal or tax advice — the GST position, the treatment of referral commissions, business registration and the children's-data question (the product serves minors and has no age gate) all need an accountant or a lawyer. Estimates are labelled as estimates throughout, and `cfo-sources.md` names each one.*
+*The panel is simulated buyers and the money figures are projections from modelled inputs; real customers and real quotes are what confirm them. Not financial, legal or tax advice — the GST position, the treatment of referral commissions, business registration, and continuous compliance with the DPDP Act (under-18 parental consent and minor protections are now live in auth and policies) all need an accountant or a lawyer as the business scales. Estimates are labelled as estimates throughout, and `cfo-sources.md` names each one.*

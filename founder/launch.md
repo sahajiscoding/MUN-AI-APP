@@ -9,7 +9,7 @@ The product is already live with real prices and real payments. So this is not a
 **The cheapest real test that fits an online subscription: a founding-member offer, paid up front, in front of real delegates.**
 
 **What goes live:**
-- The landing page shows the price and a **free first brief** button. No sign-in wall before either.
+- The landing page and `/pricing` show the price and a **"Start 3-Day Free Trial"** button. No sign-in wall before either.
 - **"Founding 50"** — the first 50 paying customers get **30 days of access for ₹199** (the weekly price). This is a **bonus, not a discount**: ₹199 is above the ₹123 floor where buyers start distrusting quality (`pricing.md`), and the structure says "we're giving you more", not "the price was fake". The price list stays ₹199/week and ₹299/month, unchanged; founding members simply get the month at the week's price.
 - The offer is announced **only to people the founder reaches directly** — coordinator conversations, MUN Instagram DMs, the stall at a conference — not to broad traffic. **Broad traffic would make the test unreadable.**
 
@@ -35,16 +35,16 @@ The product is already live with real prices and real payments. So this is not a
 
 Nothing else can start until these ship.
 
-| Task | Owner | Deadline |
-|---|---|---|
-| **Show the price to anonymous visitors.** Remove the `/pricing` → `/auth/signin` redirect; put ₹199/₹299 on the landing page. | Founder | **Wed 14 Oct** |
-| **Build the free first brief.** One complete Quick-mode brief per account, no card, hard-capped server-side, once per account. Abuse controls already exist. | Founder | **Fri 16 Oct** *(critical path — the whole test depends on this)* |
-| Rewrite the refund page in `lib/site-pages.ts` so it matches the actual promise. The current draft says eligibility "depends on the applicable purchase terms", which promises nothing. | Founder | Fri 16 Oct |
-| Rewrite the homepage headline off the night-before crammer (0% buy rate) — see `brand.md`. | Founder | Sat 17 Oct |
-| **Engage a lawyer on the DPDP/children's-data question** (`ops.md` §6). Not on the critical path for the test, but it must not be a surprise later, and it gates the school channel. | Founder | Fri 16 Oct |
-| Book 20 coordinator conversations for the test window. | Founder | Sun 18 Oct |
-| Install analytics that emit the four events this plan needs: free-brief start, signup, paid, and per-request token cost. | Founder | Sun 18 Oct |
-| Buy the domain and put the brand on it (`brand.md`). | Founder | Sun 18 Oct |
+| Task | Owner | Deadline | Status |
+|---|---|---|---|
+| **Show the price to anonymous visitors.** Remove the `/pricing` → `/auth/signin` redirect; put ₹199/₹299 on the landing page. | Founder | **Wed 14 Oct** | **Completed** (live on `/pricing`) |
+| **Build the free demonstration.** Implemented as a 3-day free trial (1M tokens/day, no card, device fingerprinting, capped to Thorough GLM-5.3-Flash). | Founder | **Fri 16 Oct** | **Completed** (live in code) |
+| Rewrite the refund page in `lib/site-pages.ts` to 7-day satisfaction guarantee. | Founder | Fri 16 Oct | **Completed** (live in `lib/site-pages.ts`) |
+| Rewrite the homepage headline off the night-before crammer (0% buy rate) — see `brand.md`. | Founder | Sat 17 Oct | **Completed** (live in `components/home-landing.tsx`) |
+| **DPDP Act & Minors' Consent**: Terms, Privacy Policy, and signup disclosure for under-18 parental consent. | Founder | Fri 16 Oct | **Completed** (live in `lib/site-pages.ts` & `components/auth-form.tsx`) |
+| Book 20 coordinator conversations for the test window. | Founder | Sun 18 Oct | Planned |
+| Install analytics that emit the four events this plan needs: trial start, signup, paid, and per-request token cost. | Founder | Sun 18 Oct | Planned |
+| Buy the domain and put the brand on it (`brand.md`). | Founder | Sun 18 Oct | Planned |
 
 ### Week 2–3 · Mon 19 Oct – Sun 1 Nov — **run the test** *(critical path)*
 
@@ -52,21 +52,21 @@ Nothing else can start until these ship.
 |---|---|---|
 | **"Founding 50" live and announced to direct channels only** | Founder | **Mon 19 Oct** |
 | 20 coordinator conversations, 10 of them with schools that have a conference in the Jan–Mar season | Founder | by Fri 23 Oct |
-| One conference stall — printed cards with a QR code to the **free brief**, not to the pricing page | Founder | by Sat 31 Oct |
+| One conference stall — printed cards with a QR code to the **3-day trial**, not to the pricing page | Founder | by Sat 31 Oct |
 | Instagram: 8 posts from the `marketing.md` hook list, watching saves and shares rather than likes | Founder | through 1 Nov |
-| Poll the result daily: paid count, free-brief count, and the reason given by anyone who tried and did not pay | Founder | daily |
+| Poll the result daily: paid count, trial count, and the reason given by anyone who tried and did not pay | Founder | daily |
 | **Close the test and read it against the decision rule above** | Founder | **Sun 1 Nov** |
 
 ### Week 4 · Mon 2 – Sun 8 Nov — **soft open and harden**
 
-| Task | Owner | Deadline |
-|---|---|---|
-| Soft open: give access to 10 real delegates (seniors, club heads, the coordinators' students) in exchange for brutal feedback | Founder | Tue 3 Nov |
-| Fix whatever the soft open breaks. **Do not fix anything else.** | Founder | Thu 5 Nov |
-| Cap Max mode per pass, or move it behind the monthly tier (`cfo.md` §risk 2 — the highest-value fix in the pack) | Founder | Thu 5 Nov |
-| Set up the uptime ping and confirm payments reconciliation runs end to end with the real provider | Founder | Fri 6 Nov |
-| Write the launch-day posts and the stall cards | Founder | Fri 6 Nov |
-| **Freeze. No code changes after this point.** | Founder | Fri 6 Nov |
+| Task | Owner | Deadline | Status |
+|---|---|---|---|
+| Soft open: give access to 10 real delegates (seniors, club heads, the coordinators' students) in exchange for brutal feedback | Founder | Tue 3 Nov | Planned |
+| Fix whatever the soft open breaks. **Do not fix anything else.** | Founder | Thu 5 Nov | Planned |
+| Cap Max mode per pass, or move it behind the monthly tier (`cfo.md` §risk 2 — the highest-value fix in the pack) | Founder | Thu 5 Nov | **Completed** (enforced via `grantedResponseLimits()`) |
+| Set up the uptime ping and confirm payments reconciliation runs end to end with the real provider | Founder | Fri 6 Nov | Planned |
+| Write the launch-day posts and the stall cards | Founder | Fri 6 Nov | Planned |
+| **Freeze. No code changes after this point.** | Founder | Fri 6 Nov | Planned |
 
 **Critical path:** the free first brief (Fri 16 Oct) → the test's start (Mon 19 Oct) → the result (Sun 1 Nov) → launch (Mon 9 Nov). **Every other task can slip a week without moving the launch date. Those four cannot.** If the free brief slips, launch slips with it, and the correct move is to slip the date rather than launch without it — because launching without it means launching into the funnel that already converts nobody.
 

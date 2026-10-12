@@ -92,6 +92,8 @@ These are simulated buyers, not customers. Use this to find objections and weak 
 - Someone showing me it is measurably better, not just faster.
 - It being framed as research I then write up myself.
 
+*(Implementation update: The top flip condition — "Any free trial at all" / "free so I can see the quality" — has been directly resolved by launching the 3-day free trial with 1,000,000 tokens/day and no credit card required).*
+
 Buyers say they would buy **2.0 times** in the first month on average.
 
 40 buyers gave all four price answers. Run founder-pricing's van_westendorp.py on the answers folder.

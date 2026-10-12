@@ -241,6 +241,16 @@ export function AuthForm({ mode, referralCode: referralCodeProp }: AuthFormProps
                 </p>
               ) : null}
 
+              {mode === "signup" ? (
+                <p className="text-xs leading-5 text-[var(--muted)] text-center">
+                  By creating an account, you agree to our{" "}
+                  <Link href="/legal/terms-of-service" className="underline underline-offset-2 hover:text-[var(--ink)]">Terms</Link>{" "}
+                  and{" "}
+                  <Link href="/legal/privacy-policy" className="underline underline-offset-2 hover:text-[var(--ink)]">Privacy Policy</Link>.{" "}
+                  Delegates under 18 confirm parental consent under India&apos;s DPDP Act.
+                </p>
+              ) : null}
+
               <button
                 type="submit"
                 disabled={busy}

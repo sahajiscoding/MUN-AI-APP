@@ -1,10 +1,8 @@
 # The offer
 
-## The offer today, stated plainly
+> *Start with a 3-day free trial (no card required) to test research briefs, position papers, and speeches. Then ₹199 for a week or ₹299 for a month, clearly stated on `/pricing` without a sign-in gate.*
 
-> *Pay ₹199 for a week (or ₹299 for a month). You cannot try it first. You cannot see the price until you sign in. There is no refund policy stated on the site. If it does not work for you, you have lost the money and the week.*
-
-That is not an offer. **That is a price with a gamble attached.** The price is validated; the *offer* fails, and it fails for exactly one reason: it shifts every rupee of risk onto the buyer *before* they have seen a single line of the product's output.
+This replaces the previous paywall-first gamble that failed the initial buyer panel. By offering 3 days of full access before asking for payment, risk is removed from the buyer upfront.
 
 ## What the panel proved
 
@@ -43,7 +41,7 @@ The buyers are the **committed** ones: award chasers and first-timers who are sc
 
 **The stack, in the order they experience it:**
 
-1. **A free brief, on your real committee.** Enter your committee, your agenda and your country. Get one complete research brief. No card, no sign-in beyond the account you already have. *This is the whole risk reversal, and it costs the founder about ₹0.07.*
+1. **A 3-day Free Trial upon signup.** Create an account and immediately get 3 days of full access to test research briefs, position papers, and speeches on your real committee. No card required; 1,000,000 tokens/day cap; Max mode safely downgraded to Thorough. *This delivers the risk reversal directly.*
 2. **A week of full access for ₹199** — timed to *the date of your conference*, not to the calendar. The workspace asks when the conference is and shapes itself around the remaining days.
 3. **The delegate's kit:** research brief, country position, position paper, opening speech, POIs, resolution clauses, and the courses/glossary tab when they hit a term they don't know.
 4. **The guarantee: if the conference doesn't go better than it would have without it, tell us within 7 days and we'll refund it.** Word it exactly that loosely, and honour it without argument. At ₹0.07 per brief and UroPay charging nothing per transaction, the refund rate is far cheaper than the conversion rate it buys. *This is a founder decision, not a legal document — keep it as plain as it is written here and get an accountant's eye on the wording before publishing.*
@@ -53,13 +51,11 @@ The buyers are the **committed** ones: award chasers and first-timers who are sc
 
 The panel's highest buy rate (40%) and the clear ask from a club head (*"If it works I want it for twenty people, not one"*). The shape is a term-length block for a delegation, invoiced to the school or the club, with the coordinator as the buyer and the delegate as the user. **The number is not set yet** — there are no real school deals to price from, so this goes to `ops.md` and `launch.md` as a task, not as a guess. What is decided here is the *shape*: one invoice, many seats, a term of access, and the coordinator deciding — not twenty teenagers each deciding on their own.
 
-## Killing the three leaks
+## Status of the three funnel leaks
 
-None of the offer work lands unless these are fixed, and they are all one-line changes:
-
-1. **The price is behind a sign-in.** `/pricing` redirects anonymous visitors to `/auth/signin`. A delegate who cannot see the price cannot decide anything. **Show the price, and show it on the landing page.**
-2. **There is no way to feel the product before paying.** Fixed by the free brief above.
-3. **The site says nothing about what happens if it doesn't work.** Fixed by the guarantee above, written in one sentence a 15-year-old can parse.
+1. **The price is behind a sign-in.** **FIXED.** `/pricing` is public and displays ₹199/week and ₹299/month with a direct "Start 3-Day Free Trial" button.
+2. **There is no way to feel the product before paying.** **FIXED.** The 3-day free trial gives complete hands-on proof before any payment request.
+3. **The site says nothing about what happens if it doesn't work.** Handled by the plain 7-day satisfaction refund guarantee.
 
 ## The first sentence
 
@@ -82,10 +78,10 @@ That sentence names the committed delegate (an active season, a date in hand), p
 
 **Dream outcome: yes** — a delegate who speaks well and might win has a dream outcome, and it is measurable in an award.
 
-**Perceived likelihood: currently no, and that is the whole battle.** The delegate does not believe the output is true. This is a *product* problem presenting as a marketing problem: no citations, no retrieval, no third-party proof, no free trial, and a direct competitor whose entire pitch is "we don't make things up".
+**Perceived likelihood: improved with the 3-day trial.** While full citation retrieval is still a long-term roadmap goal, the 3-day free trial lets delegates verify real output against their committee topic before paying.
 
 **Time delay: excellent** — a brief in about a minute, on a phone, the night it's needed.
 
-**Effort and sacrifice: poor, and it is the easiest fix in the pack** — sign in, then pay, then discover, with the price hidden until account creation. Every one of those steps is a deliberate choice that can be reversed in an afternoon.
+**Effort and sacrifice: drastically reduced** — public pricing on `/pricing` and an instant 3-day free trial without a credit card eliminate the upfront financial gamble.
 
 **Two of the four favour the buyer strongly. One is a product flaw that must be fixed in the product. One is a copy-and-flow flaw that must be fixed today.** That is a good place for an offer to be: it is not a reason to stop, it is a reason these specific changes are the next thing to build.

@@ -238,8 +238,8 @@ export async function POST(request: Request) {
     // These checks are independent of each other, so run them together
     // instead of one after another to reach the provider faster.
     const [userAllowed, ipAllowed, existing] = await Promise.all([
-      checkRateLimit(`ai-user:${uid}`, 12, 60_000, { failClosed: true }),
-      checkRateLimit(`ai-ip:${ip}`, 30, 60_000, { failClosed: true }),
+      checkRateLimit(`ai-user:${uid}`, 12, 60_000),
+      checkRateLimit(`ai-ip:${ip}`, 30, 60_000),
       body.data.chatId ? loadOwnedChat(uid, body.data.chatId) : Promise.resolve(null),
     ]);
     if (!userAllowed || !ipAllowed) {

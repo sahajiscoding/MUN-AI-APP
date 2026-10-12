@@ -83,6 +83,15 @@ These rules apply to all code generated in this project. They are non-negotiable
 - Pin exact versions in package.json / requirements.txt (no ^ or ~ in production)
 - Commit lock files (package-lock.json, poetry.lock, yarn.lock)
 
+## Commit Identity
+
+- The email address in a commit is the identity. GitHub credits whoever has that address registered, so committing with an address someone else controls gives them contributions to this repository. The display name is decoration and does not matter
+- NEVER commit with an invented address, a vendor address, or anything `@arena.ai`. `agent@arena.ai` belongs to an unrelated third party, who was credited with 3 commits here on 2026-10-11 and had to be removed by rewriting main's history
+- ALWAYS commit as an address listed in `scripts/check-commit-identity.mjs`. For agent or bot work use GitHub's per-account no-reply form, `<id>+<login>@users.noreply.github.com`, which nobody else can register
+- Co-authored-by addresses are credited exactly like authors, so they are checked too
+- NEVER pass `--no-verify` to skip the local hooks. The "Commit Identity" workflow applies the same policy to every commit on the branch and cannot be bypassed
+- Run `pnpm hooks:install` once per clone to enable the local hooks, and `pnpm check:identity` to check history by hand. Adding a new identity means adding it to the ALLOWED list in `scripts/check-commit-identity.mjs` with its reason, in the same commit
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

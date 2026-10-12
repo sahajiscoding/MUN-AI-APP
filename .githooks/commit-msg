@@ -1,0 +1,24 @@
+#!/bin/sh
+# Local half of the commit identity guard.
+#
+# Policy: scripts/check-commit-identity.mjs. This blocks a commit whose author,
+# committer or Co-authored-by address is not registered by an account that owns
+# this repository, so a stranger's address (the way `agent@arena.ai` was) never
+# reaches GitHub in the first place.
+#
+# Installed by:  pnpm hooks:install     (sets core.hooksPath=.githooks)
+# Bypass (don't): git commit --no-verify
+#
+# This is fast local feedback, not the enforcement layer: the "Commit Identity"
+# workflow runs the same policy over the whole branch and cannot be bypassed.
+# If node is unavailable the check is skipped rather than blocking work; CI
+# still catches it.
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -f "$root/scripts/check-commit-identity.mjs" ] || exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "commit-msg: node is unavailable, skipping the commit identity check (CI still enforces it)" >&2
+  exit 0
+fi
+
+exec node "$root/scripts/check-commit-identity.mjs" --hook "$1" --quiet

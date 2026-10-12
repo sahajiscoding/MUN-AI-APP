@@ -2,8 +2,9 @@ import { x402HTTPClient } from "@x402/core/http";
 import { x402Client } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
+import { POC_PRIVATE_KEY } from "./key.mjs";
 const SRV = process.env.SRV, FAC = process.env.FAC;
-const account = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+const account = privateKeyToAccount(POC_PRIVATE_KEY);
 const client = new x402Client(); client.register("eip155:*", new ExactEvmScheme(account));
 const hc = new x402HTTPClient(client);
 async function buy(path) {
@@ -28,7 +29,7 @@ F("E) AMOUNT TAMPERING — both directions (expect rejection)");
   p2.accepted = { ...p2.accepted, amount: "10000", payTo: p2.accepted.payTo };
   // re-sign with value 1 by rebuilding typed data
   const { privateKeyToAccount: pka } = await import("viem/accounts");
-  const acct = pka("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+  const acct = pka(POC_PRIVATE_KEY);
   const auth = { ...p2.payload.authorization, value: "1" };
   const signature = await acct.signTypedData({
     domain: { name: p2.accepted.extra.name, version: p2.accepted.extra.version, chainId: 84532, verifyingContract: p2.accepted.asset },

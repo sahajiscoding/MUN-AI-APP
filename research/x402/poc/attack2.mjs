@@ -6,11 +6,12 @@ import { x402HTTPClient } from "@x402/core/http";
 import { x402Client } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
+import { POC_PRIVATE_KEY } from "./key.mjs";
 
 const SERVER = process.env.SERVER || "http://127.0.0.1:4198";
 const FACILITATOR = process.env.FACILITATOR || "http://127.0.0.1:4199";
 
-const account = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+const account = privateKeyToAccount(POC_PRIVATE_KEY);
 const client = new x402Client();
 client.register("eip155:*", new ExactEvmScheme(account));
 const httpClient = new x402HTTPClient(client);

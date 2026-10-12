@@ -2,8 +2,9 @@ import { x402HTTPClient } from "@x402/core/http";
 import { x402Client } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
+import { POC_PRIVATE_KEY } from "./key.mjs";
 const SRV = process.env.SERVER || "http://127.0.0.1:4198";
-const a = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+const a = privateKeyToAccount(POC_PRIVATE_KEY);
 const c = new x402Client(); c.register("eip155:*", new ExactEvmScheme(a));
 const hc = new x402HTTPClient(c);
 async function buy(path="/api/cheap") {

@@ -14,6 +14,7 @@ Reproduces the findings in `../x402-security-review.md`. Everything runs locally
 | `seq.mjs` | 10 sequential replays of a single payment header. |
 | `pathbypass.mjs` | 11 path/encoding aliases of a paid route. |
 | `headers.mjs`, `rawdup.mjs` | Header precedence, v1 downgrade, garbage header, genuine duplicate-header bytes. |
+| `key.mjs` | The payer account, generated per run. Nothing here depends on which address pays. |
 | `priv.mjs` | Logging proxy that shows exactly what a third-party facilitator receives (forwards `/supported`, `/verify` and `/settle`, and nothing else). |
 
 ## Run
@@ -48,6 +49,10 @@ PORT=4398 FACILITATOR_URL=http://127.0.0.1:4399 node server.js &   # merchant vi
 ```
 
 Ports are overridable via `PORT`, `FACILITATOR_URL`, `SERVER`, `FACILITATOR`, `NETWORK`, `PAY_TO`.
+
+Each script signs with an account it generates at startup (`key.mjs`), because nothing in the
+testbed checks who the payer is. Set `POC_PRIVATE_KEY=0x...` to run every script as one known
+account, or to reproduce a run exactly.
 
 To compare SDK versions (e.g. the §3.4 cache-control difference), install a pinned version and re-check the headers:
 

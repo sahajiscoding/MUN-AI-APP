@@ -10,6 +10,13 @@ import {
 } from "@/lib/server/x402-server";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 
+// The route config refuses to build with an unset or placeholder payout address
+// (`assertValidPayTo`), so these tests configure a real merchant wallet exactly
+// as production must. Without this the suite would silently be exercising the
+// placeholder address that used to swallow payments.
+const TEST_PAY_TO = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
+process.env.X402_PAY_TO ??= TEST_PAY_TO;
+
 describe("x402 Server Integration & Protocol Compliance", () => {
   it("provides valid default configuration", () => {
     const config = getX402Config();

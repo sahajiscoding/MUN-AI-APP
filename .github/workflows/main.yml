@@ -41,6 +41,17 @@ jobs:
       - name: Install dependencies from lockfile
         run: pnpm install --frozen-lockfile
 
+      - name: Payment guard tests (behavioural, offline)
+        # The rest of `pnpm test` asserts against the live x402 facilitator and
+        # needs network egress, so it is not run here. This suite is fully
+        # offline and pins the payment invariants: one grant per authorization
+        # under concurrency, no grant when settlement reports success but the
+        # claim is already taken, fail-closed when the claim store is down, and
+        # an over-budget machine caller refused without being charged.
+        run: >-
+          pnpm exec node --import ./scripts/test-loader.mjs
+          --experimental-strip-types --test tests/x402-payment-guard.test.ts
+
       - name: Lint
         run: pnpm lint
 

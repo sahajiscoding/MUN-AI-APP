@@ -2,7 +2,7 @@
 >
 > **Dates of the inputs:** model prices are the published Z.ai and Moonshot list rates (Sep–Oct 2026); the USD→INR conversion used is **₹88 = $1** (a soft assumption — check the live rate; every inference number moves with it).
 
-# The CFO's note
+## The CFO's note
 
 **The margin: 85% contribution, ₹254 per monthly pass.** Price ₹299, less ₹7 of GLM-5.3-Flash inference on the default path, less ₹18 of Kimi K3 inference on the Max path, less ₹20 of amortised referral commission. Fixed costs are ₹1,943/month, so **break-even is about 8 passes a month** — one approximately every four days. This is a very forgiving cost structure. UroPay is a genuine gift here: **zero per-transaction commission** removes the 1.5–3% that would otherwise come off every single sale, and at this volume the flat plan is ₹100/month.
 

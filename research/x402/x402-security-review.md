@@ -305,8 +305,9 @@ The protocol-level findings in §3 were not hypothetical here: the app's own x40
 | F8 | `supabase/migrations/20261011_x402_payments.sql` was a no-op (comments only). | ⚪ | Superseded by `20261012_x402_payment_guard.sql`. |
 | F9 | Machine callers could not be metered: `reserve_ai_usage` writes `ai_usage_daily.uid`, which references `auth.users`, so **every** paid bot request failed with a 503 *after* the payment had settled. | 🔴 | Machine budget is now enforced against the claims table **before** settlement (over-budget → 429, never charged). Discovered during remediation. |
 | F10 | The machine UID `00000000-…-0000` fails the v4 pattern in `saveChatTranscript`, so bot transcripts were silently discarded — no error, no log. | 🟠 | Machine namespace is now `00000000-0000-4000-8000-000000000000`: v4-shaped so storage works, and impossible to collide with a real account. |
+| F11 | **Introduced by F9's fix.** F9 rightly stopped the 503 by metering machines on the claims table — but only on *request count*. `responseMode` and `maxTokens` arrive in the caller's own body and were passed straight to the router, so a **$0.05 payment could buy up to 12,000 Kimi K3 completion tokens (~$0.19, 3.8× the price)**. At the 60-request daily cap that is **~$8.30 of net loss per bot per day**, and the number of bots is not bounded. | 🔴 | `lib/server/x402-machine-limits.ts` — `grantedResponseLimits()` fixes a machine caller's mode to the model its payment covers and caps its completion ceiling inside the price. `tests/x402-machine-limits.test.ts` asserts the *cost bound* at the published rates, so raising the ceiling without raising the price fails the suite. |
 
-**Verified, not assumed.** F1–F10 were fixed with a test suite (`tests/x402-payment-guard.test.ts`, 24 cases) that pins the invariants rather than the implementation:
+**Verified, not assumed.** F1–F11 were fixed with test suites (33 cases across `tests/x402-payment-guard.test.ts` and `tests/x402-machine-limits.test.ts`) that pin the invariants rather than the implementation:
 
 - exactly one grant under 12-way concurrency;
 - no grant when settlement reports success but the claim is already taken (the non-authoritative-facilitator case);
@@ -317,7 +318,7 @@ The protocol-level findings in §3 were not hypothetical here: the app's own x40
 
 This suite is wired into CI (`main.yml`, before lint/typecheck) as **`Payment guard tests (behavioural, offline)`**. It was chosen over the full `pnpm test` because the rest of the suite asserts against the live x402 facilitator and needs network egress, which would make CI flaky and red for reasons unrelated to this repo.
 
-Full suite status: **91 pass / 2 fail**, where the 2 failures are this sandbox's lack of network egress when the facilitator SDK initialises (`no supported payment kinds loaded from any facilitator`). They are not regressions — the same 2 assertions failed before any change, and they pass in CI where egress exists. `typecheck`, `lint` (0 errors), and `check:manifests` are clean.
+Full suite status: **100 pass / 2 fail** across 102 cases, where the 2 failures are this sandbox's lack of network egress when the facilitator SDK initialises (`no supported payment kinds loaded from any facilitator`). They are not regressions — the same 2 assertions failed before any change, and they pass in CI where egress exists. `typecheck`, `lint` (0 errors), and `check:manifests` are clean.
 
 **Two operational notes.** `X402_PAY_TO` is now genuinely required — set it to a wallet you control before this deploys, or the paid routes will return 503 by design (the old behaviour was to advertise a burn address and lose the money). And the `payments.amount` column now carries two different units depending on `currency`: whole INR for UroPay, atomic USDC (6 dp) for x402. Filter by `currency` before summing.
 

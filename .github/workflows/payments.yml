@@ -66,6 +66,13 @@ jobs:
           [ "$flag_count" -eq 1 ] || fail "expected exactly 1 machine-caller flag assignment, found $flag_count"
           # The placeholder payout default must never come back.
           if grep -rn "0x0000000000000000000000000000000000000001" lib app --include='*.ts'; then fail "placeholder payout address default returned"; fi
+          # A $0.05 payment must not buy Kimi K3 inference. The clamp lives in
+          # one module and the provider call must use what it returns, not the
+          # caller's own responseMode/maxTokens.
+          grep -q "export function grantedResponseLimits" lib/server/x402-machine-limits.ts || fail "machine response limits module is missing"
+          grep -q "grantedResponseLimits" app/api/ai/research/route.ts || fail "AI route does not clamp machine callers to what they paid"
+          grep -q "responseMode: granted.responseMode" app/api/ai/research/route.ts || fail "provider call ignores the granted response mode"
+          grep -q "maxTokens: granted.maxTokens" app/api/ai/research/route.ts || fail "provider call ignores the granted token budget"
           echo "x402 guard OK"
 
       # This repo has no install-based CI job today, so the behavioural suite
@@ -82,4 +89,7 @@ jobs:
           grep -q "withholds the resource when settlement succeeds but the claim is taken" tests/x402-payment-guard.test.ts || fail "non-authoritative facilitator test is missing"
           grep -q "fails closed without granting when the claim store is unreachable" tests/x402-payment-guard.test.ts || fail "store-outage fail-closed test is missing"
           grep -q "refuses an over-budget machine caller before charging it" tests/x402-payment-guard.test.ts || fail "machine budget pre-settlement test is missing"
+          test -f tests/x402-machine-limits.test.ts || fail "machine limits test suite is missing"
+          grep -q "refuses the Max model no matter what the caller asks for" tests/x402-machine-limits.test.ts || fail "max-mode clamp test is missing"
+          grep -q "keeps worst-case cost for a machine request well under the price" tests/x402-machine-limits.test.ts || fail "inference cost-bound test is missing"
           echo "x402 guard tests present"

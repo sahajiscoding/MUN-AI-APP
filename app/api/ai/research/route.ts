@@ -21,6 +21,7 @@ import {
   fulfilX402Payment,
   X402_PAID_CONTENT_CACHE_CONTROL,
 } from "@/lib/server/x402-fulfil";
+import { grantedResponseLimits } from "@/lib/server/x402-machine-limits";
 
 export const runtime = "nodejs";
 
@@ -245,7 +246,18 @@ export async function POST(request: Request) {
     const promptEstimate = estimateAiTokens(
       [body.data.agenda, ...priorTurns.map((turn) => turn.content)].join("\n")
     );
-    const completionCeiling = completionTokenCeiling(body.data.responseMode, body.data.maxTokens);
+    // A paid machine caller is clamped to the model its payment covers. Two
+    // reasons this has to happen here rather than in the router: the client's
+    // `responseMode` and `maxTokens` arrive in its own request body, and both
+    // decide what the provider work costs while the price stays $0.05. See
+    // lib/server/x402-machine-limits.ts for the arithmetic.
+    const granted = grantedResponseLimits(
+      Boolean(isX402Bot),
+      body.data.responseMode,
+      body.data.maxTokens
+    );
+
+    const completionCeiling = completionTokenCeiling(granted.responseMode, granted.maxTokens);
 
     // Machine callers are metered against the claims table, not auth.users.
     // `reserveAiUsage` writes ai_usage_daily.uid, which references auth.users,
@@ -257,7 +269,15 @@ export async function POST(request: Request) {
 
     let result: Awaited<ReturnType<typeof runMunResearch>>;
     try {
-      result = await runMunResearch({ ...body.data, tool, conversation: priorTurns });
+      result = await runMunResearch({
+        ...body.data,
+        // After the spread on purpose: these are the granted limits, not the
+        // client's, and a machine caller must not be able to widen them here.
+        responseMode: granted.responseMode,
+        maxTokens: granted.maxTokens,
+        tool,
+        conversation: priorTurns
+      });
     } catch (error) {
       // Provider work never started or failed outright: release the budget.
       await settleUsage(reservation.id, 0);

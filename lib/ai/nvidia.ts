@@ -12,17 +12,73 @@ const LEGACY_RESEARCH_MODEL_ALIASES: Record<string, string> = {
   "minimaxai/minimax-m3": DEFAULT_RESEARCH_MODEL,
 };
 
+/** Every hosted NVIDIA key (build.nvidia.com / NGC) carries this prefix. */
+const NVIDIA_KEY_PREFIX = "nvapi-";
+
+/**
+ * Resolve a model env override, failing closed when the value looks like an
+ * API key. A key pasted into NVIDIA_KIMI_MODEL / NVIDIA_RESEARCH_MODEL is
+ * otherwise sent to NVIDIA as the *model name* — the gateway answers 404
+ * ("404 page not found") and the raw key is echoed straight back to end users
+ * inside the error message. Refusing to start turns that silent key leak into
+ * an actionable operator error.
+ */
+function resolveModel(envValue: string | undefined, fallback: string, envName: string): string {
+  const configured = envValue?.trim();
+  if (!configured) return fallback;
+  if (configured.startsWith(NVIDIA_KEY_PREFIX)) {
+    throw new ApiError(
+      500,
+      "nvidia_model_misconfigured",
+      `${envName} looks like an API key, not a model ID. Move that value into NVIDIA_API_KEY and set ${envName} to a model ID (for example ${fallback}), or delete ${envName} to use the default.`,
+    );
+  }
+  return configured;
+}
+
+/**
+ * Read and validate the hosted NVIDIA key. Kept synchronous (like the model
+ * guard above) so misconfiguration surfaces as an immediate, typed ApiError
+ * from the public callers below instead of a stray async rejection.
+ */
+function requireNvidiaApiKey(): string {
+  const apiKey = process.env.NVIDIA_API_KEY?.trim();
+
+  if (!apiKey) {
+    throw new ApiError(
+      500,
+      "nvidia_not_configured",
+      "The NVIDIA AI provider is not configured yet. Add NVIDIA_API_KEY.",
+    );
+  }
+
+  // The endpoint is pinned to integrate.api.nvidia.com, whose keys always
+  // start with `nvapi-`. Anything else here is the classic swapped-env mistake
+  // (the model ID was pasted into NVIDIA_API_KEY); fail closed with an
+  // actionable error instead of streaming NVIDIA's auth failure to the user.
+  if (!apiKey.startsWith(NVIDIA_KEY_PREFIX)) {
+    throw new ApiError(
+      500,
+      "nvidia_key_misconfigured",
+      "NVIDIA_API_KEY does not look like a hosted NVIDIA key — hosted keys start with \"nvapi-\". Check that a model ID was not pasted into NVIDIA_API_KEY by mistake.",
+    );
+  }
+
+  return apiKey;
+}
+
 /** Max mode: the larger reasoning model. */
 export function callNvidiaKimi(input: AICompletionInput) {
-  return callNvidiaModel(input, process.env.NVIDIA_KIMI_MODEL || DEFAULT_KIMI_MODEL, "nvidia-kimi");
+  const model = resolveModel(process.env.NVIDIA_KIMI_MODEL, DEFAULT_KIMI_MODEL, "NVIDIA_KIMI_MODEL");
+  return callNvidiaModel(input, requireNvidiaApiKey(), model, "nvidia-kimi");
 }
 
 /** Quick and thorough modes: the configured NVIDIA research model through NIM. */
 export function callNvidiaResearch(input: AICompletionInput) {
-  const configuredModel = process.env.NVIDIA_RESEARCH_MODEL?.trim() || DEFAULT_RESEARCH_MODEL;
+  const configuredModel = resolveModel(process.env.NVIDIA_RESEARCH_MODEL, DEFAULT_RESEARCH_MODEL, "NVIDIA_RESEARCH_MODEL");
   const model = LEGACY_RESEARCH_MODEL_ALIASES[configuredModel] || configuredModel;
 
-  return callNvidiaModel(input, model, "nvidia");
+  return callNvidiaModel(input, requireNvidiaApiKey(), model, "nvidia");
 }
 
 /** Redact bearer tokens and API keys from a provider message before logging or display. */
@@ -64,18 +120,13 @@ async function readProviderError(response: Response) {
 /** Call an NVIDIA NIM chat model and return its output as a cancellable SSE stream. */
 async function callNvidiaModel(
   input: AICompletionInput,
+  apiKey: string,
   model: string,
   provider: "nvidia" | "nvidia-kimi",
 ): Promise<AICompletionResult> {
-  const apiKey = process.env.NVIDIA_API_KEY;
-
-  if (!apiKey) {
-    throw new ApiError(
-      500,
-      "nvidia_not_configured",
-      "The NVIDIA AI provider is not configured yet. Add NVIDIA_API_KEY.",
-    );
-  }
+  // Model names are interpolated into client-visible error strings below.
+  // Redact first so a misconfigured value can never be echoed to users raw.
+  const safeModel = redactProviderMessage(model);
 
   const maxTokens = input.maxTokens ?? 12_000;
   const timeoutMs = maxTokens <= 2_000 ? 75_000 : 240_000;
@@ -136,7 +187,7 @@ async function callNvidiaModel(
         if (!response.ok) {
           const providerMessage = await readProviderError(response);
           emit({
-            error: `NVIDIA ${model} request failed (${response.status}): ${providerMessage}`,
+            error: `NVIDIA ${safeModel} request failed (${response.status}): ${providerMessage}`,
           });
           emit({ finishReason: "error" });
           emit({ done: true });
@@ -157,10 +208,10 @@ async function callNvidiaModel(
         let sawAnyData = false;
 
         const emitProviderError = (message: string) => {
-          logger.error(`NVIDIA ${model} stream error`, {
+          logger.error(`NVIDIA ${safeModel} stream error`, {
             detail: redactProviderMessage(message).slice(0, 500),
           });
-          emit({ error: `NVIDIA ${model} request failed: ${redactProviderMessage(message)}` });
+          emit({ error: `NVIDIA ${safeModel} request failed: ${redactProviderMessage(message)}` });
           finishReason = "error";
           emit({ finishReason });
         };

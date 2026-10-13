@@ -164,6 +164,8 @@ Supabase Authentication → Providers → Google must be enabled with the matchi
 
 AI requests are authenticated server-side and continue to use the existing paid-access and request-rate controls. Every mode runs through NVIDIA NIM (`https://integrate.api.nvidia.com/v1/chat/completions`) using the server-only `NVIDIA_API_KEY`, and only the model differs: **Max** uses `moonshotai/kimi-k3` (`NVIDIA_KIMI_MODEL`), while **Thorough** and **Quick** use `z-ai/glm-5-3-flash` (`NVIDIA_RESEARCH_MODEL`), with Quick on the smaller output budget and Thorough on the larger one. There is deliberately no base-URL variable — the NVIDIA endpoint is fixed — and no second provider is configured, so an absent `NVIDIA_API_KEY` disables AI features instead of falling back to another vendor. Do not expose provider keys through any `NEXT_PUBLIC_*` variable. The NVIDIA key previously pasted into chat must be rotated before use.
 
+**Troubleshooting — `NVIDIA nvapi-... request failed (404): 404 page not found`:** this means the NVIDIA **API key was pasted into one of the model variables** (`NVIDIA_KIMI_MODEL` / `NVIDIA_RESEARCH_MODEL`), so the key was sent to NVIDIA as the *model name* and the gateway answered 404. Only `NVIDIA_API_KEY` may contain the `nvapi-...` value; the model variables must hold model IDs (see `.env.example`) or be deleted to use the defaults. The provider now fails closed with `nvidia_model_misconfigured` / `nvidia_key_misconfigured` errors naming the swapped variable instead of leaking the key into the client-visible 404, and an exposed key must be rotated at build.nvidia.com.
+
 
 ## License
 

@@ -4,10 +4,13 @@ import { parseSSEPayload } from "@/lib/ai/sse";
 import { normalizeAIUsage, type AICompletionInput, type AICompletionResult } from "@/lib/ai/types";
 
 const DEFAULT_KIMI_MODEL = "moonshotai/kimi-k3";
-const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
+// The dash in "glm-5-3" is page-slug styling; the API model ID keeps the dot
+// ("glm-5.3-flash"). The dashed form is not a catalog model — NVIDIA's gateway
+// answers 404 ("404 page not found") for it.
+const DEFAULT_RESEARCH_MODEL = "z-ai/glm-5.3-flash";
 const LEGACY_RESEARCH_MODEL_ALIASES: Record<string, string> = {
-  // Dotted form was sent briefly and NVIDIA rejects it (404 unknown model).
-  "z-ai/glm-5.3-flash": DEFAULT_RESEARCH_MODEL,
+  // Dashed form shipped in .env.example and deployed env vars; auto-heal it.
+  "z-ai/glm-5-3-flash": DEFAULT_RESEARCH_MODEL,
   "deepseek-ai/deepseek-v4-flash-0731": DEFAULT_RESEARCH_MODEL,
   "minimaxai/minimax-m3": DEFAULT_RESEARCH_MODEL,
 };

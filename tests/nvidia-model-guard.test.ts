@@ -130,17 +130,19 @@ describe("NVIDIA model env guard", () => {
 describe("NVIDIA model resolution still works for valid config", () => {
   it("uses the default models when no overrides are set", async () => {
     assert.equal((await callNvidiaKimi(input)).model, "moonshotai/kimi-k3");
-    assert.equal((await callNvidiaResearch(input)).model, "z-ai/glm-5-3-flash");
+    assert.equal((await callNvidiaResearch(input)).model, "z-ai/glm-5.3-flash");
   });
 
   it("accepts a real model ID override", async () => {
-    process.env.NVIDIA_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
-    assert.equal((await callNvidiaResearch(input)).model, "z-ai/glm-5-3-flash");
+    process.env.NVIDIA_RESEARCH_MODEL = "z-ai/glm-5.3-flash";
+    assert.equal((await callNvidiaResearch(input)).model, "z-ai/glm-5.3-flash");
   });
 
-  it("keeps mapping legacy research model aliases to the current model", async () => {
-    process.env.NVIDIA_RESEARCH_MODEL = "z-ai/glm-5.3-flash";
-    assert.equal((await callNvidiaResearch(input)).model, "z-ai/glm-5-3-flash");
+  it("auto-heals the dashed research model form shipped in older env config", async () => {
+    // "z-ai/glm-5-3-flash" (dash, not dot) was the old default and 404s at the
+    // gateway; deployed env vars holding it must keep working.
+    process.env.NVIDIA_RESEARCH_MODEL = "z-ai/glm-5-3-flash";
+    assert.equal((await callNvidiaResearch(input)).model, "z-ai/glm-5.3-flash");
   });
 });
 
@@ -150,7 +152,7 @@ describe("NVIDIA error strings are safe to show end users", () => {
     globalThis.fetch = async () => new Response("404 page not found", { status: 404 });
 
     const text = await readAll(await callNvidiaResearch(input));
-    assert.match(text, /NVIDIA z-ai\/glm-5-3-flash request failed \(404\): 404 page not found/);
+    assert.match(text, /NVIDIA z-ai\/glm-5\.3-flash request failed \(404\): 404 page not found/);
     assert.ok(!text.includes(VALID_KEY), "streamed error must never contain the API key");
   });
 

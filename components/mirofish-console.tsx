@@ -440,8 +440,18 @@ function getSurveyBarColor(stance: string) {
   return stanceColors[stance] || "#8ad1bd";
 }
 
+type MirofishConsoleProps = {
+  /**
+   * Render inside a normal document-flow page (the administrator dashboard)
+   * instead of the workspace shell's fixed-height flex column, which owns its
+   * own scroll container. Embedded mode drops the inner scroll box so the page
+   * scrolls as one document.
+   */
+  embedded?: boolean;
+};
+
 /** Five-stage, browser-local MiroFish-inspired simulation console. */
-export function MirofishConsole() {
+export function MirofishConsole({ embedded = false }: MirofishConsoleProps = {}) {
   const [activeStep, setActiveStep] = useState(0);
   const [highestStep, setHighestStep] = useState(0);
   const [graphSearch, setGraphSearch] = useState("");
@@ -966,8 +976,14 @@ export function MirofishConsole() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 pt-4 sm:px-6 sm:pt-6 xl:px-8">
+    <div className={embedded ? "flex flex-col" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
+      <div
+        className={
+          embedded
+            ? "px-4 pb-10 pt-4 sm:px-6 sm:pt-6 xl:px-8"
+            : "min-h-0 flex-1 overflow-y-auto px-4 pb-10 pt-4 sm:px-6 sm:pt-6 xl:px-8"
+        }
+      >
         <div className="mx-auto max-w-[1520px]">
           <section className="relative overflow-hidden rounded-[1.8rem] bg-[#17211f] px-5 py-6 text-[var(--paper)] shadow-[0_22px_60px_rgba(23,20,18,0.18)] sm:px-8 sm:py-8 xl:px-10">
             <div className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -1023,7 +1039,9 @@ export function MirofishConsole() {
             <div className="flex flex-wrap gap-2"><Pill><Database className="h-3 w-3" aria-hidden="true" /> Seed 11</Pill><Pill><Users className="h-3 w-3" aria-hidden="true" /> Synthetic profiles</Pill><Pill tone="green"><CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Local-only</Pill></div>
           </div>
 
-          <main className="mt-6 pb-4">{renderActiveStage()}</main>
+          {/* A plain container, not <main>: the console is embedded inside the
+              administrator dashboard's own <main> landmark. */}
+          <div className="mt-6 pb-4">{renderActiveStage()}</div>
 
           <footer className="mt-5 flex flex-col gap-3 border-t border-[var(--line)] py-5 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-3xl leading-5">MiroFish is the workflow reference. This application uses its own transparent, deterministic demo engine and synthetic source material; it is not an upstream MiroFish execution.</p>

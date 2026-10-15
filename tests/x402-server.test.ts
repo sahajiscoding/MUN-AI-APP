@@ -199,5 +199,61 @@ describe("x402 Server Integration & Protocol Compliance", () => {
     assert.deepEqual(cached?.data, sampleResult);
     assert.equal(cached?.headers["x-custom"], "cached");
   });
+
+  it("serves discovery catalog on GET /api/x402 with no query params", async () => {
+    const { GET } = await import("@/app/api/x402/route");
+    const req = new Request("https://mun-prep.local/api/x402", {
+      method: "GET",
+    });
+
+    const res = await GET(req);
+    assert.equal(res.status, 200);
+    assert.ok(res.headers.get("content-type")?.includes("application/json"));
+
+    const body = await res.json();
+    assert.equal(body.service, "MUN Prep x402 API");
+    assert.equal(body.protocol, "x402");
+    assert.ok(body.endpoints?.content?.path === "/api/x402/content");
+    assert.ok(body.endpoints?.research?.path === "/api/ai/research");
+    assert.ok(Array.isArray(body.availableResources));
+  });
+
+  it("redirects GET /api/x402 with resource params to /api/x402/content", async () => {
+    const { GET } = await import("@/app/api/x402/route");
+    const req = new Request("https://mun-prep.local/api/x402?resource=courses", {
+      method: "GET",
+    });
+
+    const res = await GET(req);
+    assert.equal(res.status, 307);
+    const location = res.headers.get("location");
+    assert.ok(location?.includes("/api/x402/content?resource=courses"));
+  });
+
+  it("redirects GET /api/x402 presenting payment headers to /api/x402/content", async () => {
+    const { GET } = await import("@/app/api/x402/route");
+    const req = new Request("https://mun-prep.local/api/x402", {
+      method: "GET",
+      headers: {
+        "payment-signature": "base64-payload",
+      },
+    });
+
+    const res = await GET(req);
+    assert.equal(res.status, 307);
+    const location = res.headers.get("location");
+    assert.ok(location?.includes("/api/x402/content"));
+  });
+
+  it("handles OPTIONS and HEAD on /api/x402", async () => {
+    const { OPTIONS, HEAD } = await import("@/app/api/x402/route");
+    const optionsRes = await OPTIONS();
+    assert.equal(optionsRes.status, 204);
+    assert.equal(optionsRes.headers.get("allow"), "GET, HEAD, OPTIONS");
+
+    const headRes = await HEAD();
+    assert.equal(headRes.status, 200);
+  });
 });
+
 

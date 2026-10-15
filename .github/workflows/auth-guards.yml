@@ -41,6 +41,7 @@ jobs:
           app/api/referrals/capture/route.ts
           app/api/webhooks/uropay/route.ts
           app/api/x402/content/route.ts
+          app/api/x402/route.ts
           EOF
           )
           failed=0

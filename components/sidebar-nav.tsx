@@ -4,7 +4,6 @@ import {
   BookMarked,
   BookOpen,
   MessageSquare,
-  Network,
   Newspaper,
   ReceiptText,
   ShieldCheck
@@ -16,7 +15,6 @@ import { cn } from "@/lib/utils";
 const navigationItems = [
   { href: "/app/discover", label: "Discover", icon: Newspaper, section: "discover" },
   { href: "/app/research", label: "Research", icon: MessageSquare, section: "workspace" },
-  { href: "/mirofish", label: "Swarm Lab", icon: Network, section: "workspace" },
   { href: "/app/courses", label: "Courses", icon: BookOpen, section: "learn" },
   { href: "/app/glossary", label: "Glossary", icon: BookMarked, section: "learn" },
   { href: "/profile", label: "Profile", icon: ShieldCheck, section: "account" },
@@ -27,7 +25,6 @@ const navigationItems = [
 function isItemActive(pathname: string, href: string) {
   if (href === "/app/courses") return pathname.startsWith("/app/courses");
   if (href === "/app/research") return pathname.startsWith("/app/research");
-  if (href === "/mirofish") return pathname.startsWith("/mirofish");
   return pathname === href;
 }
 
@@ -95,7 +92,7 @@ export function MobileNav() {
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
         {mobileItems
-          .filter((item) => item.href !== "/app/glossary" && item.href !== "/mirofish")
+          .filter((item) => item.href !== "/app/glossary")
           .map((item) => {
             const active = isItemActive(pathname, item.href);
             const Icon = item.icon;

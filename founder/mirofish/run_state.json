@@ -1,0 +1,38 @@
+{
+  "simulation_id": "mun-prep-swarm-2026-10-15",
+  "status": "completed",
+  "generated_at": "2026-10-15T00:00:00.000Z",
+  "stage": "report_complete",
+  "seed": 11,
+  "rounds_completed": 5,
+  "agent_count": 40,
+  "graph": {
+    "nodes": 51,
+    "edges": 88
+  },
+  "platforms": {
+    "twitter": {
+      "actions": 200
+    },
+    "reddit": {
+      "actions": 200
+    }
+  },
+  "modeled_stance_counts": {
+    "needs-social-proof": 8,
+    "needs-evidence": 8,
+    "trial-curious": 7,
+    "coach-led": 3,
+    "value-check": 7,
+    "group-adoption": 5,
+    "price-check": 2
+  },
+  "baseline_reference": {
+    "buys": 9,
+    "passes": 31,
+    "total": 40,
+    "rate": 0.225,
+    "label": "Original synthetic panel result for the prior pay-first offer; not a current conversion estimate."
+  },
+  "runtime_boundary": "Offline deterministic replay; no real users, external LLM, OASIS, or Zep."
+}

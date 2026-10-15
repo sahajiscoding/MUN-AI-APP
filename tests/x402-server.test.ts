@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   getX402Config,
@@ -17,10 +17,30 @@ import { decodePaymentRequiredHeader } from "@x402/core/http";
 // placeholder address that used to swallow payments.
 const TEST_PAY_TO = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
 process.env.X402_PAY_TO ??= TEST_PAY_TO;
+const originalFetch = globalThis.fetch;
+const supportedResponse = {
+  kinds: [{ x402Version: 2, scheme: "exact", network: "eip155:84532" }],
+  extensions: [],
+  signers: {},
+};
 
 describe("x402 Server Integration & Protocol Compliance", () => {
   beforeEach(() => {
     resetX402HttpServerForTesting();
+    globalThis.fetch = async (input, init) => {
+      const requestUrl = input instanceof Request ? input.url : String(input);
+      if (requestUrl.endsWith("/supported")) {
+        return new Response(JSON.stringify(supportedResponse), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return originalFetch(input, init);
+    };
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
   it("provides valid default configuration", () => {
     const config = getX402Config();

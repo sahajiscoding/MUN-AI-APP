@@ -1,0 +1,2530 @@
+{
+  "graph_id": "mun-prep-swarm-2026-10-15",
+  "snapshot_at": "2026-10-15T00:00:00.000Z",
+  "seed_prompt": "How might India-based Model UN delegates react to the current MUN Prep workspace, its 3-day no-card trial, and ₹199 weekly / ₹299 monthly passes?",
+  "node_count": 51,
+  "edge_count": 88,
+  "nodes": [
+    {
+      "uuid": "app_mun_prep",
+      "name": "MUN Prep App",
+      "labels": [
+        "MUNPrepApp",
+        "Organization"
+      ],
+      "summary": "India-first Model UN preparation workspace with research, writing, and debate tools.",
+      "attributes": {
+        "snapshot": "2026-10-15",
+        "audience": "Model UN delegates in India, 14 to 22, English-medium, preparing for a specific conference date"
+      },
+      "ui_group": "product"
+    },
+    {
+      "uuid": "offer_trial_3d",
+      "name": "3-day free trial",
+      "labels": [
+        "Offer"
+      ],
+      "summary": "Three days of access on signup with no payment card required.",
+      "attributes": {
+        "access_days": 3,
+        "card_required": false
+      },
+      "ui_group": "offer"
+    },
+    {
+      "uuid": "offer_weekly_199",
+      "name": "Weekly Pass · ₹199",
+      "labels": [
+        "Offer"
+      ],
+      "summary": "Seven days of paid access for conference-week preparation.",
+      "attributes": {
+        "price_inr": 199,
+        "access_days": 7
+      },
+      "ui_group": "offer"
+    },
+    {
+      "uuid": "offer_monthly_299",
+      "name": "Monthly Pass · ₹299",
+      "labels": [
+        "Offer"
+      ],
+      "summary": "Thirty days of paid access for multi-conference preparation.",
+      "attributes": {
+        "price_inr": 299,
+        "access_days": 30
+      },
+      "ui_group": "offer"
+    },
+    {
+      "uuid": "feature_research",
+      "name": "Research & country policy",
+      "labels": [
+        "PreparationArtifact"
+      ],
+      "summary": "Committee brief, country policy, blocs, and debate angles.",
+      "attributes": {
+        "mode": "research",
+        "route": "/app/research"
+      },
+      "ui_group": "feature"
+    },
+    {
+      "uuid": "feature_writing",
+      "name": "Position papers & speeches",
+      "labels": [
+        "PreparationArtifact"
+      ],
+      "summary": "Position paper and speech-building workspaces.",
+      "attributes": {
+        "modes": [
+          "position-paper",
+          "speech"
+        ]
+      },
+      "ui_group": "feature"
+    },
+    {
+      "uuid": "feature_debate",
+      "name": "POIs & resolutions",
+      "labels": [
+        "PreparationArtifact"
+      ],
+      "summary": "Practice points of information and resolution strategy.",
+      "attributes": {
+        "modes": [
+          "poi",
+          "resolution"
+        ]
+      },
+      "ui_group": "feature"
+    },
+    {
+      "uuid": "trust_sources",
+      "name": "Checkable source proof",
+      "labels": [
+        "TrustSignal"
+      ],
+      "summary": "A future validation need repeatedly present in the synthetic panel; do not imply it is fully solved by the current product.",
+      "attributes": {
+        "state": "open question",
+        "live_feature_claim": false
+      },
+      "ui_group": "trust"
+    },
+    {
+      "uuid": "trust_peer_proof",
+      "name": "Independent delegate proof",
+      "labels": [
+        "TrustSignal"
+      ],
+      "summary": "A real, consented delegate example or recommendation; no testimonial is invented in this scenario.",
+      "attributes": {
+        "state": "not yet established",
+        "live_feature_claim": false
+      },
+      "ui_group": "trust"
+    },
+    {
+      "uuid": "concern_coach",
+      "name": "Coach / existing materials",
+      "labels": [
+        "Concern"
+      ],
+      "summary": "Some delegates already rely on a coach, templates, or senior-shared preparation.",
+      "attributes": {
+        "source": "synthetic founder panel"
+      },
+      "ui_group": "concern"
+    },
+    {
+      "uuid": "concern_generic_ai",
+      "name": "Generic AI substitution",
+      "labels": [
+        "Concern"
+      ],
+      "summary": "Delegates compare a specialist MUN workflow with free general-purpose AI tools.",
+      "attributes": {
+        "source": "synthetic founder panel"
+      },
+      "ui_group": "concern"
+    },
+    {
+      "uuid": "agent_P001",
+      "name": "Aisha",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "20-year-old synthetic College delegate, own pocket money; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P001",
+        "behavior": "First conference, no idea what to expect",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "need",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P002",
+      "name": "Emil",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "16-year-old synthetic School delegate, parent pays; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P002",
+        "behavior": "Taught by a school MUN coach",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P003",
+      "name": "Hugo",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "19-year-old synthetic College delegate, own pocket money; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P003",
+        "behavior": "Prepares the night before",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P004",
+      "name": "Arjun",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "22-year-old synthetic College delegate, own pocket money; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P004",
+        "behavior": "Reads reviews and asks seniors first",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P005",
+      "name": "Jade",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "14-year-old synthetic College delegate, own pocket money; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P005",
+        "behavior": "Deal hunter",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P006",
+      "name": "Farah",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "18-year-old synthetic College delegate, own pocket money; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P006",
+        "behavior": "Taught by a school MUN coach",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "habit",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P007",
+      "name": "Julian",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "15-year-old synthetic School delegate, parent pays; modeled current stance: coach-led.",
+      "attributes": {
+        "source_id": "P007",
+        "behavior": "First conference, no idea what to expect",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "other",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P008",
+      "name": "Caleb",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "16-year-old synthetic School delegate, parent pays; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P008",
+        "behavior": "Taught by a school MUN coach",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P009",
+      "name": "Fatima",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "22-year-old synthetic College delegate, own pocket money; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P009",
+        "behavior": "Prepares the night before",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "convenience",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P010",
+      "name": "Poppy",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "19-year-old synthetic College delegate, own pocket money; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P010",
+        "behavior": "Taught by a school MUN coach",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P011",
+      "name": "Clara",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "20-year-old synthetic Circuit regular chasing awards; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P011",
+        "behavior": "First conference, no idea what to expect",
+        "segment": "Circuit regular chasing awards",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P012",
+      "name": "Maeve",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "14-year-old synthetic College delegate, own pocket money; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P012",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "convenience",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P013",
+      "name": "Dev",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "14-year-old synthetic Club head or coordinator buying for a group; modeled current stance: group-adoption.",
+      "attributes": {
+        "source_id": "P013",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "Club head or coordinator buying for a group",
+        "prior_reason_code": "need",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P014",
+      "name": "Ines",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "15-year-old synthetic School delegate, parent pays; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P014",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "convenience",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P015",
+      "name": "Mira",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "20-year-old synthetic School delegate, parent pays; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P015",
+        "behavior": "Prepares the night before",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P016",
+      "name": "Nico",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "21-year-old synthetic School delegate, parent pays; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P016",
+        "behavior": "Award chaser, reads past papers",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P017",
+      "name": "Dana",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "22-year-old synthetic College delegate, own pocket money; modeled current stance: price-check.",
+      "attributes": {
+        "source_id": "P017",
+        "behavior": "Prepares the night before",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P018",
+      "name": "Min",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "14-year-old synthetic Club head or coordinator buying for a group; modeled current stance: group-adoption.",
+      "attributes": {
+        "source_id": "P018",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "Club head or coordinator buying for a group",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P019",
+      "name": "Mason",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "21-year-old synthetic Circuit regular chasing awards; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P019",
+        "behavior": "Reads reviews and asks seniors first",
+        "segment": "Circuit regular chasing awards",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P020",
+      "name": "Ruby",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "18-year-old synthetic School delegate, parent pays; modeled current stance: price-check.",
+      "attributes": {
+        "source_id": "P020",
+        "behavior": "Taught by a school MUN coach",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "need",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P021",
+      "name": "Olivia",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "16-year-old synthetic Circuit regular chasing awards; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P021",
+        "behavior": "Deal hunter",
+        "segment": "Circuit regular chasing awards",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P022",
+      "name": "Adrian",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "21-year-old synthetic College delegate, own pocket money; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P022",
+        "behavior": "Prepares the night before",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P023",
+      "name": "June",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "18-year-old synthetic School delegate, parent pays; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P023",
+        "behavior": "Prepares the night before",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "convenience",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P024",
+      "name": "Pablo",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "17-year-old synthetic School delegate, parent pays; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P024",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P025",
+      "name": "Elena",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "16-year-old synthetic School delegate, parent pays; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P025",
+        "behavior": "Prepares the night before",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P026",
+      "name": "Zara",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "15-year-old synthetic School delegate, parent pays; modeled current stance: coach-led.",
+      "attributes": {
+        "source_id": "P026",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "other",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P027",
+      "name": "Idris",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "15-year-old synthetic School delegate, parent pays; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P027",
+        "behavior": "First conference, no idea what to expect",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "other",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P028",
+      "name": "Mei",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "20-year-old synthetic School delegate, parent pays; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P028",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P029",
+      "name": "Marcus",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "21-year-old synthetic College delegate, own pocket money; modeled current stance: trial-curious.",
+      "attributes": {
+        "source_id": "P029",
+        "behavior": "Deal hunter",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "price",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P030",
+      "name": "Gabriel",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "14-year-old synthetic College delegate, own pocket money; modeled current stance: coach-led.",
+      "attributes": {
+        "source_id": "P030",
+        "behavior": "Reads reviews and asks seniors first",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "other",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P031",
+      "name": "Anya",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "19-year-old synthetic College delegate, own pocket money; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P031",
+        "behavior": "Award chaser, reads past papers",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P032",
+      "name": "Kai",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "20-year-old synthetic Circuit regular chasing awards; modeled current stance: value-check.",
+      "attributes": {
+        "source_id": "P032",
+        "behavior": "Taught by a school MUN coach",
+        "segment": "Circuit regular chasing awards",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P033",
+      "name": "Yara",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "17-year-old synthetic Club head or coordinator buying for a group; modeled current stance: group-adoption.",
+      "attributes": {
+        "source_id": "P033",
+        "behavior": "First conference, no idea what to expect",
+        "segment": "Club head or coordinator buying for a group",
+        "prior_reason_code": "need",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P034",
+      "name": "Tariq",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "21-year-old synthetic School delegate, parent pays; modeled current stance: needs-social-proof.",
+      "attributes": {
+        "source_id": "P034",
+        "behavior": "Award chaser, reads past papers",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P035",
+      "name": "Sana",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "17-year-old synthetic School delegate, parent pays; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P035",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "School delegate, parent pays",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P036",
+      "name": "Felix",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "16-year-old synthetic Circuit regular chasing awards; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P036",
+        "behavior": "Already uses ChatGPT for everything",
+        "segment": "Circuit regular chasing awards",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P037",
+      "name": "Nadia",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "14-year-old synthetic Club head or coordinator buying for a group; modeled current stance: group-adoption.",
+      "attributes": {
+        "source_id": "P037",
+        "behavior": "Award chaser, reads past papers",
+        "segment": "Club head or coordinator buying for a group",
+        "prior_reason_code": "other",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P038",
+      "name": "Noor",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "22-year-old synthetic Circuit regular chasing awards; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P038",
+        "behavior": "First conference, no idea what to expect",
+        "segment": "Circuit regular chasing awards",
+        "prior_reason_code": "trust",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P039",
+      "name": "Tess",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "17-year-old synthetic Club head or coordinator buying for a group; modeled current stance: group-adoption.",
+      "attributes": {
+        "source_id": "P039",
+        "behavior": "Prepares the night before",
+        "segment": "Club head or coordinator buying for a group",
+        "prior_reason_code": "convenience",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    },
+    {
+      "uuid": "agent_P040",
+      "name": "Eli",
+      "labels": [
+        "Delegate",
+        "Person"
+      ],
+      "summary": "21-year-old synthetic College delegate, own pocket money; modeled current stance: needs-evidence.",
+      "attributes": {
+        "source_id": "P040",
+        "behavior": "Award chaser, reads past papers",
+        "segment": "College delegate, own pocket money",
+        "prior_reason_code": "quality",
+        "synthetic": true
+      },
+      "ui_group": "agent"
+    }
+  ],
+  "edges": [
+    {
+      "uuid": "edge_0001",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "OFFERS",
+      "fact": "The current signup flow grants a 3-day trial without a card.",
+      "weight": 1,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0002",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "offer_weekly_199",
+      "name": "PRICED_AS",
+      "fact": "The weekly pass is ₹199 for seven days.",
+      "weight": 1,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0003",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "offer_monthly_299",
+      "name": "PRICED_AS",
+      "fact": "The monthly pass is ₹299 for thirty days.",
+      "weight": 1,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0004",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "feature_research",
+      "name": "USES_FOR",
+      "fact": "The app provides a delegate-preparation workspace.",
+      "weight": 1,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0005",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "feature_writing",
+      "name": "USES_FOR",
+      "fact": "The app provides a delegate-preparation workspace.",
+      "weight": 1,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0006",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "feature_debate",
+      "name": "USES_FOR",
+      "fact": "The app provides a delegate-preparation workspace.",
+      "weight": 1,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0007",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_TO_VALIDATE",
+      "fact": "Source transparency remains a proof question, not a solved feature claim.",
+      "weight": 0.82,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0008",
+      "source_node_uuid": "app_mun_prep",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_TO_VALIDATE",
+      "fact": "Independent delegate proof is not fabricated by this replay.",
+      "weight": 0.74,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0009",
+      "source_node_uuid": "agent_P001",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Aisha profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0010",
+      "source_node_uuid": "agent_P001",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "A friend saying the output was actually usable.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0011",
+      "source_node_uuid": "agent_P002",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Emil profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0012",
+      "source_node_uuid": "agent_P002",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "If every claim came with a source I could open.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0013",
+      "source_node_uuid": "agent_P003",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Hugo profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0014",
+      "source_node_uuid": "agent_P003",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0015",
+      "source_node_uuid": "agent_P004",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Arjun profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0016",
+      "source_node_uuid": "agent_P004",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "Two or three awards from people I can look up.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0017",
+      "source_node_uuid": "agent_P005",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Jade profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0018",
+      "source_node_uuid": "agent_P005",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0019",
+      "source_node_uuid": "agent_P006",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Farah profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0020",
+      "source_node_uuid": "agent_P006",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "If it did the citations properly so I did not have to worry.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0021",
+      "source_node_uuid": "agent_P007",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Julian profile evaluates the current app snapshot; modeled stance: coach-led.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0022",
+      "source_node_uuid": "agent_P007",
+      "target_node_uuid": "concern_coach",
+      "name": "RAISES",
+      "fact": "My school coach already preps us for free.",
+      "weight": 0.8,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0023",
+      "source_node_uuid": "agent_P008",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Caleb profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0024",
+      "source_node_uuid": "agent_P008",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0025",
+      "source_node_uuid": "agent_P009",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Fatima profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0026",
+      "source_node_uuid": "agent_P009",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "Seeing someone else's output from it, so I know it is better than my own prompting.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0027",
+      "source_node_uuid": "agent_P010",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Poppy profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0028",
+      "source_node_uuid": "agent_P010",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0029",
+      "source_node_uuid": "agent_P011",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Clara profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0030",
+      "source_node_uuid": "agent_P011",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0031",
+      "source_node_uuid": "agent_P012",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Maeve profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0032",
+      "source_node_uuid": "agent_P012",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0033",
+      "source_node_uuid": "agent_P013",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Dev profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0034",
+      "source_node_uuid": "agent_P013",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0035",
+      "source_node_uuid": "agent_P014",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Ines profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0036",
+      "source_node_uuid": "agent_P014",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "Someone showing me it is measurably better, not just faster.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0037",
+      "source_node_uuid": "agent_P015",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Mira profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0038",
+      "source_node_uuid": "agent_P015",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0039",
+      "source_node_uuid": "agent_P016",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Nico profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0040",
+      "source_node_uuid": "agent_P016",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "Proof it has helped someone place.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0041",
+      "source_node_uuid": "agent_P017",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Dana profile evaluates the current app snapshot; modeled stance: price-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0042",
+      "source_node_uuid": "agent_P017",
+      "target_node_uuid": "offer_weekly_199",
+      "name": "COMPARES",
+      "fact": "Tests the one-week price against a one-conference need.",
+      "weight": 0.7,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0043",
+      "source_node_uuid": "agent_P018",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Min profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0044",
+      "source_node_uuid": "agent_P018",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0045",
+      "source_node_uuid": "agent_P019",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Mason profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0046",
+      "source_node_uuid": "agent_P019",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "Reviews from delegates, and knowing where the facts come from.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0047",
+      "source_node_uuid": "agent_P020",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Ruby profile evaluates the current app snapshot; modeled stance: price-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0048",
+      "source_node_uuid": "agent_P020",
+      "target_node_uuid": "offer_weekly_199",
+      "name": "COMPARES",
+      "fact": "Tests the one-week price against a one-conference need.",
+      "weight": 0.7,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0049",
+      "source_node_uuid": "agent_P021",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Olivia profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0050",
+      "source_node_uuid": "agent_P021",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0051",
+      "source_node_uuid": "agent_P022",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Adrian profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0052",
+      "source_node_uuid": "agent_P022",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0053",
+      "source_node_uuid": "agent_P023",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "June profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0054",
+      "source_node_uuid": "agent_P023",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "Nothing soon. Maybe next year when the seniors graduate.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0055",
+      "source_node_uuid": "agent_P024",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Pablo profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0056",
+      "source_node_uuid": "agent_P024",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0057",
+      "source_node_uuid": "agent_P025",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Elena profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0058",
+      "source_node_uuid": "agent_P025",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0059",
+      "source_node_uuid": "agent_P026",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Zara profile evaluates the current app snapshot; modeled stance: coach-led.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0060",
+      "source_node_uuid": "agent_P026",
+      "target_node_uuid": "concern_coach",
+      "name": "RAISES",
+      "fact": "My school coach already preps us for free.",
+      "weight": 0.8,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0061",
+      "source_node_uuid": "agent_P027",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Idris profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0062",
+      "source_node_uuid": "agent_P027",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "A teacher recommending it in class.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0063",
+      "source_node_uuid": "agent_P028",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Mei profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0064",
+      "source_node_uuid": "agent_P028",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0065",
+      "source_node_uuid": "agent_P029",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Marcus profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0066",
+      "source_node_uuid": "agent_P029",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0067",
+      "source_node_uuid": "agent_P030",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Gabriel profile evaluates the current app snapshot; modeled stance: coach-led.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0068",
+      "source_node_uuid": "agent_P030",
+      "target_node_uuid": "concern_coach",
+      "name": "RAISES",
+      "fact": "My school coach already preps us for free.",
+      "weight": 0.8,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0069",
+      "source_node_uuid": "agent_P031",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Anya profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0070",
+      "source_node_uuid": "agent_P031",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "Knowing it is accurate. I would still check everything myself.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0071",
+      "source_node_uuid": "agent_P032",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Kai profile evaluates the current app snapshot; modeled stance: value-check.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0072",
+      "source_node_uuid": "agent_P032",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0073",
+      "source_node_uuid": "agent_P033",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Yara profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0074",
+      "source_node_uuid": "agent_P033",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0075",
+      "source_node_uuid": "agent_P034",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Tariq profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0076",
+      "source_node_uuid": "agent_P034",
+      "target_node_uuid": "trust_peer_proof",
+      "name": "NEEDS_PROOF",
+      "fact": "A free trial and one real review.",
+      "weight": 0.84,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0077",
+      "source_node_uuid": "agent_P035",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Sana profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0078",
+      "source_node_uuid": "agent_P035",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "Sources I can open and verify before I speak.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0079",
+      "source_node_uuid": "agent_P036",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Felix profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0080",
+      "source_node_uuid": "agent_P036",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "Citations I can check myself, and it being sold as a research aid.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0081",
+      "source_node_uuid": "agent_P037",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Nadia profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0082",
+      "source_node_uuid": "agent_P037",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0083",
+      "source_node_uuid": "agent_P038",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Noor profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0084",
+      "source_node_uuid": "agent_P038",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "A tool that only says things it can point to a source for.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    },
+    {
+      "uuid": "edge_0085",
+      "source_node_uuid": "agent_P039",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Tess profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0086",
+      "source_node_uuid": "agent_P039",
+      "target_node_uuid": "offer_trial_3d",
+      "name": "CONSIDERS",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "weight": 0.65,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0087",
+      "source_node_uuid": "agent_P040",
+      "target_node_uuid": "app_mun_prep",
+      "name": "EVALUATES",
+      "fact": "Eli profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "weight": 0.6,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "uuid": "edge_0088",
+      "source_node_uuid": "agent_P040",
+      "target_node_uuid": "trust_sources",
+      "name": "NEEDS_PROOF",
+      "fact": "Knowing it is accurate enough to speak from.",
+      "weight": 0.9,
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "expired_at": null,
+      "memory_type": "prior synthetic answer"
+    }
+  ],
+  "temporal_memory": [
+    {
+      "edge_uuid": "edge_0001",
+      "fact": "The current signup flow grants a 3-day trial without a card.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0002",
+      "fact": "The weekly pass is ₹199 for seven days.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0003",
+      "fact": "The monthly pass is ₹299 for thirty days.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0004",
+      "fact": "The app provides a delegate-preparation workspace.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0005",
+      "fact": "The app provides a delegate-preparation workspace.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0006",
+      "fact": "The app provides a delegate-preparation workspace.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0007",
+      "fact": "Source transparency remains a proof question, not a solved feature claim.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0008",
+      "fact": "Independent delegate proof is not fabricated by this replay.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0009",
+      "fact": "Aisha profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0010",
+      "fact": "A friend saying the output was actually usable.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0011",
+      "fact": "Emil profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0012",
+      "fact": "If every claim came with a source I could open.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0013",
+      "fact": "Hugo profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0014",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0015",
+      "fact": "Arjun profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0016",
+      "fact": "Two or three awards from people I can look up.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0017",
+      "fact": "Jade profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0018",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0019",
+      "fact": "Farah profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0020",
+      "fact": "If it did the citations properly so I did not have to worry.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0021",
+      "fact": "Julian profile evaluates the current app snapshot; modeled stance: coach-led.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0022",
+      "fact": "My school coach already preps us for free.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0023",
+      "fact": "Caleb profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0024",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0025",
+      "fact": "Fatima profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0026",
+      "fact": "Seeing someone else's output from it, so I know it is better than my own prompting.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0027",
+      "fact": "Poppy profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0028",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0029",
+      "fact": "Clara profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0030",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0031",
+      "fact": "Maeve profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0032",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0033",
+      "fact": "Dev profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0034",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0035",
+      "fact": "Ines profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0036",
+      "fact": "Someone showing me it is measurably better, not just faster.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0037",
+      "fact": "Mira profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0038",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0039",
+      "fact": "Nico profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0040",
+      "fact": "Proof it has helped someone place.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0041",
+      "fact": "Dana profile evaluates the current app snapshot; modeled stance: price-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0042",
+      "fact": "Tests the one-week price against a one-conference need.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0043",
+      "fact": "Min profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0044",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0045",
+      "fact": "Mason profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0046",
+      "fact": "Reviews from delegates, and knowing where the facts come from.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0047",
+      "fact": "Ruby profile evaluates the current app snapshot; modeled stance: price-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0048",
+      "fact": "Tests the one-week price against a one-conference need.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0049",
+      "fact": "Olivia profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0050",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0051",
+      "fact": "Adrian profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0052",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0053",
+      "fact": "June profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0054",
+      "fact": "Nothing soon. Maybe next year when the seniors graduate.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0055",
+      "fact": "Pablo profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0056",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0057",
+      "fact": "Elena profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0058",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0059",
+      "fact": "Zara profile evaluates the current app snapshot; modeled stance: coach-led.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0060",
+      "fact": "My school coach already preps us for free.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0061",
+      "fact": "Idris profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0062",
+      "fact": "A teacher recommending it in class.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0063",
+      "fact": "Mei profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0064",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0065",
+      "fact": "Marcus profile evaluates the current app snapshot; modeled stance: trial-curious.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0066",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0067",
+      "fact": "Gabriel profile evaluates the current app snapshot; modeled stance: coach-led.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0068",
+      "fact": "My school coach already preps us for free.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0069",
+      "fact": "Anya profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0070",
+      "fact": "Knowing it is accurate. I would still check everything myself.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0071",
+      "fact": "Kai profile evaluates the current app snapshot; modeled stance: value-check.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0072",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0073",
+      "fact": "Yara profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0074",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0075",
+      "fact": "Tariq profile evaluates the current app snapshot; modeled stance: needs-social-proof.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0076",
+      "fact": "A free trial and one real review.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0077",
+      "fact": "Sana profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0078",
+      "fact": "Sources I can open and verify before I speak.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0079",
+      "fact": "Felix profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0080",
+      "fact": "Citations I can check myself, and it being sold as a research aid.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0081",
+      "fact": "Nadia profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0082",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0083",
+      "fact": "Noor profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0084",
+      "fact": "A tool that only says things it can point to a source for.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0085",
+      "fact": "Tess profile evaluates the current app snapshot; modeled stance: group-adoption.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0086",
+      "fact": "Uses the trial as a low-risk first step; payment intent is not inferred.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0087",
+      "fact": "Eli profile evaluates the current app snapshot; modeled stance: needs-evidence.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    },
+    {
+      "edge_uuid": "edge_0088",
+      "fact": "Knowing it is accurate enough to speak from.",
+      "valid_at": "2026-10-15T00:00:00.000Z",
+      "invalid_at": null,
+      "source_note": "Synthetic panel replay and current product snapshot; not observed user behavior."
+    }
+  ]
+}

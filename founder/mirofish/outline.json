@@ -1,0 +1,50 @@
+{
+  "title": "MUN Prep App · synthetic swarm replay",
+  "generated_at": "2026-10-15T00:00:00.000Z",
+  "scenario_question": "How might India-based Model UN delegates react to the current MUN Prep workspace, its 3-day no-card trial, and ₹199 weekly / ₹299 monthly passes?",
+  "sections": [
+    {
+      "id": "scenario",
+      "title": "Scenario & scope",
+      "status": "complete"
+    },
+    {
+      "id": "signals",
+      "title": "Signals agents carry forward",
+      "status": "complete"
+    },
+    {
+      "id": "reactions",
+      "title": "What the product changes",
+      "status": "complete"
+    },
+    {
+      "id": "next-tests",
+      "title": "Experiments worth running",
+      "status": "complete"
+    },
+    {
+      "id": "limits",
+      "title": "Evidence boundary",
+      "status": "complete"
+    }
+  ],
+  "toolchain": [
+    {
+      "name": "QuickSearch",
+      "purpose": "Retrieve relevant panel memories and current product facts."
+    },
+    {
+      "name": "PanoramaSearch",
+      "purpose": "Map broad concerns, segments, and temporal relationships."
+    },
+    {
+      "name": "InsightForge",
+      "purpose": "Attribute the strongest frictions to evidence and scenario changes."
+    },
+    {
+      "name": "InterviewSubAgent",
+      "purpose": "Ask selected synthetic profiles what would change their view."
+    }
+  ]
+}

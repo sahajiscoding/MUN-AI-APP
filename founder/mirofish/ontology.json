@@ -1,0 +1,144 @@
+{
+  "source": "https://github.com/666ghj/MiroFish",
+  "method": "MiroFish-inspired five-stage workflow; locally generated deterministic scenario artifacts",
+  "engine_limit": "Not the MiroFish runtime. No external LLM, OASIS, Zep, or network call is used.",
+  "seed": 11,
+  "scenario": {
+    "app": "MUN Prep App",
+    "audience": "Model UN delegates in India, 14 to 22, English-medium, preparing for a specific conference date",
+    "question": "How might India-based Model UN delegates react to the current MUN Prep workspace, its 3-day no-card trial, and ₹199 weekly / ₹299 monthly passes?",
+    "snapshot": "Public product surface and pricing plan, as of 2026-10-15",
+    "offer": {
+      "trial_days": 3,
+      "trial_requires_payment_card": false,
+      "weekly_price_inr": 199,
+      "monthly_price_inr": 299
+    },
+    "product_capabilities": [
+      "Committee research and country policy preparation",
+      "Position paper planning",
+      "Speech drafting and practice",
+      "Points of information practice",
+      "Resolution clause planning",
+      "MUN courses and glossary"
+    ],
+    "evidence_boundary": "The source personas and prior answers are synthetic founder-panel material. The replay is a rule-based scenario, not a human study, a demand forecast, or a live MiroFish/OASIS/LLM run."
+  },
+  "entity_types": [
+    {
+      "name": "Delegate",
+      "description": "Synthetic Model UN delegate persona in the existing panel."
+    },
+    {
+      "name": "MUNPrepApp",
+      "description": "The public MUN Prep product surface being explored."
+    },
+    {
+      "name": "PreparationArtifact",
+      "description": "A research, writing, or debate-preparation output."
+    },
+    {
+      "name": "Offer",
+      "description": "Trial and paid access terms visible to a delegate."
+    },
+    {
+      "name": "TrustSignal",
+      "description": "A checkable proof point that can change perceived risk."
+    },
+    {
+      "name": "Concern",
+      "description": "A stated friction or objection carried from the prior synthetic panel."
+    },
+    {
+      "name": "Club",
+      "description": "A school or community that may influence group adoption."
+    },
+    {
+      "name": "Conference",
+      "description": "The time-bound MUN event a delegate is preparing for."
+    },
+    {
+      "name": "Person",
+      "description": "Fallback entity for a named synthetic agent."
+    },
+    {
+      "name": "Organization",
+      "description": "Fallback entity for a club, school, or product organization."
+    }
+  ],
+  "edge_types": [
+    {
+      "name": "PREPARES_WITH",
+      "source_targets": [
+        {
+          "source": "Delegate",
+          "target": "MUNPrepApp"
+        }
+      ]
+    },
+    {
+      "name": "USES_FOR",
+      "source_targets": [
+        {
+          "source": "MUNPrepApp",
+          "target": "PreparationArtifact"
+        }
+      ]
+    },
+    {
+      "name": "PRICED_AS",
+      "source_targets": [
+        {
+          "source": "MUNPrepApp",
+          "target": "Offer"
+        }
+      ]
+    },
+    {
+      "name": "NEEDS_PROOF",
+      "source_targets": [
+        {
+          "source": "Delegate",
+          "target": "TrustSignal"
+        }
+      ]
+    },
+    {
+      "name": "RAISES",
+      "source_targets": [
+        {
+          "source": "Delegate",
+          "target": "Concern"
+        }
+      ]
+    },
+    {
+      "name": "INFLUENCED_BY",
+      "source_targets": [
+        {
+          "source": "Delegate",
+          "target": "Club"
+        }
+      ]
+    },
+    {
+      "name": "PREPARES_FOR",
+      "source_targets": [
+        {
+          "source": "Delegate",
+          "target": "Conference"
+        }
+      ]
+    },
+    {
+      "name": "SHARES_WITH",
+      "source_targets": [
+        {
+          "source": "Delegate",
+          "target": "Delegate"
+        }
+      ]
+    }
+  ],
+  "analysis_summary": "Model how a 3-day no-card trial and MUN-specific workflow might change the conversation while keeping the synthetic-panel evidence boundary explicit. Focus on trial curiosity, trust/source proof, peer credibility, coach substitutes, and one-conference pricing."
+}

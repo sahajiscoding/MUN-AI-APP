@@ -1,0 +1,160 @@
+{
+  "simulation_id": "mun-prep-swarm-2026-10-15",
+  "seed": 11,
+  "engine": "local deterministic MiroFish-inspired replay",
+  "external_services": [],
+  "agents": {
+    "count": 40,
+    "profile_source": "founder/panel/personas.json",
+    "memory_source": "founder/panel/answers/P001.json–P040.json"
+  },
+  "timeline": {
+    "rounds": 5,
+    "hours_per_round": 6,
+    "timezone": "Asia/Kolkata"
+  },
+  "time_simulation_config": {
+    "start_time": "2026-10-15T09:00:00+05:30",
+    "step_hours": 6,
+    "round_count": 5,
+    "timezone": "Asia/Kolkata",
+    "memory_policy": "Append-only action episodes; base persona snapshots are immutable."
+  },
+  "agent_activity_config": {
+    "max_actions_per_agent_per_platform_per_round": 1,
+    "action_selection": "Deterministic hash of seed, profile ID, platform, round, and injected event.",
+    "active_platforms": [
+      "twitter",
+      "reddit"
+    ],
+    "action_types": {
+      "twitter": [
+        "POST",
+        "LIKE",
+        "REPOST",
+        "QUOTE",
+        "FOLLOW",
+        "IDLE"
+      ],
+      "reddit": [
+        "POST",
+        "COMMENT",
+        "LIKE",
+        "DISLIKE",
+        "SEARCH",
+        "TREND",
+        "FOLLOW",
+        "MUTE",
+        "REFRESH",
+        "IDLE"
+      ]
+    }
+  },
+  "platforms": [
+    {
+      "id": "twitter",
+      "name": "Info Plaza",
+      "action_types": [
+        "POST",
+        "LIKE",
+        "REPOST",
+        "QUOTE",
+        "FOLLOW",
+        "IDLE"
+      ]
+    },
+    {
+      "id": "reddit",
+      "name": "Topic Community",
+      "action_types": [
+        "POST",
+        "COMMENT",
+        "LIKE",
+        "DISLIKE",
+        "SEARCH",
+        "TREND",
+        "FOLLOW",
+        "MUTE",
+        "REFRESH",
+        "IDLE"
+      ]
+    }
+  ],
+  "event_config": {
+    "event_injection_mode": "Operator-controlled God's-eye event before each round.",
+    "baseline_event_id": "trial-live",
+    "events": [
+      {
+        "id": "trial-live",
+        "label": "3-day free trial is live",
+        "description": "New signups receive three days of access without a payment card.",
+        "kind": "product",
+        "live_feature": true,
+        "hypothetical": false
+      },
+      {
+        "id": "sample-brief",
+        "label": "What-if: show one sample brief before signup",
+        "description": "A hypothetical public sample is shown before account creation; no sample library is claimed to exist.",
+        "kind": "what-if",
+        "live_feature": false,
+        "hypothetical": true
+      },
+      {
+        "id": "source-demo",
+        "label": "What-if: demo checkable sources",
+        "description": "A hypothetical source-by-source evidence walkthrough is presented; this is a test, not a current feature claim.",
+        "kind": "what-if",
+        "live_feature": false,
+        "hypothetical": true
+      },
+      {
+        "id": "club-pilot",
+        "label": "What-if: invite a club to a guided pilot",
+        "description": "A hypothetical group trial with a coach or coordinator; no delegation price is invented.",
+        "kind": "what-if",
+        "live_feature": false,
+        "hypothetical": true
+      }
+    ]
+  },
+  "god_eye_events": [
+    {
+      "id": "trial-live",
+      "label": "3-day free trial is live",
+      "description": "New signups receive three days of access without a payment card.",
+      "kind": "product",
+      "live_feature": true,
+      "hypothetical": false
+    },
+    {
+      "id": "sample-brief",
+      "label": "What-if: show one sample brief before signup",
+      "description": "A hypothetical public sample is shown before account creation; no sample library is claimed to exist.",
+      "kind": "what-if",
+      "live_feature": false,
+      "hypothetical": true
+    },
+    {
+      "id": "source-demo",
+      "label": "What-if: demo checkable sources",
+      "description": "A hypothetical source-by-source evidence walkthrough is presented; this is a test, not a current feature claim.",
+      "kind": "what-if",
+      "live_feature": false,
+      "hypothetical": true
+    },
+    {
+      "id": "club-pilot",
+      "label": "What-if: invite a club to a guided pilot",
+      "description": "A hypothetical group trial with a coach or coordinator; no delegation price is invented.",
+      "kind": "what-if",
+      "live_feature": false,
+      "hypothetical": true
+    }
+  ],
+  "caveats": [
+    "All agents and social actions are synthetic and generated from existing synthetic panel inputs.",
+    "No independent LLM agents, OASIS runtime, or external graph database is used.",
+    "A scenario stance is not a purchase prediction or evidence of customer demand."
+  ]
+}

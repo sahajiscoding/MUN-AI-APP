@@ -3,6 +3,12 @@ allowBuilds:
   unrs-resolver: true
 
 overrides:
+  # GHSA-mrhx-c7xc-m3w5: oversized constrained collections can exhaust memory.
+  # Cover Zod 3.x copies in x402 as well as the app and ESLint's Zod 4.x copies.
+  zod: 4.6.6
+  # GHSA-w74x-v6f9-j3xg and related URI normalization advisories.
+  # Transitive via x402's AJV dependency; keep its existing 3.x API.
+  fast-uri@3: 3.1.9
   # Security override: CVE-2026-84375 (GHSA-2883-xcg3-v3hh) — js-yaml <4.3.2
   # DoS via unbounded merge-key expansion. Transitive via eslint toolchain.
   js-yaml: 4.3.2

@@ -1,6 +1,6 @@
 # MUN Prep App setup
 
-MUN Prep is a Next.js application using **Supabase Auth/Postgres/Storage**, **UroPay**, and server-only AI provider routes. The frontend never calls NVIDIA directly, and no provider or payment secret belongs in browser-exposed variables.
+MUN Prep is a Next.js application using **Supabase Auth/Postgres/Storage**, **UroPay**, and server-only AI provider routes. The frontend never calls NVIDIA directly, and no provider or payment secret belongs in browser-exposed variables. See [AGENTS.md](./AGENTS.md) for the contributor workflow.
 
 ## Local runtime
 
